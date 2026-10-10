@@ -5093,7 +5093,8 @@ function getActiveExamCourses() {
     });
   }
   (examsState.extraCourses || []).forEach(c => {
-    if (!courses.some(existing => existing.code === c.code)) {
+    const cCode = String(c.code || '').trim().toUpperCase();
+    if (cCode && !courses.some(existing => String(existing.code || '').trim().toUpperCase() === cCode)) {
       courses.push({
         code: c.code,
         label: c.label || c.code,
@@ -5516,28 +5517,48 @@ async function openAddExamCourseModal() {
   const customInput = document.getElementById('addExamCourseCustomCode');
   const btnConfirm = document.getElementById('btnConfirmAddExamCourse');
 
-  customInput.value = '';
-  btnConfirm.disabled = true;
+  if (customInput) customInput.value = '';
+  if (areaSelect) areaSelect.value = '';
+  if (courseSelect) {
+    courseSelect.innerHTML = '<option value="">Seleziona prima l\'area</option>';
+    courseSelect.disabled = true;
+    courseSelect.value = '';
+  }
+  if (btnConfirm) btnConfirm.disabled = true;
 
   if (!addExamCourseData.areas.length) {
-    areaSelect.innerHTML = '<option value="">Caricamento aree...</option>';
-    courseSelect.disabled = true;
+    if (areaSelect) areaSelect.innerHTML = '<option value="">Caricamento aree...</option>';
+    if (courseSelect) courseSelect.disabled = true;
     try {
       const yr = state.config ? state.config.anno : '2026';
       const data = await fetchJson(`/api/options?anno=${yr}`);
       addExamCourseData.areas = data.areas || [];
       addExamCourseData.courses = data.courses || [];
 
-      areaSelect.innerHTML = '<option value="">-- Seleziona Area Didattica --</option>' + 
-        addExamCourseData.areas.map(a => `<option value="${escapeHtml(a.value)}">${escapeHtml(a.label)}</option>`).join('');
+      if (areaSelect) {
+        areaSelect.innerHTML = '<option value="">-- Seleziona Area Didattica --</option>' + 
+          addExamCourseData.areas.map(a => `<option value="${escapeHtml(a.value)}">${escapeHtml(a.label)}</option>`).join('');
+      }
     } catch (err) {
-      areaSelect.innerHTML = '<option value="">Errore caricamento aree</option>';
+      if (areaSelect) areaSelect.innerHTML = '<option value="">Errore caricamento aree</option>';
     }
   }
 }
 
 function closeAddExamCourseModal() {
   closeModal('addExamCourseModal');
+  const areaSelect = document.getElementById('addExamCourseArea');
+  const courseSelect = document.getElementById('addExamCourseSelect');
+  const customInput = document.getElementById('addExamCourseCustomCode');
+  const btnConfirm = document.getElementById('btnConfirmAddExamCourse');
+  if (customInput) customInput.value = '';
+  if (areaSelect) areaSelect.value = '';
+  if (courseSelect) {
+    courseSelect.innerHTML = '<option value="">Seleziona prima l\'area</option>';
+    courseSelect.disabled = true;
+    courseSelect.value = '';
+  }
+  if (btnConfirm) btnConfirm.disabled = true;
 }
 
 function onAddExamCourseAreaChange() {
@@ -5556,6 +5577,7 @@ function onAddExamCourseAreaChange() {
   courseSelect.innerHTML = '<option value="">-- Seleziona Corso --</option>' +
     matching.map(c => `<option value="${escapeHtml(c.value)}" data-label="${escapeHtml(c.label)}">${escapeHtml(c.label)} [${escapeHtml(c.value)}]</option>`).join('');
   courseSelect.disabled = false;
+  btnConfirm.disabled = !courseSelect.value;
 }
 
 function onAddExamCourseSelectChange() {
@@ -5564,10 +5586,10 @@ function onAddExamCourseSelectChange() {
   const customInput = document.getElementById('addExamCourseCustomCode');
 
   if (courseSelect.value) {
-    customInput.value = '';
+    if (customInput) customInput.value = '';
     btnConfirm.disabled = false;
   } else {
-    btnConfirm.disabled = !customInput.value.trim();
+    btnConfirm.disabled = !(customInput && customInput.value.trim());
   }
 }
 
@@ -5577,10 +5599,10 @@ function onAddExamCourseCustomCodeInput() {
   const btnConfirm = document.getElementById('btnConfirmAddExamCourse');
 
   if (customInput.value.trim()) {
-    courseSelect.value = '';
+    if (courseSelect) courseSelect.value = '';
     btnConfirm.disabled = false;
   } else {
-    btnConfirm.disabled = !courseSelect.value;
+    btnConfirm.disabled = !(courseSelect && courseSelect.value);
   }
 }
 
@@ -5591,11 +5613,11 @@ function confirmAddExamCourse() {
   let code = '';
   let label = '';
 
-  if (courseSelect.value) {
+  if (courseSelect && courseSelect.value) {
     code = courseSelect.value.trim().toUpperCase();
     const opt = courseSelect.selectedOptions[0];
-    label = opt.getAttribute('data-label') || code;
-  } else if (customInput.value.trim()) {
+    label = (opt && opt.getAttribute('data-label')) ? opt.getAttribute('data-label') : code;
+  } else if (customInput && customInput.value.trim()) {
     code = customInput.value.trim().toUpperCase();
     label = code;
   }
@@ -5603,13 +5625,14 @@ function confirmAddExamCourse() {
   if (!code) return;
 
   const active = getActiveExamCourses();
-  if (active.some(c => c.code === code)) {
+  if (active.some(c => String(c.code || '').trim().toUpperCase() === code)) {
     showToast('Corso già presente nei corsi monitorati!');
     closeAddExamCourseModal();
     return;
   }
 
   if (examsState.knownYears) examsState.knownYears.clear();
+  if (!Array.isArray(examsState.extraCourses)) examsState.extraCourses = [];
   examsState.extraCourses.push({ code, label });
   saveExamCourses(examsState.extraCourses);
   renderExamCourseChips();
@@ -5620,7 +5643,8 @@ function confirmAddExamCourse() {
 
 function removeExamCourse(code) {
   if (examsState.knownYears) examsState.knownYears.clear();
-  examsState.extraCourses = examsState.extraCourses.filter(c => c.code !== code);
+  const targetCode = String(code || '').trim().toUpperCase();
+  examsState.extraCourses = (examsState.extraCourses || []).filter(c => String(c.code || '').trim().toUpperCase() !== targetCode);
   saveExamCourses(examsState.extraCourses);
   renderExamCourseChips();
   showToast('Corso rimosso dal calendario esami');
