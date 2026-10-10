@@ -147,10 +147,10 @@ Nei CSS ufficiali di Ateneo, ogni macro-area disciplinare possiede un codice cro
 - [x] **Widget "Adesso / Prossima Lezione"**: Inserire in evidenza all'inizio della vista orario un riquadro riassuntivo che segnali la lezione attualmente in corso o la successiva con aula, orario e conto alla rovescia.
 
 #### Fase 9: Navigazione, Ricerca Avanzata & Accessibilità (A11y)
-- [ ] **Mini-Calendario di Navigazione**: Aggiungere un selettore compatto a calendario per saltare rapidamente a specifiche settimane o mesi futuri.
-- [ ] **Ricerca con Debounce ed Evidenziazione**: Ottimizzare il campo di ricerca con debounce visivo ed evidenziazione evidenziata (*text highlighting*) delle corrispondenze trovate (docente, materia, aula).
-- [ ] **Indicatore Stato Offline**: Mostrare un banner non invasivo di avviso (*"Modalità Offline - Dati salvati"*) quando la connettività si interrompe nelle aule seminterrate.
-- [ ] **Accessibilità WCAG AA**: Implementare attributi ARIA (`role="tablist"`, `role="tab"`, `role="dialog"`, `aria-label`), assicurare ratio di contrasto minimo 4.5:1 e focus ring visibile per navigazione interamente da tastiera.
+- [x] **Mini-Calendario di Navigazione**: Aggiungere un selettore compatto a calendario per saltare rapidamente a specifiche settimane o mesi futuri.
+- [x] **Ricerca con Debounce ed Evidenziazione**: Ottimizzare il campo di ricerca con debounce visivo ed evidenziazione evidenziata (*text highlighting*) delle corrispondenze trovate (docente, materia, aula).
+- [x] **Indicatore Stato Offline**: Mostrare un banner non invasivo di avviso (*"Modalità Offline - Dati salvati"*) quando la connettività si interrompe nelle aule seminterrate.
+- [x] **Accessibilità WCAG AA**: Implementare attributi ARIA (`role="tablist"`, `role="tab"`, `role="dialog"`, `aria-label`), assicurare ratio di contrasto minimo 4.5:1 e focus ring visibile per navigazione interamente da tastiera.
 
 #### Fase 10: Modernizzazione Architetturale del Frontend
 - [ ] **Adozione Incrementale Alpine.js**: Riorganizzare la logica di gestione modali, filtri corsi e commutazione schede eliminando il codice procedurale ridondante in `app.js`.

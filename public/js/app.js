@@ -89,6 +89,25 @@ function renderBuildingBadgeHtml(roomString) {
   </a>`;
 }
 
+// Utility: debounce per ricerca fluida
+function debounce(fn, wait = 200) {
+  let timeout;
+  return function(...args) {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => fn.apply(this, args), wait);
+  };
+}
+
+// Utility: evidenziazione visiva delle corrispondenze di ricerca
+function highlightMatch(text, query) {
+  if (!text) return '';
+  if (!query || !query.trim()) return escapeHtml(text);
+  const escaped = escapeHtml(text);
+  const qEscaped = query.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`(${qEscaped})`, 'gi');
+  return escaped.replace(regex, '<mark class="search-highlight">$1</mark>');
+}
+
 // Profile / sync keys
 const PROFILE_KEY       = 'unimib_profile_id';       // stores { nickname, share_code }
 const SESSION_TOKEN_KEY = 'unimib_session_token';   // stores opaque session token
@@ -249,8 +268,37 @@ document.addEventListener('DOMContentLoaded', () => {
 // Applica immediatamente il tema per evitare flash di stile
 initTheme();
 
+function setupNetworkStatus() {
+  const banner = document.getElementById('offlineBanner');
+  const textEl = document.getElementById('offlineBannerText');
+  if (!banner) return;
+
+  function updateStatus(online) {
+    if (online) {
+      banner.classList.add('online-recovered');
+      if (textEl) textEl.textContent = '✓ Connessione ripristinata';
+      setTimeout(() => {
+        banner.style.display = 'none';
+        banner.classList.remove('online-recovered');
+      }, 2500);
+    } else {
+      banner.classList.remove('online-recovered');
+      if (textEl) textEl.textContent = 'Modalità Offline · Mostro i dati salvati in cache';
+      banner.style.display = 'flex';
+    }
+  }
+
+  window.addEventListener('online', () => updateStatus(true));
+  window.addEventListener('offline', () => updateStatus(false));
+
+  if (!navigator.onLine) {
+    updateStatus(false);
+  }
+}
+
 function initApp() {
   initTheme();
+  setupNetworkStatus();
   roomsState.selectedDate = formatDateIso(new Date());
   roomsState.modalDate = roomsState.selectedDate;
   examsState.extraCourses = loadExamCourses();
@@ -632,12 +680,40 @@ function setupEventListeners() {
     });
   }
 
-  // Timetable Search Bar
+  // Timetable Search Bar with Debounce
   const searchInput = document.getElementById('searchInput');
   if (searchInput) {
-    searchInput.addEventListener('input', (e) => {
+    searchInput.addEventListener('input', debounce((e) => {
       state.searchQuery = e.target.value.toLowerCase().trim();
       renderEvents();
+    }, 200));
+  }
+
+  // Mini-Calendar Jump Date Picker
+  const weekLabel = document.getElementById('weekLabelText');
+  const weekDatePicker = document.getElementById('weekDatePicker');
+  if (weekLabel && weekDatePicker) {
+    weekLabel.addEventListener('click', () => {
+      try {
+        if (typeof weekDatePicker.showPicker === 'function') {
+          weekDatePicker.showPicker();
+        } else {
+          weekDatePicker.click();
+        }
+      } catch (err) {
+        weekDatePicker.click();
+      }
+    });
+
+    weekDatePicker.addEventListener('change', (e) => {
+      if (!e.target.value) return;
+      const selected = new Date(e.target.value);
+      if (isNaN(selected.getTime())) return;
+      const targetMonday = getMonday(selected);
+      state.currentMonday = formatFormattedDate(targetMonday);
+      state.selectedDayDate = formatFormattedDate(selected);
+      loadCalendar(state.currentMonday);
+      showToast(`Saltato al ${formatDateItalianLong(selected)}`);
     });
   }
 
@@ -2923,12 +2999,18 @@ function setupPullToRefresh() {
 function renderDayTabs() {
   const tabsContainer = document.getElementById('daysTabBar');
   tabsContainer.innerHTML = '';
+  tabsContainer.setAttribute('role', 'tablist');
+  tabsContainer.setAttribute('aria-label', 'Filtro per giorno della settimana');
 
   const giorni = state.calendarData.giorni || [];
 
   // "Tutti" Tab
   const allTab = document.createElement('div');
-  allTab.className = `day-tab ${state.selectedDayDate === 'all' ? 'active' : ''}`;
+  const isAll = state.selectedDayDate === 'all';
+  allTab.className = `day-tab ${isAll ? 'active' : ''}`;
+  allTab.setAttribute('role', 'tab');
+  allTab.setAttribute('aria-selected', isAll ? 'true' : 'false');
+  allTab.setAttribute('aria-label', 'Mostra tutti i giorni della settimana');
   allTab.innerHTML = `
     <div class="tab-name">TUTTI</div>
     <div class="tab-date">${giorni.length ? `${giorni.length}GG` : ''}</div>
@@ -2947,6 +3029,8 @@ function renderDayTabs() {
     const isSelected = state.selectedDayDate === g.data;
     const isToday = g.data === todayStr;
     tab.className = `day-tab ${isSelected ? 'active' : ''} ${isToday ? 'is-today' : ''}`;
+    tab.setAttribute('role', 'tab');
+    tab.setAttribute('aria-selected', isSelected ? 'true' : 'false');
 
     // Short day name (lun, mar, mer...)
     const dayShort = g.label ? g.label.split(' ')[0].substring(0, 3).toUpperCase() : 'GG';
@@ -3150,14 +3234,14 @@ function renderEvents() {
           </div>
         </div>
         ${isCanceled ? '<div class="canceled-banner">⚠️ LEZIONE ANNULLATA</div>' : ''}
-        <div class="course-title ${isCanceled ? 'canceled-text' : ''}">${escapeHtml(e.course)}</div>
+        <div class="course-title ${isCanceled ? 'canceled-text' : ''}">${highlightMatch(e.course, state.searchQuery)}</div>
         ${changeBadgeHtml}
         <div class="card-details">
           <div class="detail-item">
-            <span>📍</span> <span>Aula: <strong class="room-pill">${escapeHtml(e.aula || 'Non specificata')}</strong>${renderBuildingBadgeHtml(e.aula)}</span>
+            <span>📍</span> <span>Aula: <strong class="room-pill">${highlightMatch(e.aula || 'Non specificata', state.searchQuery)}</strong>${renderBuildingBadgeHtml(e.aula)}</span>
           </div>
           <div class="detail-item">
-            <span>👨‍🏫</span> <span>Docente: <strong>${escapeHtml(e.docente || 'Non specificato')}</strong></span>
+            <span>👨‍🏫</span> <span>Docente: <strong>${highlightMatch(e.docente || 'Non specificato', state.searchQuery)}</strong></span>
           </div>
           ${showCurriculum && curriculum ? `
           <div class="detail-item">
@@ -3372,7 +3456,9 @@ function switchTab(tabId) {
 
   const tabMap = { timetable: 'tabTimetable', teachers: 'tabTeachers', rooms: 'tabRooms', exams: 'tabExams', friends: 'tabFriends' };
   document.querySelectorAll('.bottom-nav .nav-tab').forEach(btn => {
-    btn.classList.toggle('active', btn.id === tabMap[tabId]);
+    const isActive = btn.id === tabMap[tabId];
+    btn.classList.toggle('active', isActive);
+    btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
   });
 
   document.getElementById('viewTimetable').classList.toggle('hidden', tabId !== 'timetable');

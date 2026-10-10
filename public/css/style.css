@@ -187,6 +187,49 @@
   }
 }
 
+/* Accessibility Focus Ring (WCAG AA) */
+:focus-visible {
+  outline: 2px solid var(--bicocca-red);
+  outline-offset: 2px;
+}
+
+/* Offline Banner */
+.offline-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #78350F, #B45309);
+  color: #FEF3C7;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 8px 14px;
+  position: sticky;
+  top: calc(56px + env(safe-area-inset-top, 0px));
+  z-index: 99;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+}
+
+.offline-banner.online-recovered {
+  background: linear-gradient(135deg, #065F46, #059669);
+  color: #D1FAE5;
+}
+
+/* Search Term Highlight */
+.search-highlight {
+  background: rgba(229, 194, 0, 0.35);
+  color: #FFF;
+  border-radius: 3px;
+  padding: 0 2px;
+  font-weight: 700;
+}
+
+[data-theme="light"] .search-highlight {
+  background: rgba(229, 194, 0, 0.45);
+  color: #1D1D1B;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
