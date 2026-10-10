@@ -50,13 +50,15 @@ View lecture timetables, check real-time classroom occupancy, track exam session
 │   ├── css/
 │   │   └── style.css       # Responsive dark-theme styling
 │   ├── js/
-│   │   ├── app.js          # SPA logic, state management, and export helpers
-│   │   └── sw.js           # PWA Service Worker (offline asset cache)
+│   │   └── app.js          # SPA logic, state management, and export helpers
 │   ├── icons/              # App icons (PWA)
 │   ├── index.html          # SPA entry point
-│   └── manifest.json       # Web App Manifest
+│   ├── manifest.json       # Web App Manifest
+│   └── sw.js               # PWA Service Worker (offline asset cache, stale-while-revalidate)
 ├── scratch/
-│   └── test_edge_cases.py  # Backend unit tests
+│   ├── test_edge_cases.py  # Backend unit tests
+│   ├── test_issues_7_8.py  # Integration & external course tests
+│   └── test_phase3_cache.py # API caching & error handling tests
 ├── vercel.json             # Serverless routing and rewrites
 └── README.md
 ```
@@ -95,12 +97,14 @@ vercel dev
 
 The app will be available at `http://localhost:3000`.
 
+> **Nota per Windows:** assicurarsi che l'interprete Python sia installato e accessibile da riga di comando come `python` o `python3` nel PATH di sistema, affinché Vercel CLI possa instanziare correttamente i runtime Python serverless in locale.
+
 ### Running Tests
 
 Run the Python unit test suite:
 
 ```bash
-python3 -m unittest scratch/test_edge_cases.py
+python3 -m unittest discover -s scratch -p "test_*.py"
 ```
 
 ### Environment Variables
