@@ -43,31 +43,99 @@ function detectAreaColor(name) {
   return null;
 }
 
-// Coordinate geografiche ufficiali degli edifici del Campus UNIMIB Bicocca
-const CAMPUS_BUILDING_COORDS = {
-  'U1': { name: 'Edificio U1 - Scienze dei Materiali', coords: '45.5146,9.2115', addr: 'Piazza della Scienza 1, Milano' },
-  'U2': { name: 'Edificio U2 - Fisica', coords: '45.5152,9.2120', addr: 'Piazza della Scienza 2, Milano' },
-  'U3': { name: 'Edificio U3 - Bioscienze', coords: '45.5157,9.2125', addr: 'Piazza della Scienza 3, Milano' },
-  'U4': { name: 'Edificio U4 - Geologia e Scienze Ambientali', coords: '45.5161,9.2130', addr: 'Piazza della Scienza 4, Milano' },
-  'U5': { name: 'Edificio U5 - Matematica', coords: '45.5135,9.2100', addr: 'Via Roberto Cozzi 55, Milano' },
-  'U6': { name: 'Edificio U6 - Sede Centrale & Aule Magne', coords: '45.5185,9.2136', addr: 'Piazza dell\'Ateneo Nuovo 1, Milano' },
-  'U7': { name: 'Edificio U7 - Economia e Giurisprudenza', coords: '45.5173,9.2118', addr: 'Via Bicocca degli Arcimboldi 8, Milano' },
-  'U8': { name: 'Edificio U8 - Medicina e Chirurgia (Monza)', coords: '45.5971,9.2638', addr: 'Via Cadore 48, Monza' },
-  'U9': { name: 'Edificio U9 - Laboratori e Servizi', coords: '45.5165,9.2148', addr: 'Viale dell\'Innovazione 10, Milano' },
-  'U12': { name: 'Edificio U12 - Residenza e Centro Congressi', coords: '45.5198,9.2108', addr: 'Via Vizzola 5, Milano' },
-  'U14': { name: 'Edificio U14 - Informatica', coords: '45.5244,9.2162', addr: 'Viale Sarca 336, Milano' },
-  'U16': { name: 'Edificio U16 - Psicologia e Formazione', coords: '45.5150,9.2085', addr: 'Via Thomas Mann 8, Milano' },
-  'U17': { name: 'Edificio U17 - Tecnologie della Formazione', coords: '45.5178,9.2100', addr: 'Piazzetta Difesa per le Donne, Milano' },
-  'U18': { name: 'Edificio U18 - Scienze della Salute', coords: '45.5195,9.2112', addr: 'Via Vizzola 5, Milano' },
-  'U22': { name: 'Edificio U22 - Polo Didattico', coords: '45.5130,9.2080', addr: 'Via Roberto Cozzi 53, Milano' },
-  'U24': { name: 'Edificio U24 - Ricerca e Innovazione', coords: '45.5246,9.2166', addr: 'Viale Sarca 336, Milano' },
-  'U28': { name: 'Edificio U28 - Polo Breda', coords: '45.5280,9.2195', addr: 'Viale Chiese 54, Milano' }
+// Dati ufficiali di orientamento e ricerca Maps degli edifici del Campus UNIMIB Bicocca
+const CAMPUS_BUILDING_INFO = {
+  'U1': {
+    name: 'Edificio U1 (Atlas) - Scienze dei Materiali',
+    addr: 'Piazza della Scienza 1, Milano',
+    query: 'Edificio U1 Università degli Studi di Milano-Bicocca Piazza della Scienza 1 Milano'
+  },
+  'U2': {
+    name: 'Edificio U2 (Quantum) - Fisica',
+    addr: 'Piazza della Scienza 2, Milano',
+    query: 'Edificio U2 Università degli Studi di Milano-Bicocca Piazza della Scienza 2 Milano'
+  },
+  'U3': {
+    name: 'Edificio U3 (Bios) - Bioscienze',
+    addr: 'Piazza della Scienza 3, Milano',
+    query: 'Edificio U3 Università degli Studi di Milano-Bicocca Piazza della Scienza 3 Milano'
+  },
+  'U4': {
+    name: 'Edificio U4 (Tellus) - Geologia e Scienze Ambientali',
+    addr: 'Piazza della Scienza 4, Milano',
+    query: 'Edificio U4 Università degli Studi di Milano-Bicocca Piazza della Scienza 4 Milano'
+  },
+  'U5': {
+    name: 'Edificio U5 (Ratio) - Matematica',
+    addr: 'Via Roberto Cozzi 55, Milano',
+    query: 'Edificio U5 Università degli Studi di Milano-Bicocca Via Roberto Cozzi 55 Milano'
+  },
+  'U6': {
+    name: 'Edificio U6 (Agorà) - Sede Centrale & Aule Magne',
+    addr: 'Piazza dell\'Ateneo Nuovo 1, Milano',
+    query: 'Edificio U6 Agorà Università degli Studi di Milano-Bicocca Piazza dell\'Ateneo Nuovo 1 Milano'
+  },
+  'U7': {
+    name: 'Edificio U7 (Civitas) - Economia e Giurisprudenza',
+    addr: 'Via Bicocca degli Arcimboldi 8, Milano',
+    query: 'Edificio U7 Civitas Università degli Studi di Milano-Bicocca Via Bicocca degli Arcimboldi 8 Milano'
+  },
+  'U8': {
+    name: 'Edificio U8 - Medicina e Chirurgia (Monza)',
+    addr: 'Via Cadore 48, Monza',
+    query: 'Edificio U8 Università degli Studi di Milano-Bicocca Via Cadore 48 Monza'
+  },
+  'U9': {
+    name: 'Edificio U9 (Koinè) - Laboratori e Servizi',
+    addr: 'Viale dell\'Innovazione 10, Milano',
+    query: 'Edificio U9 Università degli Studi di Milano-Bicocca Viale dell\'Innovazione 10 Milano'
+  },
+  'U12': {
+    name: 'Edificio U12 (Auditorium) - Residenza e Centro Congressi',
+    addr: 'Via Vizzola 5, Milano',
+    query: 'Edificio U12 Università degli Studi di Milano-Bicocca Via Vizzola 5 Milano'
+  },
+  'U14': {
+    name: 'Edificio U14 (Abacus / DISCo) - Informatica',
+    addr: 'Viale Sarca 336, Milano',
+    query: 'Edificio U14 Abacus DISCo Università degli Studi di Milano-Bicocca Viale Sarca 336 Milano'
+  },
+  'U16': {
+    name: 'Edificio U16 (Maieutica) - Psicologia e Formazione',
+    addr: 'Via Thomas Mann 8, Milano',
+    query: 'Edificio U16 Università degli Studi di Milano-Bicocca Via Thomas Mann 8 Milano'
+  },
+  'U17': {
+    name: 'Edificio U17 (Ipazia) - Tecnologie della Formazione',
+    addr: 'Piazzetta Difesa per le Donne, Milano',
+    query: 'Edificio U17 Università degli Studi di Milano-Bicocca Piazzetta Difesa per le Donne Milano'
+  },
+  'U18': {
+    name: 'Edificio U18 - Scienze della Salute (Monza / Vedano)',
+    addr: 'Via Podgora, Vedano al Lambro',
+    query: 'Edificio U18 Università degli Studi di Milano-Bicocca Via Podgora Vedano al Lambro'
+  },
+  'U22': {
+    name: 'Edificio U22 - Polo Didattico (Sesto S.G.)',
+    addr: 'Via Mantova, Sesto San Giovanni',
+    query: 'Edificio U22 Università degli Studi di Milano-Bicocca Via Mantova Sesto San Giovanni'
+  },
+  'U24': {
+    name: 'Edificio U24 (Zephyrum) - Ricerca e Innovazione',
+    addr: 'Viale Sarca 336, Milano',
+    query: 'Edificio U24 Università degli Studi di Milano-Bicocca Viale Sarca 336 Milano'
+  },
+  'U28': {
+    name: 'Edificio U28 - Polo Didattico (Vedano)',
+    addr: 'Via Raoul Follereau, Vedano al Lambro',
+    query: 'Edificio U28 Università degli Studi di Milano-Bicocca Via Raoul Follereau Vedano al Lambro'
+  }
 };
 
 // Aliases per edifici con zero iniziale (es. U06 -> U6)
 for (let i = 1; i <= 9; i++) {
-  if (CAMPUS_BUILDING_COORDS[`U${i}`]) {
-    CAMPUS_BUILDING_COORDS[`U0${i}`] = CAMPUS_BUILDING_COORDS[`U${i}`];
+  if (CAMPUS_BUILDING_INFO[`U${i}`]) {
+    CAMPUS_BUILDING_INFO[`U0${i}`] = CAMPUS_BUILDING_INFO[`U${i}`];
   }
 }
 
@@ -82,13 +150,13 @@ function extractBuildingCode(roomString) {
 }
 
 function getBuildingMapUrl(buildingCode) {
-  if (!buildingCode) return 'https://www.google.com/maps/search/?api=1&query=Universita+Milano+Bicocca';
+  if (!buildingCode) return 'https://www.google.com/maps/search/?api=1&query=Universita+degli+Studi+di+Milano-Bicocca';
   const norm = extractBuildingCode(buildingCode) || buildingCode;
-  const info = CAMPUS_BUILDING_COORDS[norm] || CAMPUS_BUILDING_COORDS[buildingCode];
-  if (info && info.coords) {
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(info.coords)}`;
+  const info = CAMPUS_BUILDING_INFO[norm] || CAMPUS_BUILDING_INFO[buildingCode];
+  if (info && info.query) {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(info.query)}`;
   }
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent('Universita degli Studi di Milano Bicocca Edificio ' + norm)}`;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent('Edificio ' + norm + ' Università degli Studi di Milano-Bicocca')}`;
 }
 
 function renderBuildingBadgeHtml(roomString) {
@@ -163,6 +231,7 @@ let examsState = {
   yearFilter: '',
   searchQuery: '',
   exams: [],
+  knownYears: new Set(),
   isLoading: false
 };
 
@@ -5095,47 +5164,64 @@ function updateExamYearFilterOptions() {
   const select = document.getElementById('examYearFilter');
   if (!select) return;
 
-  const detectedYears = new Set();
+  if (!examsState.knownYears) examsState.knownYears = new Set();
 
-  // 1. From active state.config
+  // 1. From active state.config (if user is in year K, years 1..K exist)
   if (state.config && Array.isArray(state.config.anni)) {
     state.config.anni.forEach(a => {
-      const str = String(a);
-      const match = str.match(/(\d+)$/);
-      if (match) detectedYears.add(match[1]);
+      const match = String(a).match(/(\d+)$/);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        for (let y = 1; y <= num; y++) {
+          examsState.knownYears.add(String(y));
+        }
+      }
     });
   }
   if (state.config && Array.isArray(state.config.anniLabels)) {
     state.config.anniLabels.forEach(lbl => {
       const match = String(lbl).match(/(\d+)°/);
-      if (match) detectedYears.add(match[1]);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        for (let y = 1; y <= num; y++) {
+          examsState.knownYears.add(String(y));
+        }
+      }
     });
   }
 
-  // 2. From loaded exams events (if any)
+  // 2. From loaded exams events
   if (examsState.exams && examsState.exams.length) {
     examsState.exams.forEach(ex => {
       (ex.courses || []).forEach(c => {
         if (c.year && /^\d+$/.test(c.year)) {
-          detectedYears.add(String(c.year));
+          examsState.knownYears.add(String(c.year));
         }
       });
     });
   }
 
-  // Fallback if no years detected
-  if (detectedYears.size === 0) {
-    detectedYears.add('1');
-    detectedYears.add('2');
-    detectedYears.add('3');
+  // 3. Fill all sequential years up to the max discovered year
+  if (examsState.knownYears.size > 0) {
+    const maxYear = Math.max(...Array.from(examsState.knownYears).map(Number).filter(n => !isNaN(n) && n > 0));
+    for (let y = 1; y <= maxYear; y++) {
+      examsState.knownYears.add(String(y));
+    }
   }
 
-  const sortedYears = Array.from(detectedYears)
+  // Fallback if no years detected at all
+  if (examsState.knownYears.size === 0) {
+    examsState.knownYears.add('1');
+    examsState.knownYears.add('2');
+    examsState.knownYears.add('3');
+  }
+
+  const sortedYears = Array.from(examsState.knownYears)
     .map(Number)
     .filter(n => !isNaN(n) && n > 0)
     .sort((a, b) => a - b);
 
-  const currentValue = select.value || examsState.yearFilter || '';
+  const currentValue = examsState.yearFilter || select.value || '';
 
   select.innerHTML = '<option value="">Tutti gli anni</option>' +
     sortedYears.map(y => `<option value="${y}">${y}° Anno</option>`).join('');
@@ -5523,6 +5609,7 @@ function confirmAddExamCourse() {
     return;
   }
 
+  if (examsState.knownYears) examsState.knownYears.clear();
   examsState.extraCourses.push({ code, label });
   saveExamCourses(examsState.extraCourses);
   renderExamCourseChips();
@@ -5532,6 +5619,7 @@ function confirmAddExamCourse() {
 }
 
 function removeExamCourse(code) {
+  if (examsState.knownYears) examsState.knownYears.clear();
   examsState.extraCourses = examsState.extraCourses.filter(c => c.code !== code);
   saveExamCourses(examsState.extraCourses);
   renderExamCourseChips();

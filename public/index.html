@@ -288,13 +288,15 @@
     <div class="control-card">
       <div class="rooms-select-row">
         <div class="rooms-select-group">
-          <label for="roomsBuildingSelect">🏛️ Edificio / Sede</label>
-          <div style="display: flex; gap: 6px;">
-            <select id="roomsBuildingSelect" style="flex: 1;">
-              <option value="">Caricamento edifici...</option>
-            </select>
-            <a id="btnRoomsBuildingMap" href="#" target="_blank" rel="noopener noreferrer" class="btn-secondary" style="display:inline-flex; align-items:center; gap:4px; padding:8px 10px; font-size:0.8rem; text-decoration:none; white-space:nowrap;" title="Apri su Google Maps">📍 Mappa</a>
+          <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
+            <label for="roomsBuildingSelect" style="margin-bottom:0;">🏛️ Edificio / Sede</label>
+            <a id="btnRoomsBuildingMap" href="#" target="_blank" rel="noopener noreferrer" style="font-size:0.75rem; font-weight:600; color:var(--accent-cyan); text-decoration:none; display:inline-flex; align-items:center; gap:3px;" title="Apri su Google Maps">
+              📍 Mappa edificio ↗
+            </a>
           </div>
+          <select id="roomsBuildingSelect">
+            <option value="">Caricamento edifici...</option>
+          </select>
         </div>
 
         <div class="rooms-select-group">
