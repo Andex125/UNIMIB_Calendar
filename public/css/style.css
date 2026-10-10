@@ -42,6 +42,35 @@
   --radius-md: 12px;
   --radius-sm: 8px;
   --shadow-main: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+
+  /* Design Tokens: Tipografia Ufficiale */
+  --font-sans: 'PT Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-narrow: 'PT Sans Narrow', 'PT Sans', sans-serif;
+  --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+
+  /* Design Tokens: Spaziature */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* Design Tokens: Transizioni & Micro-Interazioni */
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+  --transition-smooth: 350ms cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Design Tokens: Scala Z-Index */
+  --z-base: 1;
+  --z-elevated: 10;
+  --z-dropdown: 50;
+  --z-header: 100;
+  --z-nav: 200;
+  --z-banner: 300;
+  --z-modal: 1000;
+  --z-toast: 2000;
 }
 
 /* Light Theme Tokens */
@@ -235,7 +264,7 @@
   margin: 0;
   padding: 0;
   -webkit-tap-highlight-color: transparent;
-  font-family: 'PT Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--font-sans);
 }
 
 body {

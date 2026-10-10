@@ -261,6 +261,70 @@ function toggleTheme() {
   applyTheme(next, true);
 }
 
+// ---------- Alpine.js Integration (Reactive Store & Modal Architecture) ----------
+
+function openModal(modalId) {
+  if (window.Alpine && window.Alpine.store && window.Alpine.store('modals')) {
+    window.Alpine.store('modals').open(modalId);
+  } else {
+    const el = document.getElementById(modalId);
+    if (el) el.classList.add('active');
+  }
+}
+
+function closeModal(modalId) {
+  if (window.Alpine && window.Alpine.store && window.Alpine.store('modals')) {
+    window.Alpine.store('modals').close(modalId);
+  } else {
+    const el = document.getElementById(modalId);
+    if (el) el.classList.remove('active');
+  }
+}
+
+document.addEventListener('alpine:init', () => {
+  Alpine.store('modals', {
+    active: null,
+    open(modalId) {
+      this.active = modalId;
+      const el = document.getElementById(modalId);
+      if (el) {
+        el.classList.add('active');
+        const focusable = el.querySelector('input:not([type="hidden"]), select, button:not(.btn-icon)');
+        if (focusable) setTimeout(() => focusable.focus(), 60);
+      }
+    },
+    close(modalId) {
+      const targetId = modalId || this.active;
+      if (targetId) {
+        const el = document.getElementById(targetId);
+        if (el) el.classList.remove('active');
+        if (this.active === targetId) this.active = null;
+      }
+    },
+    isOpen(modalId) {
+      return this.active === modalId;
+    }
+  });
+
+  Alpine.store('app', {
+    activeTab: 'timetable',
+    timetableFilter: 'target',
+    examsFilter: 'all',
+    setTab(tabId) {
+      this.activeTab = tabId;
+      switchTab(tabId);
+    },
+    setTimetableFilter(filter) {
+      this.timetableFilter = filter;
+      setFilter(filter);
+    },
+    setExamsFilter(filter) {
+      this.examsFilter = filter;
+      setExamFilter(filter);
+    }
+  });
+});
+
 document.addEventListener('DOMContentLoaded', () => {
   initApp();
 });
@@ -401,7 +465,7 @@ function setupEventListeners() {
   // Profile button
   document.getElementById('btnProfile').addEventListener('click', openProfileModal);
   document.getElementById('btnCloseProfile').addEventListener('click', () => {
-    document.getElementById('profileModal').classList.remove('active');
+    closeModal('profileModal');
   });
   document.getElementById('btnCreateProfile').addEventListener('click', handleCreateProfileStep2);
   const btnCreateWithExt = document.getElementById('btnCreateWithExistingConfig');
@@ -498,7 +562,7 @@ function setupEventListeners() {
   document.getElementById('btnAddFriend').addEventListener('click', openAddFriendModal);
   document.getElementById('btnShareFriendsGroup').addEventListener('click', shareFriendsGroup);
   document.getElementById('btnCloseAddFriend').addEventListener('click', () => {
-    document.getElementById('addFriendModal').classList.remove('active');
+    closeModal('addFriendModal');
   });
   document.getElementById('btnLookupFriendCode').addEventListener('click', lookupFriendByCode);
   document.getElementById('btnConfirmAddFriendCode').addEventListener('click', confirmAddFriendByCode);
@@ -777,7 +841,7 @@ function setupEventListeners() {
 
   // Room Schedule Modal
   document.getElementById('btnCloseRoomSchedule').addEventListener('click', () => {
-    document.getElementById('roomScheduleModal').classList.remove('active');
+    closeModal('roomScheduleModal');
   });
   document.getElementById('btnModalPrevDay').addEventListener('click', () => changeModalRoomDay(-1));
   document.getElementById('btnModalNextDay').addEventListener('click', () => changeModalRoomDay(1));
@@ -856,9 +920,25 @@ function setupEventListeners() {
           acknowledgeScheduleChanges(state.currentMonday);
           return;
         }
-        overlay.classList.remove('active');
+        closeModal(overlay.id);
       }
     });
+  });
+
+  // Global ESC key listener to close top active modal
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' || e.key === 'Esc') {
+      const activeModals = document.querySelectorAll('.modal-overlay.active');
+      if (!activeModals.length) return;
+      const topModal = activeModals[activeModals.length - 1];
+      if (topModal.id === 'onboardingModal') return;
+      if (topModal.id === 'setupModal' && (!state.config || setup._pendingProfile)) return;
+      if (topModal.id === 'scheduleChangesModal') {
+        acknowledgeScheduleChanges(state.currentMonday);
+        return;
+      }
+      closeModal(topModal.id);
+    }
   });
 
   // Share link
@@ -867,7 +947,7 @@ function setupEventListeners() {
     btnShare.addEventListener('click', openShare);
   }
   document.getElementById('btnCloseShare').addEventListener('click', () => {
-    document.getElementById('shareModal').classList.remove('active');
+    closeModal('shareModal');
   });
   document.getElementById('btnCopyShare').addEventListener('click', copyShareUrl);
   document.getElementById('btnNativeShare').addEventListener('click', nativeShare);
@@ -1144,7 +1224,7 @@ function openShare() {
   document.getElementById('shareUrlText').textContent = url;
   document.getElementById('qrImage').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}`;
   document.getElementById('btnNativeShare').style.display = navigator.share ? '' : 'none';
-  document.getElementById('shareModal').classList.add('active');
+  openModal('shareModal');
 }
 
 async function copyShareUrl() {
@@ -1237,12 +1317,11 @@ function openExportModal(source = 'timetable') {
   setExportFilter('target');
   updateWebCalUrl();
 
-  modal.classList.add('active');
+  openModal('exportModal');
 }
 
 function closeExportModal() {
-  const modal = document.getElementById('exportModal');
-  if (modal) modal.classList.remove('active');
+  closeModal('exportModal');
 }
 
 function setExportScope(scope) {
@@ -1564,7 +1643,7 @@ function downloadFile(content, mimeType, filename) {
 // ---------- Setup modal (mirrors the UNIMIB "By degree" form dropdowns) ----------
 
 async function openSetup(presetOverride, pendingProfile) {
-  document.getElementById('setupModal').classList.add('active');
+  openModal('setupModal');
 
   const pending = pendingProfile || setup._pendingProfile;
   const banner = document.getElementById('setupProfileBanner');
@@ -1616,7 +1695,7 @@ async function openSetup(presetOverride, pendingProfile) {
 function closeSetup() {
   setup.seq++;
   setup._pendingProfile = null;
-  document.getElementById('setupModal').classList.remove('active');
+  closeModal('setupModal');
 }
 
 async function onSetupYearChange(preset) {
@@ -1940,7 +2019,7 @@ async function openAddExternalCourseModal() {
     openSetup();
     return;
   }
-  document.getElementById('addExternalCourseModal').classList.add('active');
+  openModal('addExternalCourseModal');
   const yearSelect = document.getElementById('extCourseYear');
   const areaSelect = document.getElementById('extCourseArea');
   const degreeSelect = document.getElementById('extCourseSelect');
@@ -1979,7 +2058,7 @@ async function openAddExternalCourseModal() {
 }
 
 function closeAddExternalCourseModal() {
-  document.getElementById('addExternalCourseModal').classList.remove('active');
+  closeModal('addExternalCourseModal');
 }
 
 async function onExtYearChange() {
@@ -2202,6 +2281,9 @@ function confirmAddExternalCourse() {
 
 function setFilter(filterType) {
   state.activeFilter = filterType;
+  if (window.Alpine && window.Alpine.store && window.Alpine.store('app')) {
+    window.Alpine.store('app').timetableFilter = filterType;
+  }
   document.getElementById('btnFilterTarget').classList.toggle('active', filterType === 'target');
   document.getElementById('btnFilterAll').classList.toggle('active', filterType === 'all');
   renderEvents();
@@ -2490,8 +2572,7 @@ function getEventChange(e, mondayDateStr) {
 }
 
 function closeScheduleChangesModal() {
-  const modal = document.getElementById('scheduleChangesModal');
-  if (modal) modal.classList.remove('active');
+  closeModal('scheduleChangesModal');
 }
 
 function acknowledgeScheduleChanges(mondayDateStr) {
@@ -2601,7 +2682,7 @@ function openScheduleChangesModal(changes, mondayDateStr, weekLabel) {
   if (filterBar) filterBar.style.display = 'none';
 
   renderScheduleChangesModalList();
-  modal.classList.add('active');
+  openModal('scheduleChangesModal');
 }
 
 function renderScheduleChangesModalList() {
@@ -3453,6 +3534,9 @@ function isoToDisplayDate(iso) {
 
 function switchTab(tabId) {
   state.activeTab = tabId;
+  if (window.Alpine && window.Alpine.store && window.Alpine.store('app')) {
+    window.Alpine.store('app').activeTab = tabId;
+  }
 
   const tabMap = { timetable: 'tabTimetable', teachers: 'tabTeachers', rooms: 'tabRooms', exams: 'tabExams', friends: 'tabFriends' };
   document.querySelectorAll('.bottom-nav .nav-tab').forEach(btn => {
@@ -4599,7 +4683,7 @@ function openRoomSchedule(room) {
   document.getElementById('modalDateLabel').textContent = isoToDisplayDate(roomsState.modalDate);
 
   renderModalRoomEvents(room.events);
-  document.getElementById('roomScheduleModal').classList.add('active');
+  openModal('roomScheduleModal');
 }
 
 function renderModalRoomEvents(events) {
@@ -4811,6 +4895,9 @@ async function loadExams(forceRefresh = false) {
 
 function setExamFilter(filterType) {
   examsState.filterMode = filterType;
+  if (window.Alpine && window.Alpine.store && window.Alpine.store('app')) {
+    window.Alpine.store('app').examsFilter = filterType;
+  }
   const btnAll = document.getElementById('btnExamFilterAll');
   const btnTarget = document.getElementById('btnExamFilterTarget');
   if (btnAll) btnAll.classList.toggle('active', filterType === 'all');
@@ -4976,8 +5063,7 @@ let addExamCourseData = {
 };
 
 async function openAddExamCourseModal() {
-  const modal = document.getElementById('addExamCourseModal');
-  modal.classList.add('active');
+  openModal('addExamCourseModal');
 
   const areaSelect = document.getElementById('addExamCourseArea');
   const courseSelect = document.getElementById('addExamCourseSelect');
@@ -5005,7 +5091,7 @@ async function openAddExamCourseModal() {
 }
 
 function closeAddExamCourseModal() {
-  document.getElementById('addExamCourseModal').classList.remove('active');
+  closeModal('addExamCourseModal');
 }
 
 function onAddExamCourseAreaChange() {
@@ -5155,8 +5241,7 @@ function saveProfileLocally() {
 
 // Open the Profile modal, showing logged-in or logged-out state
 function openProfileModal() {
-  const modal = document.getElementById('profileModal');
-  modal.classList.add('active');
+  openModal('profileModal');
   renderProfileModal();
 }
 
@@ -5282,7 +5367,7 @@ function handleCreateProfileStep2() {
   if (!creds) return;
 
   setup._pendingProfile = creds;
-  document.getElementById('profileModal').classList.remove('active');
+  closeModal('profileModal');
   openSetup(state.config || {}, creds);
 }
 
@@ -5332,7 +5417,7 @@ async function handleCreateWithExistingConfig() {
     renderProfileModal();
     showToast(`🎉 Profilo creato! Il tuo codice calendario è: ${data.share_code}`, 5000);
     setTimeout(() => {
-      document.getElementById('profileModal').classList.remove('active');
+      closeModal('profileModal');
     }, 1200);
   } catch (e) {
     if (errEl) {
@@ -5350,7 +5435,7 @@ async function handleCreateWithExistingConfig() {
 function handleBackToProfileStep1() {
   const pending = setup._pendingProfile;
   setup.seq++;
-  document.getElementById('setupModal').classList.remove('active');
+  closeModal('setupModal');
   setup._pendingProfile = null;
   openProfileModal();
   showProfileTab('create');
@@ -5446,7 +5531,7 @@ async function handleLoginProfile() {
     renderProfileModal();
     showToast(`Bentornato, ${data.nickname}! 👋`);
     setTimeout(() => {
-      document.getElementById('profileModal').classList.remove('active');
+      closeModal('profileModal');
       if (!state.config) openSetup();
     }, 1200);
   } catch (e) {
@@ -5540,7 +5625,7 @@ async function handleRecoverPin() {
     renderProfileModal();
     showToast(`PIN reimpostato con successo! 🎉 Nuovo codice: ${data.recovery_code}`, 6000);
     setTimeout(() => {
-      document.getElementById('profileModal').classList.remove('active');
+      closeModal('profileModal');
     }, 1200);
   } catch (e) {
     if (errEl) { errEl.textContent = 'Errore di connessione.'; errEl.style.display = ''; }
@@ -5797,19 +5882,15 @@ function openCreateGroupModal() {
     openProfileModal();
     return;
   }
-  const modal = document.getElementById('createGroupModal');
-  if (modal) {
-    modal.classList.add('active');
-    const input = document.getElementById('createGroupNameInput');
-    if (input) { input.value = ''; setTimeout(() => input.focus(), 50); }
-    const err = document.getElementById('createGroupError');
-    if (err) err.style.display = 'none';
-  }
+  openModal('createGroupModal');
+  const input = document.getElementById('createGroupNameInput');
+  if (input) { input.value = ''; setTimeout(() => input.focus(), 50); }
+  const err = document.getElementById('createGroupError');
+  if (err) err.style.display = 'none';
 }
 
 function closeCreateGroupModal() {
-  const modal = document.getElementById('createGroupModal');
-  if (modal) modal.classList.remove('active');
+  closeModal('createGroupModal');
 }
 
 async function confirmCreateGroup() {
@@ -5873,19 +5954,15 @@ function openJoinGroupModal() {
     openProfileModal();
     return;
   }
-  const modal = document.getElementById('joinGroupModal');
-  if (modal) {
-    modal.classList.add('active');
-    const input = document.getElementById('joinGroupCodeInput');
-    if (input) { input.value = ''; setTimeout(() => input.focus(), 50); }
-    const err = document.getElementById('joinGroupError');
-    if (err) err.style.display = 'none';
-  }
+  openModal('joinGroupModal');
+  const input = document.getElementById('joinGroupCodeInput');
+  if (input) { input.value = ''; setTimeout(() => input.focus(), 50); }
+  const err = document.getElementById('joinGroupError');
+  if (err) err.style.display = 'none';
 }
 
 function closeJoinGroupModal() {
-  const modal = document.getElementById('joinGroupModal');
-  if (modal) modal.classList.remove('active');
+  closeModal('joinGroupModal');
 }
 
 async function confirmJoinGroup() {
@@ -5957,22 +6034,18 @@ function openRenameGroupModal() {
     showToast('Nessun gruppo selezionato');
     return;
   }
-  const modal = document.getElementById('renameGroupModal');
-  if (modal) {
-    modal.classList.add('active');
-    const input = document.getElementById('renameGroupNameInput');
-    if (input) {
-      input.value = friendsState.groupInfo.name || '';
-      setTimeout(() => input.focus(), 50);
-    }
-    const err = document.getElementById('renameGroupError');
-    if (err) err.style.display = 'none';
+  openModal('renameGroupModal');
+  const input = document.getElementById('renameGroupNameInput');
+  if (input) {
+    input.value = friendsState.groupInfo.name || '';
+    setTimeout(() => input.focus(), 50);
   }
+  const err = document.getElementById('renameGroupError');
+  if (err) err.style.display = 'none';
 }
 
 function closeRenameGroupModal() {
-  const modal = document.getElementById('renameGroupModal');
-  if (modal) modal.classList.remove('active');
+  closeModal('renameGroupModal');
 }
 
 async function confirmRenameGroup() {
@@ -6098,9 +6171,7 @@ function updateFriendsGroupHeader() {
 }
 
 function openAddFriendModal() {
-  const modal = document.getElementById('addFriendModal');
-  if (!modal) return;
-  modal.classList.add('active');
+  openModal('addFriendModal');
   const input = document.getElementById('friendCodeInput');
   if (input) {
     input.value = '';
@@ -6269,8 +6340,7 @@ function confirmAddFriendByCode() {
     _addFriend({ id: profile.id, nickname: profile.nickname });
   }
 
-  const modal = document.getElementById('addFriendModal');
-  if (modal) modal.classList.remove('active');
+  closeModal('addFriendModal');
 }
 
 async function handleJoinGroup(groupProfile) {
@@ -6333,8 +6403,7 @@ function addFriendFromSearch(id, nickname) {
     return;
   }
   _addFriend({ id, nickname });
-  const modal = document.getElementById('addFriendModal');
-  if (modal) modal.classList.remove('active');
+  closeModal('addFriendModal');
 }
 
 async function _addFriend({ id, nickname }) {
@@ -7252,13 +7321,11 @@ function dateFormattedToIso(ddmmyyyy) {
 // ══════════════════════════════════════════════════════════════
 
 function openOnboardingModal() {
-  const modal = document.getElementById('onboardingModal');
-  if (modal) modal.classList.add('active');
+  openModal('onboardingModal');
 }
 
 function closeOnboardingModal() {
-  const modal = document.getElementById('onboardingModal');
-  if (modal) modal.classList.remove('active');
+  closeModal('onboardingModal');
 }
 
 function handleOnboardingCreate() {

@@ -8,3 +8,5 @@ venv/
 ENV/
 .DS_Store
 .vercel/
+.vercel
+.env*

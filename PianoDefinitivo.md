@@ -122,7 +122,7 @@ Nei CSS ufficiali di Ateneo, ogni macro-area disciplinare possiede un codice cro
 
 ---
 
-### PARTE II: Rebranding UNIMIB, Ergonomia Mobile ed Evoluzione UX/UI *(In Programmazione)*
+### PARTE II: Rebranding UNIMIB, Ergonomia Mobile ed Evoluzione UX/UI *(Completato)*
 
 #### Fase 5: Rebranding Cromatico & Design System UNIMIB
 - [x] **Sostituzione Colore Guida**: Rimpiazzare `--accent-purple: #8B5CF6` con le variabili di Ateneo `--bicocca-red: #A71E3B`, `--bicocca-red-dark: #730723` e `--bicocca-red-accent: #C42649`.
@@ -153,8 +153,8 @@ Nei CSS ufficiali di Ateneo, ogni macro-area disciplinare possiede un codice cro
 - [x] **Accessibilità WCAG AA**: Implementare attributi ARIA (`role="tablist"`, `role="tab"`, `role="dialog"`, `aria-label`), assicurare ratio di contrasto minimo 4.5:1 e focus ring visibile per navigazione interamente da tastiera.
 
 #### Fase 10: Modernizzazione Architetturale del Frontend
-- [ ] **Adozione Incrementale Alpine.js**: Riorganizzare la logica di gestione modali, filtri corsi e commutazione schede eliminando il codice procedurale ridondante in `app.js`.
-- [ ] **Standardizzazione Design Tokens**: Consolidare le definizioni CSS per facilitare manutenzione ed estensibilità future del progetto.
+- [x] **Adozione Incrementale Alpine.js**: Riorganizzare la logica di gestione modali, filtri corsi e commutazione schede eliminando il codice procedurale ridondante in `app.js`.
+- [x] **Standardizzazione Design Tokens**: Consolidare le definizioni CSS per facilitare manutenzione ed estensibilità future del progetto.
 
 ---
 
