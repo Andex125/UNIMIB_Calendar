@@ -136,9 +136,9 @@ Nei CSS ufficiali di Ateneo, ogni macro-area disciplinare possiede un codice cro
 - [x] **Contrasto Solare Campus**: Ottimizzare i livelli di contrasto per garantire perfetta leggibilità all'aperto nei cortili e nelle piazze del polo Bicocca.
 
 #### Fase 7: Iconografia Vettoriale & Badge Edifici Campus
-- [ ] **Sostituzione Emoji con Lucide Icons**: Rimpiazzare le emoji di sistema (📅, 🧑‍🏫, 🏫, 📝, 👥, ⭐, 🔍, 📥, ⚙️) con icone SVG nitide, uniformi e accessibili.
-- [ ] **Badge Edificio Dedicati ("U")**: Evidenziare nelle card delle lezioni e nella vista Aule il blocco campus di appartenenza (pill dedicate `U6`, `U7`, `U14`, ecc.) con codice cromatico coerente.
-- [ ] **Link Geografico Campus**: Aggiungere sulle card delle aule un pulsante di geolocalizzazione rapida che apra la posizione dell'edificio su mappa (OpenStreetMap / Google Maps) con le coordinate esatte del campus Bicocca.
+- [x] **Sostituzione Emoji con Lucide Icons**: Rimpiazzare le emoji di sistema (📅, 🧑‍🏫, 🏫, 📝, 👥, ⭐, 🔍, 📥, ⚙️) con icone SVG nitide, uniformi e accessibili.
+- [x] **Badge Edificio Dedicati ("U")**: Evidenziare nelle card delle lezioni e nella vista Aule il blocco campus di appartenenza (pill dedicate `U6`, `U7`, `U14`, ecc.) con codice cromatico coerente.
+- [x] **Link Geografico Campus**: Aggiungere sulle card delle aule un pulsante di geolocalizzazione rapida che apra la posizione dell'edificio su mappa (OpenStreetMap / Google Maps) con le coordinate esatte del campus Bicocca.
 
 #### Fase 8: Ergonomia Mobile & Micro-Interazioni
 - [ ] **Bottom Sheet su Smartphone**: Convertire le modali (`setupModal`, `roomScheduleModal`, `exportModal`, `shareModal`) in fogli scorrevoli dal basso su schermi touch (ottimizzazione *thumb zone*), mantenendo la finestra di dialogo centrata su desktop.

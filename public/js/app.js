@@ -43,6 +43,52 @@ function detectAreaColor(name) {
   return null;
 }
 
+// Coordinate geografiche ufficiali degli edifici del Campus UNIMIB Bicocca
+const CAMPUS_BUILDING_COORDS = {
+  'U1': { name: 'Edificio U1 - Scienze dei Materiali', coords: '45.5146,9.2115', addr: 'Piazza della Scienza 1, Milano' },
+  'U2': { name: 'Edificio U2 - Fisica', coords: '45.5152,9.2120', addr: 'Piazza della Scienza 2, Milano' },
+  'U3': { name: 'Edificio U3 - Bioscienze', coords: '45.5157,9.2125', addr: 'Piazza della Scienza 3, Milano' },
+  'U4': { name: 'Edificio U4 - Geologia e Scienze Ambientali', coords: '45.5161,9.2130', addr: 'Piazza della Scienza 4, Milano' },
+  'U5': { name: 'Edificio U5 - Matematica', coords: '45.5135,9.2100', addr: 'Via Roberto Cozzi 55, Milano' },
+  'U6': { name: 'Edificio U6 - Sede Centrale & Aule Magne', coords: '45.5185,9.2136', addr: 'Piazza dell\'Ateneo Nuovo 1, Milano' },
+  'U7': { name: 'Edificio U7 - Economia e Giurisprudenza', coords: '45.5173,9.2118', addr: 'Via Bicocca degli Arcimboldi 8, Milano' },
+  'U8': { name: 'Edificio U8 - Medicina e Chirurgia (Monza)', coords: '45.5971,9.2638', addr: 'Via Cadore 48, Monza' },
+  'U9': { name: 'Edificio U9 - Laboratori e Servizi', coords: '45.5165,9.2148', addr: 'Viale dell\'Innovazione 10, Milano' },
+  'U12': { name: 'Edificio U12 - Residenza e Centro Congressi', coords: '45.5198,9.2108', addr: 'Via Vizzola 5, Milano' },
+  'U14': { name: 'Edificio U14 - Informatica', coords: '45.5244,9.2162', addr: 'Viale Sarca 336, Milano' },
+  'U16': { name: 'Edificio U16 - Psicologia e Formazione', coords: '45.5150,9.2085', addr: 'Via Thomas Mann 8, Milano' },
+  'U17': { name: 'Edificio U17 - Tecnologie della Formazione', coords: '45.5178,9.2100', addr: 'Piazzetta Difesa per le Donne, Milano' },
+  'U18': { name: 'Edificio U18 - Scienze della Salute', coords: '45.5195,9.2112', addr: 'Via Vizzola 5, Milano' },
+  'U22': { name: 'Edificio U22 - Polo Didattico', coords: '45.5130,9.2080', addr: 'Via Roberto Cozzi 53, Milano' },
+  'U24': { name: 'Edificio U24 - Ricerca e Innovazione', coords: '45.5246,9.2166', addr: 'Viale Sarca 336, Milano' },
+  'U28': { name: 'Edificio U28 - Polo Breda', coords: '45.5280,9.2195', addr: 'Viale Chiese 54, Milano' }
+};
+
+function extractBuildingCode(roomString) {
+  if (!roomString || typeof roomString !== 'string') return null;
+  const m = roomString.match(/\b(U\d{1,2})\b/i);
+  return m ? m[1].toUpperCase() : null;
+}
+
+function getBuildingMapUrl(buildingCode) {
+  if (!buildingCode) return 'https://www.google.com/maps/search/?api=1&query=Universita+Milano+Bicocca';
+  const info = CAMPUS_BUILDING_COORDS[buildingCode];
+  if (info && info.coords) {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(info.coords + ' (UNIMIB ' + buildingCode + ')')}`;
+  }
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent('Universita Milano Bicocca Edificio ' + buildingCode)}`;
+}
+
+function renderBuildingBadgeHtml(roomString) {
+  const bCode = extractBuildingCode(roomString);
+  if (!bCode) return '';
+  const mapUrl = getBuildingMapUrl(bCode);
+  return `<a href="${mapUrl}" target="_blank" rel="noopener noreferrer" class="building-badge" title="Visualizza ${bCode} sulla mappa del Campus" onclick="event.stopPropagation();">
+    <svg class="lucide-icon" style="width:12px; height:12px; stroke-width:2.2;" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+    <span>${bCode}</span>
+  </a>`;
+}
+
 // Profile / sync keys
 const PROFILE_KEY       = 'unimib_profile_id';       // stores { nickname, share_code }
 const SESSION_TOKEN_KEY = 'unimib_session_token';   // stores opaque session token
@@ -2953,7 +2999,7 @@ function renderEvents() {
         ${changeBadgeHtml}
         <div class="card-details">
           <div class="detail-item">
-            <span>📍</span> <span>Aula: <strong class="room-pill">${escapeHtml(e.aula || 'Non specificata')}</strong></span>
+            <span>📍</span> <span>Aula: <strong class="room-pill">${escapeHtml(e.aula || 'Non specificata')}</strong>${renderBuildingBadgeHtml(e.aula)}</span>
           </div>
           <div class="detail-item">
             <span>👨‍🏫</span> <span>Docente: <strong>${escapeHtml(e.docente || 'Non specificato')}</strong></span>
@@ -3814,7 +3860,7 @@ function renderTeacherEvents() {
         <div class="card-details">
           <div class="detail-item">
             <span>📍</span>
-            <span>Aula: <strong class="room-pill">${escapeHtml(e.aula || 'Non specificata')}</strong></span>
+            <span>Aula: <strong class="room-pill">${escapeHtml(e.aula || 'Non specificata')}</strong>${renderBuildingBadgeHtml(e.aula)}</span>
           </div>
           ${(e.curricula && e.curricula.length > 0) ? `
           <div class="detail-item">
@@ -4252,7 +4298,7 @@ function renderRooms() {
       <div class="room-card ${r.is_free ? 'free' : 'occupied'}" data-code="${escapeHtml(r.code)}">
         <div class="room-card-top">
           <div>
-            <div class="room-card-title">${escapeHtml(r.name)}</div>
+            <div class="room-card-title">${escapeHtml(r.name)} ${renderBuildingBadgeHtml(r.name || r.code || roomsState.selectedBuilding)}</div>
             <div class="room-card-capacity">👥 ${r.capacity > 0 ? r.capacity + ' posti' : 'Capienza n/d'} · ${escapeHtml(r.code)}</div>
           </div>
           <div class="status-badge ${r.is_free ? 'free' : 'occupied'}">

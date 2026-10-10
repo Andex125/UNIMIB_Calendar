@@ -1051,9 +1051,25 @@ body {
 }
 
 .nav-tab .nav-icon {
-  font-size: 1.35rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin: 0 auto 2px auto;
   line-height: 1;
   transition: transform 0.2s ease;
+}
+
+.nav-tab .nav-icon svg {
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
+  stroke-width: 2;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: all 0.2s ease;
 }
 
 .nav-tab .nav-label {
@@ -1066,12 +1082,13 @@ body {
   color: #FFF;
 }
 
-.nav-tab.active .nav-icon {
+.nav-tab.active .nav-icon svg {
+  stroke: var(--bicocca-red);
   transform: translateY(-2px) scale(1.1);
 }
 
 .nav-tab.active .nav-label {
-  color: var(--accent-cyan);
+  color: var(--bicocca-red);
 }
 
 .nav-tab.active::after {
@@ -1082,9 +1099,69 @@ body {
   transform: translateX(-50%);
   width: 32px;
   height: 3px;
-  background: linear-gradient(90deg, var(--accent-purple), var(--accent-cyan));
+  background: linear-gradient(90deg, var(--bicocca-red), var(--bicocca-red-accent));
   border-radius: 0 0 3px 3px;
-  box-shadow: 0 0 10px rgba(6, 182, 212, 0.6);
+  box-shadow: 0 0 10px rgba(167, 30, 59, 0.6);
+}
+
+.btn-icon svg {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  stroke-width: 2;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vertical-align: middle;
+}
+
+/* Lucide and Vector Icon Support */
+.lucide-icon {
+  display: inline-block;
+  vertical-align: middle;
+  stroke: currentColor;
+  stroke-width: 2;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Campus Building ("U") Badge & Map Link */
+.building-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: linear-gradient(135deg, rgba(167, 30, 59, 0.25), rgba(115, 7, 35, 0.35));
+  color: #FFF;
+  border: 1px solid rgba(167, 30, 59, 0.45);
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 0.72rem;
+  font-family: 'PT Sans Narrow', 'PT Sans', monospace;
+  letter-spacing: 0.05em;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  vertical-align: middle;
+  margin-left: 6px;
+}
+
+.building-badge:hover {
+  background: linear-gradient(135deg, var(--bicocca-red), var(--bicocca-red-dark));
+  color: #FFF;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(167, 30, 59, 0.35);
+}
+
+[data-theme="light"] .building-badge {
+  background: rgba(167, 30, 59, 0.08);
+  color: var(--bicocca-red);
+  border-color: rgba(167, 30, 59, 0.25);
+}
+
+[data-theme="light"] .building-badge:hover {
+  background: var(--bicocca-red);
+  color: #FFF;
 }
 
 /* Control Card & Panels */
