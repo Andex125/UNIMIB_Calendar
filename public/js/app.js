@@ -147,11 +147,64 @@ let setup = {
 };
 
 
+// Theme management (Dark / Light / Auto)
+const THEME_KEY = 'unimib_theme';
+
+function initTheme() {
+  const saved = localStorage.getItem(THEME_KEY) || 'auto';
+  applyTheme(saved, false);
+}
+
+function applyTheme(theme, notify = true) {
+  const root = document.documentElement;
+  if (theme === 'auto') {
+    root.removeAttribute('data-theme');
+    localStorage.removeItem(THEME_KEY);
+  } else {
+    root.setAttribute('data-theme', theme);
+    localStorage.setItem(THEME_KEY, theme);
+  }
+  updateThemeButtonUI(theme);
+  if (notify) {
+    if (theme === 'light') showToast('☀️ Tema chiaro attivato');
+    else if (theme === 'dark') showToast('🌙 Tema scuro attivato');
+    else showToast('🌓 Tema automatico di sistema attivato');
+  }
+}
+
+function updateThemeButtonUI(theme) {
+  const btn = document.getElementById('btnThemeToggle');
+  if (!btn) return;
+  if (theme === 'light') {
+    btn.textContent = '☀️';
+    btn.title = 'Tema: Chiaro (clicca per automatico)';
+  } else if (theme === 'dark') {
+    btn.textContent = '🌙';
+    btn.title = 'Tema: Scuro (clicca per chiaro)';
+  } else {
+    btn.textContent = '🌓';
+    btn.title = 'Tema: Automatico (clicca per scuro)';
+  }
+}
+
+function toggleTheme() {
+  const current = localStorage.getItem(THEME_KEY) || 'auto';
+  let next = 'dark';
+  if (current === 'auto') next = 'dark';
+  else if (current === 'dark') next = 'light';
+  else if (current === 'light') next = 'auto';
+  applyTheme(next, true);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   initApp();
 });
 
+// Applica immediatamente il tema per evitare flash di stile
+initTheme();
+
 function initApp() {
+  initTheme();
   roomsState.selectedDate = formatDateIso(new Date());
   roomsState.modalDate = roomsState.selectedDate;
   examsState.extraCourses = loadExamCourses();
@@ -243,6 +296,10 @@ function setupEventListeners() {
   document.getElementById('tabFriends').addEventListener('click', () => switchTab('friends'));
 
   setupTeachersEventListeners();
+
+  // Theme toggle button
+  const btnTheme = document.getElementById('btnThemeToggle');
+  if (btnTheme) btnTheme.addEventListener('click', toggleTheme);
 
   // Profile button
   document.getElementById('btnProfile').addEventListener('click', openProfileModal);

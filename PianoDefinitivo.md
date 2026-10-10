@@ -131,9 +131,9 @@ Nei CSS ufficiali di Ateneo, ogni macro-area disciplinare possiede un codice cro
 - [x] **Integrazione Ottaedro Leonardesco**: Inserire il simbolo vettoriale dell'Ottaedro nell'header principale, nella favicon ad alta risoluzione e come spinner SVG animato durante il fetch dei dati.
 
 #### Fase 6: Supporto Tema Chiaro / Scuro (Dark & Light Mode)
-- [ ] **Variabili CSS per Light Theme**: Creare il set complementare di token cromatici chiari (`--bg-primary: #F8FAFC`, `--bg-surface: #FFFFFF`, `--text-primary: #1D1D1B`, con accenti e bordi in Rosso Bicocca).
-- [ ] **Rilevamento Automatico e Toggle Manuale**: Supportare `prefers-color-scheme` del sistema operativo con salvataggio della preferenza utente in `localStorage` e toggle rapido nell'header.
-- [ ] **Contrasto Solare Campus**: Ottimizzare i livelli di contrasto per garantire perfetta leggibilità all'aperto nei cortili e nelle piazze del polo Bicocca.
+- [x] **Variabili CSS per Light Theme**: Creare il set complementare di token cromatici chiari (`--bg-primary: #F8FAFC`, `--bg-surface: #FFFFFF`, `--text-primary: #1D1D1B`, con accenti e bordi in Rosso Bicocca).
+- [x] **Rilevamento Automatico e Toggle Manuale**: Supportare `prefers-color-scheme` del sistema operativo con salvataggio della preferenza utente in `localStorage` e toggle rapido nell'header.
+- [x] **Contrasto Solare Campus**: Ottimizzare i livelli di contrasto per garantire perfetta leggibilità all'aperto nei cortili e nelle piazze del polo Bicocca.
 
 #### Fase 7: Iconografia Vettoriale & Badge Edifici Campus
 - [ ] **Sostituzione Emoji con Lucide Icons**: Rimpiazzare le emoji di sistema (📅, 🧑‍🏫, 🏫, 📝, 👥, ⭐, 🔍, 📥, ⚙️) con icone SVG nitide, uniformi e accessibili.
