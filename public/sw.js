@@ -1,4 +1,4 @@
-const CACHE_NAME = 'unimib-calendar-v20';
+const CACHE_NAME = 'unimib-calendar-v21';
 const ASSETS = [
   '/',
   '/index.html',
@@ -6,6 +6,7 @@ const ASSETS = [
   '/js/app.js',
   '/manifest.json',
   '/favicon.ico',
+  '/icons/ottaedro.svg',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
   '/icons/icon-maskable-512.png',

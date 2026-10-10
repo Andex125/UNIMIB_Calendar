@@ -4,7 +4,44 @@
 
 const CONFIG_KEY = 'unimib_config';
 const CALENDAR_CACHE_PREFIX = 'unimib_cal_';
-const FAVORITE_COLORS = ['#8B5CF6', '#10B981', '#06B6D4', '#F59E0B', '#EC4899', '#3B82F6', '#F97316', '#84CC16'];
+
+// UNIMIB Brand & Didactic Area Colors
+const UNIMIB_AREA_COLORS = {
+  economica: '#E5C200',   // Giallo Oro
+  giuridica: '#005096',   // Blu Indaco
+  scientifica: '#00753B', // Verde Smeraldo
+  medica: '#D83424',      // Rosso Scarlatto
+  sociologica: '#F29400',  // Arancione
+  psicologica: '#A4224B',  // Rubino
+  formazione: '#B82585',   // Viola / Fucsia
+  ateneo: '#A71E3B'       // Rosso Bicocca
+};
+
+const FAVORITE_COLORS = [
+  '#A71E3B', // Rosso Bicocca Primario
+  '#00753B', // Scientifica
+  '#005096', // Giuridica
+  '#E5C200', // Economico-Statistica
+  '#D83424', // Medica
+  '#F29400', // Sociologica
+  '#A4224B', // Psicologica
+  '#B82585', // Scienze della Formazione
+  '#C42649', // Rosso Accento
+  '#06B6D4'  // Ciano
+];
+
+function detectAreaColor(name) {
+  if (!name || typeof name !== 'string') return null;
+  const n = name.toLowerCase();
+  if (n.includes('econom') || n.includes('statist') || n.includes('finanz') || n.includes('aziend') || n.includes('market') || n.includes('manag')) return UNIMIB_AREA_COLORS.economica;
+  if (n.includes('giur') || n.includes('diritt') || n.includes('legge') || n.includes('crimin')) return UNIMIB_AREA_COLORS.giuridica;
+  if (n.includes('inform') || n.includes('matemat') || n.includes('fisic') || n.includes('biol') || n.includes('chimic') || n.includes('scienz') || n.includes('geol') || n.includes('dati') || n.includes('data')) return UNIMIB_AREA_COLORS.scientifica;
+  if (n.includes('medic') || n.includes('chirurg') || n.includes('inferm') || n.includes('odont') || n.includes('fisiot') || n.includes('sanitar')) return UNIMIB_AREA_COLORS.medica;
+  if (n.includes('sociol') || n.includes('comunic') || n.includes('social') || n.includes('polit')) return UNIMIB_AREA_COLORS.sociologica;
+  if (n.includes('psicol') || n.includes('neuro') || n.includes('ment')) return UNIMIB_AREA_COLORS.psicologica;
+  if (n.includes('formaz') || n.includes('educ') || n.includes('pedag') || n.includes('scuola')) return UNIMIB_AREA_COLORS.formazione;
+  return null;
+}
 
 // Profile / sync keys
 const PROFILE_KEY       = 'unimib_profile_id';       // stores { nickname, share_code }
@@ -13,7 +50,7 @@ const ACTIVE_GROUP_KEY   = 'unimib_active_group_id';  // stores active group ID
 const FRIENDS_KEY       = 'unimib_friends';          // stores [{id, nickname, color}]
 
 // Colors assigned to friends in shared calendar
-const FRIENDS_COLORS = ['#8B5CF6','#10B981','#F59E0B','#EC4899','#3B82F6','#F97316','#06B6D4','#84CC16'];
+const FRIENDS_COLORS = ['#A71E3B', '#00753B', '#005096', '#E5C200', '#D83424', '#F29400', '#A4224B', '#B82585', '#06B6D4'];
 
 let state = {
   currentMonday: null,
@@ -812,7 +849,7 @@ function applyConfig() {
     ...(cfg.externalCourses || []).map(ext => ({ code: ext.code, label: ext.label }))
   ];
   allFavorites.forEach((f, i) => {
-    state.favoriteColors[f.code] = FAVORITE_COLORS[i % FAVORITE_COLORS.length];
+    state.favoriteColors[f.code] = detectAreaColor(f.label) || FAVORITE_COLORS[i % FAVORITE_COLORS.length];
   });
 
   if (state.activeTab === 'timetable') {
