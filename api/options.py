@@ -124,7 +124,9 @@ class handler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header('Content-Type', 'application/json')
         self.send_header('Access-Control-Allow-Origin', '*')
-        if cache:
+        if cache and status == 200:
             self.send_header('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400')
+        else:
+            self.send_header('Cache-Control', 'no-store')
         self.end_headers()
         self.wfile.write(json.dumps(payload, ensure_ascii=False).encode('utf-8'))

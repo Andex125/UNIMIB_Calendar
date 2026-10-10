@@ -27,9 +27,21 @@ def split_curricula(percorso):
     parts = re.split(r'<hr[^>]*>', percorso or '')
     return [re.sub(r'<[^>]+>', '', p).strip() for p in parts if p.strip()]
 
-def fetch_unimib_grid(anno, corso, anni_studio, date_str):
+class UnimibError(Exception):
+    """Base exception for UNIMIB upstream requests."""
+    pass
+
+class UnimibNetworkError(UnimibError):
+    """Network connection error or timeout to UNIMIB."""
+    pass
+
+class UnimibParseError(UnimibError):
+    """Invalid or non-JSON response from UNIMIB."""
+    pass
+
+def fetch_unimib_grid(anno, corso, anni_studio, date_str, force_refresh=False):
     cache_key = (anno, corso, tuple(sorted(anni_studio)), date_str)
-    if cache_key in _grid_cache:
+    if not force_refresh and cache_key in _grid_cache:
         cached_time, cached_data = _grid_cache[cache_key]
         if time.time() - cached_time < CACHE_TTL:
             return cached_data
@@ -46,11 +58,22 @@ def fetch_unimib_grid(anno, corso, anni_studio, date_str):
     ]
     url = f'{GRID_URL}?{urllib.parse.urlencode(params)}'
     req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
-    with urllib.request.urlopen(req, timeout=10) as resp:
-        data = json.loads(resp.read().decode('utf-8'))
-        if isinstance(data, dict):
-            _grid_cache[cache_key] = (time.time(), data)
-        return data
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            content = resp.read().decode('utf-8')
+    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, OSError) as e:
+        raise UnimibNetworkError(f"Errore di rete o timeout durante la connessione a UNIMIB: {e}")
+
+    try:
+        data = json.loads(content)
+    except (json.JSONDecodeError, ValueError) as e:
+        raise UnimibParseError(f"Risposta non JSON valida ricevuta da UNIMIB: {e}")
+
+    if not isinstance(data, dict):
+        raise UnimibParseError("Struttura dati non valida ricevuta da UNIMIB")
+
+    _grid_cache[cache_key] = (time.time(), data)
+    return data
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -61,14 +84,15 @@ class handler(BaseHTTPRequestHandler):
         anni_studio = [a for a in qs.get('anno2', []) if a]
         date_arg = qs.get('date', [None])[0]
         extra_arg = qs.get('extra', [None])[0]
+        is_refresh = qs.get('refresh', [''])[0] in ('1', 'true')
 
         if not re.fullmatch(r'\d{4}', anno) or not re.fullmatch(r'[A-Za-z0-9_-]+', corso) or not anni_studio:
-            return self.send_json(400, {"error": "Specificare anno accademico, corso di studio e anno di studio"})
+            return self.send_json(400, {"error": "Specificare anno accademico, corso di studio e anno di studio"}, cache_control='no-store')
 
         if not date_arg:
             date_arg = get_monday().strftime('%d-%m-%Y')
         elif not re.fullmatch(r'\d{2}-\d{2}-\d{4}', date_arg):
-            return self.send_json(400, {"error": "Parametro 'date' non valido (atteso gg-mm-aaaa)"})
+            return self.send_json(400, {"error": "Parametro 'date' non valido (atteso gg-mm-aaaa)"}, cache_control='no-store')
 
         # Parse extra courses (from other degrees) if provided
         extra_courses = []
@@ -82,9 +106,9 @@ class handler(BaseHTTPRequestHandler):
 
         try:
             # 1. Fetch main grid
-            raw_data = fetch_unimib_grid(anno, corso, anni_studio, date_arg)
+            raw_data = fetch_unimib_grid(anno, corso, anni_studio, date_arg, force_refresh=is_refresh)
             if not isinstance(raw_data, dict):
-                return self.send_json(502, {"error": "Risposta non valida dal server UNIMIB"})
+                return self.send_json(502, {"error": "Risposta non valida dal server UNIMIB"}, cache_control='no-store')
             celle = sorted(raw_data.get("celle", []), key=_safe_ts)
             giorni = raw_data.get("giorni", [])
 
@@ -138,7 +162,7 @@ class handler(BaseHTTPRequestHandler):
                 if ext_groups:
                     with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(ext_groups), 4)) as executor:
                         future_to_group = {
-                            executor.submit(fetch_unimib_grid, g_anno, g_corso, list(g_anni), date_arg): (g_anno, g_corso, g_anni, g_items)
+                            executor.submit(fetch_unimib_grid, g_anno, g_corso, list(g_anni), date_arg, is_refresh): (g_anno, g_corso, g_anni, g_items)
                             for (g_anno, g_corso, g_anni), g_items in ext_groups.items()
                         }
                         for future in concurrent.futures.as_completed(future_to_group):
@@ -207,14 +231,23 @@ class handler(BaseHTTPRequestHandler):
                 "total_events": len(events),
                 "events": events
             }
-            self.send_json(200, payload)
+            cache_ctrl = 'no-store' if is_refresh else 'public, s-maxage=300, stale-while-revalidate=600'
+            self.send_json(200, payload, cache_control=cache_ctrl)
+        except UnimibError as e:
+            self.send_json(502, {"error": str(e)}, cache_control='no-store')
         except Exception as e:
-            self.send_json(500, {"error": str(e)})
+            self.send_json(502, {"error": f"Errore server: {e}"}, cache_control='no-store')
 
-    def send_json(self, status, payload):
+    def send_json(self, status, payload, cache_control=None):
         self.send_response(status)
         self.send_header('Content-Type', 'application/json')
         self.send_header('Access-Control-Allow-Origin', '*')
+        if cache_control:
+            self.send_header('Cache-Control', cache_control)
+        elif status == 200:
+            self.send_header('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600')
+        else:
+            self.send_header('Cache-Control', 'no-store')
         self.end_headers()
         self.wfile.write(json.dumps(payload, ensure_ascii=False).encode('utf-8'))
 
