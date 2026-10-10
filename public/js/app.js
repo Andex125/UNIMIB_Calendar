@@ -18,7 +18,7 @@ const FRIENDS_COLORS = ['#8B5CF6','#10B981','#F59E0B','#EC4899','#3B82F6','#F973
 let state = {
   currentMonday: null,
   activeFilter: 'target', // 'target' (my courses) or 'all'
-  selectedDayDate: formatFormattedDate(new Date()),  // Defaults to today
+  selectedDayDate: (new Date().getDay() === 0) ? 'all' : formatFormattedDate(new Date()),
   calendarData: null,
   searchQuery: '',
   config: null,           // { anno, corso, corsoLabel, anni: [...], anniLabels: [...], favorites: [{code, label}] }
@@ -415,7 +415,12 @@ function setupEventListeners() {
 
   document.getElementById('btnToday').addEventListener('click', () => {
     state.currentMonday = formatFormattedDate(getMonday(new Date()));
-    state.selectedDayDate = formatFormattedDate(new Date());
+    const today = new Date();
+    if (today.getDay() === 0) {
+      state.selectedDayDate = 'all';
+    } else {
+      state.selectedDayDate = formatFormattedDate(today);
+    }
     loadCalendar(state.currentMonday);
   });
 
@@ -722,25 +727,31 @@ function setupEventListeners() {
 
   // Swipe support for mobile
   let touchStartX = 0;
+  let touchStartY = 0;
   let touchEndX = 0;
+  let touchEndY = 0;
   const mainEl = document.querySelector('main');
 
   if (mainEl) {
     mainEl.addEventListener('touchstart', (e) => {
-      touchStartX = e.changedTouches[0].screenX;
+      touchStartX = e.changedTouches[0].clientX;
+      touchStartY = e.changedTouches[0].clientY;
     }, { passive: true });
 
     mainEl.addEventListener('touchend', (e) => {
-      touchEndX = e.changedTouches[0].screenX;
+      touchEndX = e.changedTouches[0].clientX;
+      touchEndY = e.changedTouches[0].clientY;
       handleSwipe();
     }, { passive: true });
   }
 
   function handleSwipe() {
     if (state.activeTab !== 'timetable') return;
-    const diff = touchEndX - touchStartX;
-    if (Math.abs(diff) > 75) {
-      if (diff < 0) {
+    const dx = touchEndX - touchStartX;
+    const dy = touchEndY - touchStartY;
+    if (Math.abs(dy) > Math.abs(dx)) return;
+    if (Math.abs(dx) > 75) {
+      if (dx < 0) {
         // Swipe Left -> Next Week
         changeWeek(7);
       } else {
@@ -1988,8 +1999,7 @@ function changeWeek(dayOffset) {
   // Ensure it's Monday
   const monday = getMonday(dt);
   state.currentMonday = formatFormattedDate(monday);
-  const thisMonday = formatFormattedDate(getMonday(new Date()));
-  state.selectedDayDate = (state.currentMonday === thisMonday) ? formatFormattedDate(new Date()) : 'all';
+  state.selectedDayDate = 'all';
   loadCalendar(state.currentMonday);
 }
 
@@ -2626,7 +2636,7 @@ function renderDayTabs() {
   allTab.className = `day-tab ${state.selectedDayDate === 'all' ? 'active' : ''}`;
   allTab.innerHTML = `
     <div class="tab-name">TUTTI</div>
-    <div class="tab-date">5GG</div>
+    <div class="tab-date">${giorni.length ? `${giorni.length}GG` : ''}</div>
   `;
   allTab.addEventListener('click', () => {
     state.selectedDayDate = 'all';
@@ -2635,18 +2645,21 @@ function renderDayTabs() {
   });
   tabsContainer.appendChild(allTab);
 
+  const todayStr = formatFormattedDate(new Date());
+
   giorni.forEach(g => {
     const tab = document.createElement('div');
     const isSelected = state.selectedDayDate === g.data;
-    tab.className = `day-tab ${isSelected ? 'active' : ''}`;
+    const isToday = g.data === todayStr;
+    tab.className = `day-tab ${isSelected ? 'active' : ''} ${isToday ? 'is-today' : ''}`;
 
     // Short day name (lun, mar, mer...)
     const dayShort = g.label ? g.label.split(' ')[0].substring(0, 3).toUpperCase() : 'GG';
     const dayNum = g.data ? g.data.split('-')[0] : '';
 
-    // Count my courses for this day
+    // Count my courses for this day (only non-canceled favorite courses)
     const dayEvents = (state.calendarData.events || []).filter(e => e.date === g.data);
-    const targetCount = dayEvents.filter(isFavorite).length;
+    const targetCount = dayEvents.filter(e => isFavorite(e) && !e.is_canceled).length;
 
     let dotsHtml = '';
     if (targetCount > 0) {
