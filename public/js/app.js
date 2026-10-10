@@ -64,19 +64,31 @@ const CAMPUS_BUILDING_COORDS = {
   'U28': { name: 'Edificio U28 - Polo Breda', coords: '45.5280,9.2195', addr: 'Viale Chiese 54, Milano' }
 };
 
+// Aliases per edifici con zero iniziale (es. U06 -> U6)
+for (let i = 1; i <= 9; i++) {
+  if (CAMPUS_BUILDING_COORDS[`U${i}`]) {
+    CAMPUS_BUILDING_COORDS[`U0${i}`] = CAMPUS_BUILDING_COORDS[`U${i}`];
+  }
+}
+
 function extractBuildingCode(roomString) {
   if (!roomString || typeof roomString !== 'string') return null;
-  const m = roomString.match(/\b(U\d{1,2})\b/i);
-  return m ? m[1].toUpperCase() : null;
+  const m = roomString.match(/\bU0*(\d{1,2})\b/i);
+  if (m) {
+    const num = parseInt(m[1], 10);
+    return `U${num}`;
+  }
+  return null;
 }
 
 function getBuildingMapUrl(buildingCode) {
   if (!buildingCode) return 'https://www.google.com/maps/search/?api=1&query=Universita+Milano+Bicocca';
-  const info = CAMPUS_BUILDING_COORDS[buildingCode];
+  const norm = extractBuildingCode(buildingCode) || buildingCode;
+  const info = CAMPUS_BUILDING_COORDS[norm] || CAMPUS_BUILDING_COORDS[buildingCode];
   if (info && info.coords) {
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(info.coords + ' (UNIMIB ' + buildingCode + ')')}`;
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(info.coords)}`;
   }
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent('Universita Milano Bicocca Edificio ' + buildingCode)}`;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent('Universita degli Studi di Milano Bicocca Edificio ' + norm)}`;
 }
 
 function renderBuildingBadgeHtml(roomString) {
@@ -782,9 +794,18 @@ function setupEventListeners() {
   }
 
   // Rooms Occupancy Controls
-  document.getElementById('roomsBuildingSelect').addEventListener('change', (e) => {
+  const roomsBuildingSelect = document.getElementById('roomsBuildingSelect');
+  const btnRoomsBuildingMap = document.getElementById('btnRoomsBuildingMap');
+  const updateRoomsBuildingMapLink = () => {
+    if (btnRoomsBuildingMap) {
+      btnRoomsBuildingMap.href = getBuildingMapUrl(extractBuildingCode(roomsState.selectedBuilding));
+    }
+  };
+
+  roomsBuildingSelect.addEventListener('change', (e) => {
     roomsState.selectedBuilding = e.target.value;
     localStorage.setItem('unimib_rooms_building', roomsState.selectedBuilding);
+    updateRoomsBuildingMapLink();
     loadRoomsOccupancy();
   });
 
@@ -816,10 +837,80 @@ function setupEventListeners() {
     btnRefreshRooms.addEventListener('click', () => loadRoomsOccupancy(true));
   }
 
-  document.getElementById('roomsSearchInput').addEventListener('input', (e) => {
+  // Rooms Search & Autocomplete
+  const roomsSearchInput = document.getElementById('roomsSearchInput');
+  const btnClearRoomsSearch = document.getElementById('btnClearRoomsSearch');
+  const roomsAutocompleteList = document.getElementById('roomsAutocompleteList');
+
+  const updateRoomsAutocomplete = () => {
+    if (!roomsAutocompleteList || !roomsState.data || !roomsState.data.rooms) {
+      if (roomsAutocompleteList) roomsAutocompleteList.style.display = 'none';
+      return;
+    }
+    const q = (roomsSearchInput.value || '').trim().toLowerCase();
+    const rooms = roomsState.data.rooms;
+    const matches = rooms.filter(r => {
+      if (!q) return true;
+      return (r.name && r.name.toLowerCase().includes(q)) || (r.code && r.code.toLowerCase().includes(q));
+    }).slice(0, 15);
+
+    if (matches.length === 0) {
+      roomsAutocompleteList.innerHTML = '<div class="autocomplete-empty">Nessun\'aula corrispondente trovata</div>';
+      roomsAutocompleteList.style.display = 'block';
+      return;
+    }
+
+    roomsAutocompleteList.innerHTML = matches.map(r => {
+      const statusClass = r.is_free ? 'room-free' : 'room-occ';
+      const statusLabel = r.is_free ? '🟢 Libera' : '🔴 Occupata';
+      const capLabel = r.capacity > 0 ? ` · ${r.capacity} posti` : '';
+      return `
+        <div class="autocomplete-item" data-name="${escapeHtml(r.name)}">
+          <div class="autocomplete-item-text">
+            <strong>🏛️ ${escapeHtml(r.name)}</strong>
+            <span style="font-size:0.75rem; color:var(--text-secondary); margin-left:6px;">${escapeHtml(r.code)}${capLabel}</span>
+          </div>
+          <span class="autocomplete-badge ${statusClass}">${statusLabel}</span>
+        </div>
+      `;
+    }).join('');
+    roomsAutocompleteList.style.display = 'block';
+
+    roomsAutocompleteList.querySelectorAll('.autocomplete-item').forEach(item => {
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const name = item.getAttribute('data-name');
+        roomsSearchInput.value = name;
+        roomsState.searchQuery = name;
+        if (btnClearRoomsSearch) btnClearRoomsSearch.style.display = 'flex';
+        roomsAutocompleteList.style.display = 'none';
+        renderRooms();
+      });
+    });
+  };
+
+  roomsSearchInput.addEventListener('input', (e) => {
     roomsState.searchQuery = e.target.value;
+    if (btnClearRoomsSearch) btnClearRoomsSearch.style.display = e.target.value ? 'flex' : 'none';
+    updateRoomsAutocomplete();
     renderRooms();
   });
+
+  roomsSearchInput.addEventListener('focus', () => {
+    updateRoomsAutocomplete();
+  });
+
+  if (btnClearRoomsSearch) {
+    btnClearRoomsSearch.addEventListener('click', (e) => {
+      e.stopPropagation();
+      roomsSearchInput.value = '';
+      roomsState.searchQuery = '';
+      btnClearRoomsSearch.style.display = 'none';
+      if (roomsAutocompleteList) roomsAutocompleteList.style.display = 'none';
+      renderRooms();
+      roomsSearchInput.focus();
+    });
+  }
 
   document.querySelectorAll('#roomsFilterBar .filter-pill').forEach(pill => {
     pill.addEventListener('click', () => {
@@ -868,6 +959,7 @@ function setupEventListeners() {
       examsState.activeSession = session;
       const customRange = document.getElementById('examCustomDateRange');
       if (session === 'custom') {
+        initExamCustomDates();
         customRange.style.display = 'flex';
       } else {
         customRange.style.display = 'none';
@@ -876,29 +968,180 @@ function setupEventListeners() {
     });
   });
 
-  document.getElementById('btnApplyExamDates').addEventListener('click', () => {
-    loadExams();
-  });
+  // Custom date wrappers click to open calendar popup fast
+  const setupExamDateWrapper = (wrapperId, inputId) => {
+    const wrapper = document.getElementById(wrapperId);
+    const input = document.getElementById(inputId);
+    if (wrapper && input) {
+      wrapper.addEventListener('click', (e) => {
+        if (e.target !== input && typeof input.showPicker === 'function') {
+          try { input.showPicker(); } catch (err) {}
+        }
+      });
+    }
+  };
+  setupExamDateWrapper('examDateFromWrapper', 'examDateFrom');
+  setupExamDateWrapper('examDateToWrapper', 'examDateTo');
 
   const examDateFromInput = document.getElementById('examDateFrom');
   const examDateFromText = document.getElementById('examDateFromText');
-  if (examDateFromInput && examDateFromText) {
-    examDateFromInput.addEventListener('change', () => {
-      examDateFromText.textContent = examDateFromInput.value ? formatDateItalianShort(examDateFromInput.value) : 'gg/mm/aaaa';
-    });
-  }
-
   const examDateToInput = document.getElementById('examDateTo');
   const examDateToText = document.getElementById('examDateToText');
-  if (examDateToInput && examDateToText) {
-    examDateToInput.addEventListener('change', () => {
-      examDateToText.textContent = examDateToInput.value ? formatDateItalianShort(examDateToInput.value) : 'gg/mm/aaaa';
+
+  if (examDateFromInput && examDateFromText) {
+    examDateFromInput.addEventListener('change', () => {
+      if (examDateFromInput.value) {
+        examDateFromText.textContent = formatDateItalianShort(examDateFromInput.value);
+        if (examDateToInput) {
+          examDateToInput.min = examDateFromInput.value;
+          if (examDateToInput.value && examDateToInput.value < examDateFromInput.value) {
+            examDateToInput.value = examDateFromInput.value;
+            if (examDateToText) examDateToText.textContent = formatDateItalianShort(examDateToInput.value);
+          }
+        }
+      } else {
+        examDateFromText.textContent = 'gg/mm/aaaa';
+      }
     });
   }
 
-  document.getElementById('examsSearchInput').addEventListener('input', (e) => {
+  if (examDateToInput && examDateToText) {
+    examDateToInput.addEventListener('change', () => {
+      if (examDateToInput.value) {
+        examDateToText.textContent = formatDateItalianShort(examDateToInput.value);
+        if (examDateFromInput) {
+          examDateFromInput.max = examDateToInput.value;
+          if (examDateFromInput.value && examDateFromInput.value > examDateToInput.value) {
+            examDateFromInput.value = examDateToInput.value;
+            if (examDateFromText) examDateFromText.textContent = formatDateItalianShort(examDateFromInput.value);
+          }
+        }
+      } else {
+        examDateToText.textContent = 'gg/mm/aaaa';
+      }
+    });
+  }
+
+  document.getElementById('btnApplyExamDates').addEventListener('click', () => {
+    if (examDateFromInput && examDateToInput && examDateFromInput.value && examDateToInput.value) {
+      if (examDateFromInput.value > examDateToInput.value) {
+        showToast('La data di fine non può essere precedente alla data di inizio!');
+        return;
+      }
+    }
+    loadExams();
+  });
+
+  // Exams Search & Autocomplete
+  const examsSearchInput = document.getElementById('examsSearchInput');
+  const btnClearExamsSearch = document.getElementById('btnClearExamsSearch');
+  const examsAutocompleteList = document.getElementById('examsAutocompleteList');
+
+  const updateExamsAutocomplete = () => {
+    if (!examsAutocompleteList) return;
+    const q = (examsSearchInput.value || '').trim().toLowerCase();
+    
+    // Collect unique exams and docenti
+    const examNames = new Map();
+    const docentiNames = new Map();
+
+    (examsState.exams || []).forEach(ex => {
+      if (ex.name) {
+        const clean = ex.name.trim();
+        if (!examNames.has(clean.toLowerCase())) examNames.set(clean.toLowerCase(), clean);
+      }
+      (ex.docenti || []).forEach(d => {
+        const clean = d.trim();
+        if (clean && !docentiNames.has(clean.toLowerCase())) docentiNames.set(clean.toLowerCase(), clean);
+      });
+    });
+
+    if (state.config && Array.isArray(state.config.favorites)) {
+      state.config.favorites.forEach(f => {
+        if (f.label) {
+          const clean = f.label.trim();
+          if (!examNames.has(clean.toLowerCase())) examNames.set(clean.toLowerCase(), clean);
+        }
+      });
+    }
+
+    const items = [];
+    examNames.forEach((name, lower) => {
+      if (!q || lower.includes(q)) {
+        items.push({ type: 'exam', label: name, badge: '📖 Esame' });
+      }
+    });
+    docentiNames.forEach((name, lower) => {
+      if (!q || lower.includes(q)) {
+        items.push({ type: 'prof', label: name, badge: '👨‍🏫 Docente' });
+      }
+    });
+
+    const matches = items.slice(0, 15);
+    if (matches.length === 0) {
+      if (q) {
+        examsAutocompleteList.innerHTML = '<div class="autocomplete-empty">Nessun esame o docente trovato</div>';
+        examsAutocompleteList.style.display = 'block';
+      } else {
+        examsAutocompleteList.style.display = 'none';
+      }
+      return;
+    }
+
+    examsAutocompleteList.innerHTML = matches.map(item => `
+      <div class="autocomplete-item" data-text="${escapeHtml(item.label)}">
+        <div class="autocomplete-item-text">
+          <strong>${escapeHtml(item.label)}</strong>
+        </div>
+        <span class="autocomplete-badge ${item.type}">${escapeHtml(item.badge)}</span>
+      </div>
+    `).join('');
+    examsAutocompleteList.style.display = 'block';
+
+    examsAutocompleteList.querySelectorAll('.autocomplete-item').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const text = el.getAttribute('data-text');
+        examsSearchInput.value = text;
+        examsState.searchQuery = text;
+        if (btnClearExamsSearch) btnClearExamsSearch.style.display = 'flex';
+        examsAutocompleteList.style.display = 'none';
+        renderExams();
+      });
+    });
+  };
+
+  examsSearchInput.addEventListener('input', (e) => {
     examsState.searchQuery = e.target.value;
+    if (btnClearExamsSearch) btnClearExamsSearch.style.display = e.target.value ? 'flex' : 'none';
+    updateExamsAutocomplete();
     renderExams();
+  });
+
+  examsSearchInput.addEventListener('focus', () => {
+    updateExamsAutocomplete();
+  });
+
+  if (btnClearExamsSearch) {
+    btnClearExamsSearch.addEventListener('click', (e) => {
+      e.stopPropagation();
+      examsSearchInput.value = '';
+      examsState.searchQuery = '';
+      btnClearExamsSearch.style.display = 'none';
+      if (examsAutocompleteList) examsAutocompleteList.style.display = 'none';
+      renderExams();
+      examsSearchInput.focus();
+    });
+  }
+
+  // Dismiss autocompletes on clicking outside
+  document.addEventListener('click', (e) => {
+    if (roomsAutocompleteList && !e.target.closest('#roomsSearchInput') && !e.target.closest('#roomsAutocompleteList')) {
+      roomsAutocompleteList.style.display = 'none';
+    }
+    if (examsAutocompleteList && !e.target.closest('#examsSearchInput') && !e.target.closest('#examsAutocompleteList')) {
+      examsAutocompleteList.style.display = 'none';
+    }
   });
 
   document.getElementById('examYearFilter').addEventListener('change', (e) => {
@@ -4483,6 +4726,11 @@ async function loadRoomsBuildings() {
       select.value = roomsState.selectedBuilding;
     }
 
+    const btnMap = document.getElementById('btnRoomsBuildingMap');
+    if (btnMap) {
+      btnMap.href = getBuildingMapUrl(extractBuildingCode(roomsState.selectedBuilding));
+    }
+
     document.getElementById('roomsDateInput').value = roomsState.selectedDate;
     updateRoomsDateDisplay();
     loadRoomsOccupancy();
@@ -4502,8 +4750,15 @@ async function loadRoomsOccupancy(forceRefresh = false) {
 
   const apiDate = isoToFormatted(roomsState.selectedDate);
   let timeParam = '';
-  if (roomsState.selectedTime && roomsState.selectedTime !== 'now') {
+  if (roomsState.selectedTime === 'all') {
+    timeParam = '&time=all';
+  } else if (roomsState.selectedTime && roomsState.selectedTime !== 'now') {
     timeParam = `&time=${encodeURIComponent(roomsState.selectedTime)}`;
+  } else {
+    const now = new Date();
+    const clientTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const clientDate = `${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}`;
+    timeParam = `&time=now&client_time=${clientTime}&client_date=${clientDate}`;
   }
 
   try {
@@ -4643,7 +4898,8 @@ function renderRooms() {
   }).join('');
 
   grid.querySelectorAll('.room-card').forEach(card => {
-    card.addEventListener('click', () => {
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('.building-badge') || e.target.closest('a')) return;
       const code = card.getAttribute('data-code');
       const room = roomsState.data.rooms.find(r => r.code === code);
       if (room) openRoomSchedule(room);
@@ -4680,6 +4936,11 @@ function openRoomSchedule(room) {
 
   document.getElementById('modalRoomTitle').textContent = room.name;
   document.getElementById('modalRoomSubtitle').textContent = `${room.capacity > 0 ? room.capacity + ' posti · ' : ''}Edificio ${roomsState.selectedBuilding}`;
+  const modalMapLink = document.getElementById('modalRoomMapLink');
+  if (modalMapLink) {
+    const bCode = extractBuildingCode(room.name || room.code || roomsState.selectedBuilding);
+    modalMapLink.href = getBuildingMapUrl(bCode);
+  }
   document.getElementById('modalDateLabel').textContent = isoToDisplayDate(roomsState.modalDate);
 
   renderModalRoomEvents(room.events);
@@ -4808,8 +5069,90 @@ function renderExamCourseChips() {
   });
 }
 
+function initExamCustomDates() {
+  const fromInput = document.getElementById('examDateFrom');
+  const toInput = document.getElementById('examDateTo');
+  const fromText = document.getElementById('examDateFromText');
+  const toText = document.getElementById('examDateToText');
+  if (!fromInput || !toInput) return;
+
+  const now = new Date();
+  const plus90 = new Date(now.getTime() + 90 * 86400000);
+  const isoNow = formatDateIso(now);
+  const isoPlus90 = formatDateIso(plus90);
+
+  if (!fromInput.value) fromInput.value = isoNow;
+  if (!toInput.value) toInput.value = isoPlus90;
+
+  toInput.min = fromInput.value;
+  fromInput.max = toInput.value;
+
+  if (fromText) fromText.textContent = formatDateItalianShort(fromInput.value);
+  if (toText) toText.textContent = formatDateItalianShort(toInput.value);
+}
+
+function updateExamYearFilterOptions() {
+  const select = document.getElementById('examYearFilter');
+  if (!select) return;
+
+  const detectedYears = new Set();
+
+  // 1. From active state.config
+  if (state.config && Array.isArray(state.config.anni)) {
+    state.config.anni.forEach(a => {
+      const str = String(a);
+      const match = str.match(/(\d+)$/);
+      if (match) detectedYears.add(match[1]);
+    });
+  }
+  if (state.config && Array.isArray(state.config.anniLabels)) {
+    state.config.anniLabels.forEach(lbl => {
+      const match = String(lbl).match(/(\d+)°/);
+      if (match) detectedYears.add(match[1]);
+    });
+  }
+
+  // 2. From loaded exams events (if any)
+  if (examsState.exams && examsState.exams.length) {
+    examsState.exams.forEach(ex => {
+      (ex.courses || []).forEach(c => {
+        if (c.year && /^\d+$/.test(c.year)) {
+          detectedYears.add(String(c.year));
+        }
+      });
+    });
+  }
+
+  // Fallback if no years detected
+  if (detectedYears.size === 0) {
+    detectedYears.add('1');
+    detectedYears.add('2');
+    detectedYears.add('3');
+  }
+
+  const sortedYears = Array.from(detectedYears)
+    .map(Number)
+    .filter(n => !isNaN(n) && n > 0)
+    .sort((a, b) => a - b);
+
+  const currentValue = select.value || examsState.yearFilter || '';
+
+  select.innerHTML = '<option value="">Tutti gli anni</option>' +
+    sortedYears.map(y => `<option value="${y}">${y}° Anno</option>`).join('');
+
+  if (sortedYears.map(String).includes(currentValue)) {
+    select.value = currentValue;
+    examsState.yearFilter = currentValue;
+  } else {
+    select.value = '';
+    examsState.yearFilter = '';
+  }
+}
+
 function initExamsView() {
+  initExamCustomDates();
   renderExamCourseChips();
+  updateExamYearFilterOptions();
   if (!examsState.exams.length) {
     loadExams();
   }
@@ -4876,6 +5219,7 @@ async function loadExams(forceRefresh = false) {
   try {
     const data = await fetchJson(`/api/exams?${params}`);
     examsState.exams = data.exams || [];
+    updateExamYearFilterOptions();
 
     spinner.style.display = 'none';
     container.style.display = 'block';
@@ -4943,6 +5287,20 @@ function renderExams() {
     });
   }
 
+  // Client-side search filtering
+  if (examsState.searchQuery && examsState.searchQuery.trim()) {
+    const q = examsState.searchQuery.toLowerCase().trim();
+    list = list.filter(ex => {
+      const matchName = (ex.name || '').toLowerCase().includes(q);
+      const matchDesc = (ex.description || '').toLowerCase().includes(q);
+      const matchProf = (ex.docenti || []).some(d => d.toLowerCase().includes(q));
+      const matchAula = (ex.aula || '').toLowerCase().includes(q);
+      const matchSede = (ex.sede || '').toLowerCase().includes(q);
+      const matchCourse = (ex.courses || []).some(c => (c.title || '').toLowerCase().includes(q) || (c.code || '').toLowerCase().includes(q));
+      return matchName || matchDesc || matchProf || matchAula || matchSede || matchCourse;
+    });
+  }
+
   const countEl = document.getElementById('examsCountText');
   if (countEl) {
     const suffix = examsState.filterMode === 'target' ? ' (I Miei Corsi)' : '';
@@ -4954,9 +5312,11 @@ function renderExams() {
       <div class="empty-state">
         <div class="empty-icon">🔍</div>
         <h3>Nessun appello trovato</h3>
-        <p>${examsState.filterMode === 'target' 
-          ? 'Nessun appello trovato per i tuoi corsi seguiti nel periodo selezionato. Prova a selezionare "Tutti gli Appelli" o un\'altra sessione.' 
-          : 'Nessun esame programmato nel periodo selezionato per i corsi monitorati. Prova a selezionare un\'altra sessione o verificare i filtri.'}</p>
+        <p>${examsState.searchQuery 
+          ? `Nessun esame o docente corrisponde alla ricerca "<strong>${escapeHtml(examsState.searchQuery)}</strong>". Prova a cancellare il filtro di ricerca o cambiare sessione.`
+          : (examsState.filterMode === 'target' 
+            ? 'Nessun appello trovato per i tuoi corsi seguiti nel periodo selezionato. Prova a selezionare "Tutti gli Appelli" o un\'altra sessione.' 
+            : 'Nessun esame programmato nel periodo selezionato per i corsi monitorati. Prova a selezionare un\'altra sessione o verificare i filtri.')}</p>
       </div>
     `;
     return;

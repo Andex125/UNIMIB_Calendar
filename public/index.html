@@ -289,9 +289,12 @@
       <div class="rooms-select-row">
         <div class="rooms-select-group">
           <label for="roomsBuildingSelect">🏛️ Edificio / Sede</label>
-          <select id="roomsBuildingSelect">
-            <option value="">Caricamento edifici...</option>
-          </select>
+          <div style="display: flex; gap: 6px;">
+            <select id="roomsBuildingSelect" style="flex: 1;">
+              <option value="">Caricamento edifici...</option>
+            </select>
+            <a id="btnRoomsBuildingMap" href="#" target="_blank" rel="noopener noreferrer" class="btn-secondary" style="display:inline-flex; align-items:center; gap:4px; padding:8px 10px; font-size:0.8rem; text-decoration:none; white-space:nowrap;" title="Apri su Google Maps">📍 Mappa</a>
+          </div>
         </div>
 
         <div class="rooms-select-group">
@@ -327,9 +330,11 @@
       </div>
 
       <!-- Quick Room Search -->
-      <div style="position: relative;">
+      <div class="search-input-wrapper">
         <input type="text" id="roomsSearchInput" placeholder="🔍 Cerca aula (es. 01, Lab, Magna)..." 
-               style="width: 100%; padding: 10px 14px; border-radius: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: #FFF; font-size: 0.85rem; outline: none;">
+               style="width: 100%; padding: 10px 36px 10px 14px; border-radius: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: #FFF; font-size: 0.85rem; outline: none;" autocomplete="off">
+        <button id="btnClearRoomsSearch" class="search-clear-btn" style="display:none;" title="Cancella ricerca">✕</button>
+        <div id="roomsAutocompleteList" class="search-autocomplete-dropdown" style="display:none;"></div>
       </div>
     </div>
 
@@ -377,29 +382,29 @@
       </div>
 
       <!-- Exam Filter Mode Toggle (All vs My Courses) -->
-      <div class="toggle-group" style="margin-bottom: 12px;">
+      <div class="toggle-group" style="margin-bottom: 14px;">
         <button id="btnExamFilterAll" class="toggle-btn active" @click="$store.app.setExamsFilter('all')">📚 Tutti gli Appelli</button>
         <button id="btnExamFilterTarget" class="toggle-btn" @click="$store.app.setExamsFilter('target')">⭐ I Miei Corsi</button>
       </div>
 
-      <!-- Session Quick Pills -->
-      <div>
-        <label style="font-size:0.75rem; font-weight:700; color:var(--text-secondary); text-transform:uppercase; margin-bottom:6px; display:block;">🗓️ Sessione d'esame</label>
-        <div id="examSessionPills" class="rooms-filter-pills" style="margin:0 0 8px;">
+      <!-- Session Quick Pills with dedicated section and spacing -->
+      <div class="exam-session-section">
+        <label class="exam-session-section-label">🗓️ Sessione d'esame</label>
+        <div id="examSessionPills" class="rooms-filter-pills">
           <button class="filter-pill active" data-session="upcoming">Tutti i prossimi</button>
           <button class="filter-pill" data-session="winter">❄️ Invernale (Gen-Feb)</button>
           <button class="filter-pill" data-session="summer">☀️ Estiva (Giu-Lug)</button>
           <button class="filter-pill" data-session="autumn">🍂 Autunnale (Set-Ott)</button>
           <button class="filter-pill" data-session="custom">📅 Personalizzato</button>
         </div>
-        <div id="examCustomDateRange" style="display:none; align-items:center; gap:8px; margin-top:8px;">
-          <div class="date-picker-custom-wrapper" style="flex:1;">
+        <div id="examCustomDateRange" style="display:none; align-items:center; gap:8px; margin-top:10px;">
+          <div id="examDateFromWrapper" class="date-picker-custom-wrapper" style="flex:1;" title="Clicca per selezionare data inizio">
             <span id="examDateFromText" class="custom-date-text" style="font-size:0.8rem;">gg/mm/aaaa</span>
             <span class="custom-date-icon" style="font-size:0.8rem;">📅</span>
             <input type="date" id="examDateFrom" class="hidden-date-input" aria-label="Data inizio">
           </div>
           <span style="color:var(--text-muted); font-size:0.8rem;">al</span>
-          <div class="date-picker-custom-wrapper" style="flex:1;">
+          <div id="examDateToWrapper" class="date-picker-custom-wrapper" style="flex:1;" title="Clicca per selezionare data fine">
             <span id="examDateToText" class="custom-date-text" style="font-size:0.8rem;">gg/mm/aaaa</span>
             <span class="custom-date-icon" style="font-size:0.8rem;">📅</span>
             <input type="date" id="examDateTo" class="hidden-date-input" aria-label="Data fine">
@@ -409,16 +414,15 @@
       </div>
 
       <!-- Search & Year Filter -->
-      <div style="display: flex; gap: 8px;">
-        <div style="flex: 1; position: relative;">
+      <div style="display: flex; gap: 8px; margin-top: 8px;">
+        <div class="search-input-wrapper" style="flex: 1;">
           <input type="text" id="examsSearchInput" placeholder="🔍 Cerca esame o docente..." 
-                 style="width: 100%; padding: 10px 14px; border-radius: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: #FFF; font-size: 0.85rem; outline: none;">
+                 style="width: 100%; padding: 10px 36px 10px 14px; border-radius: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: #FFF; font-size: 0.85rem; outline: none;" autocomplete="off">
+          <button id="btnClearExamsSearch" class="search-clear-btn" style="display:none;" title="Cancella ricerca">✕</button>
+          <div id="examsAutocompleteList" class="search-autocomplete-dropdown" style="display:none;"></div>
         </div>
         <select id="examYearFilter" style="width:auto; padding:10px; border-radius:10px; background:rgba(0,0,0,0.3); border:1px solid var(--border-color); color:#FFF; font-size:0.85rem; outline:none;">
           <option value="">Tutti gli anni</option>
-          <option value="1">1° Anno</option>
-          <option value="2">2° Anno</option>
-          <option value="3">3° Anno</option>
         </select>
       </div>
     </div>
@@ -651,7 +655,10 @@
       <div class="modal-header">
         <div>
           <h3 id="modalRoomTitle" style="font-size:1.15rem; color:#FFF; margin-bottom:2px;">Aula</h3>
-          <p id="modalRoomSubtitle" style="font-size:0.8rem; color:var(--text-secondary);">Edificio</p>
+          <div style="display:flex; align-items:center; gap:8px; margin-top:2px;">
+            <span id="modalRoomSubtitle" style="font-size:0.8rem; color:var(--text-secondary);">Edificio</span>
+            <a id="modalRoomMapLink" href="#" target="_blank" rel="noopener noreferrer" class="btn-secondary" style="display:inline-flex; align-items:center; gap:3px; padding:2px 8px; font-size:0.72rem; text-decoration:none; border-radius:6px;" title="Apri posizione su Google Maps">📍 Mappa Campus</a>
+          </div>
         </div>
         <button id="btnCloseRoomSchedule" class="btn-icon" style="width:32px; height:32px;">✕</button>
       </div>

@@ -89,10 +89,10 @@ def format_minutes(mins):
     m = mins % 60
     return f"{h:02d}:{m:02d}"
 
-def get_room_occupancy(sede, date_str, time_str=None):
+def get_room_occupancy(sede, date_str, time_str=None, client_time=None, client_date=None):
     now_it = get_italy_now()
     today_str = now_it.strftime('%d-%m-%Y')
-    is_today = (date_str == today_str)
+    is_today = (date_str == today_str) or (bool(client_date) and date_str == client_date) or (time_str == 'now')
 
     # Parse date to Italian format representations
     date_clean = date_str.replace('/', '-')
@@ -115,10 +115,15 @@ def get_room_occupancy(sede, date_str, time_str=None):
         date_formatted = date_str.replace('-', '/')
         date_long = date_str
 
-    if time_str and time_str != 'all':
+    if time_str == 'all':
+        check_mins = None
+    elif time_str and time_str != 'now':
         check_mins = parse_time_str(time_str)
-    elif is_today:
-        check_mins = now_it.hour * 60 + now_it.minute
+    elif time_str == 'now' or is_today:
+        if client_time:
+            check_mins = parse_time_str(client_time)
+        else:
+            check_mins = now_it.hour * 60 + now_it.minute
     else:
         check_mins = None
 
@@ -286,6 +291,8 @@ class handler(BaseHTTPRequestHandler):
         sede = qs.get('sede', [''])[0]
         date_arg = qs.get('date', [''])[0]
         time_arg = qs.get('time', [''])[0]
+        client_time_arg = qs.get('client_time', [''])[0]
+        client_date_arg = qs.get('client_date', [''])[0]
 
         try:
             if not sede:
@@ -304,10 +311,16 @@ class handler(BaseHTTPRequestHandler):
             elif not re.fullmatch(r'\d{2}-\d{2}-\d{4}', date_arg):
                 return self.send_json(400, {"error": "Parametro 'date' non valido (atteso GG-MM-AAAA)"})
 
-            if time_arg and not re.fullmatch(r'\d{1,2}:\d{2}', time_arg):
-                return self.send_json(400, {"error": "Parametro 'time' non valido (atteso HH:MM)"})
+            if time_arg and time_arg not in ('now', 'all') and not re.fullmatch(r'\d{1,2}:\d{2}', time_arg):
+                return self.send_json(400, {"error": "Parametro 'time' non valido (atteso HH:MM, 'now' o 'all')"})
 
-            payload = get_room_occupancy(sede, date_arg, time_arg)
+            if client_time_arg and not re.fullmatch(r'\d{1,2}:\d{2}', client_time_arg):
+                return self.send_json(400, {"error": "Parametro 'client_time' non valido (atteso HH:MM)"})
+
+            if client_date_arg and not re.fullmatch(r'\d{2}-\d{2}-\d{4}', client_date_arg):
+                return self.send_json(400, {"error": "Parametro 'client_date' non valido (atteso GG-MM-AAAA)"})
+
+            payload = get_room_occupancy(sede, date_arg, time_arg, client_time_arg, client_date_arg)
             self.send_json(200, payload, cache=False)
         except Exception as e:
             self.send_json(502, {"error": str(e)})
