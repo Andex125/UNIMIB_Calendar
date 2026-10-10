@@ -141,10 +141,10 @@ Nei CSS ufficiali di Ateneo, ogni macro-area disciplinare possiede un codice cro
 - [x] **Link Geografico Campus**: Aggiungere sulle card delle aule un pulsante di geolocalizzazione rapida che apra la posizione dell'edificio su mappa (OpenStreetMap / Google Maps) con le coordinate esatte del campus Bicocca.
 
 #### Fase 8: Ergonomia Mobile & Micro-Interazioni
-- [ ] **Bottom Sheet su Smartphone**: Convertire le modali (`setupModal`, `roomScheduleModal`, `exportModal`, `shareModal`) in fogli scorrevoli dal basso su schermi touch (ottimizzazione *thumb zone*), mantenendo la finestra di dialogo centrata su desktop.
-- [ ] **Skeleton Screens**: Rimpiazzare lo spinner di attesa con placeholder scheletrici pulsanti che riflettano la struttura delle card, azzerando la percezione di latenza.
-- [ ] **Gesture Pull-to-Refresh**: Implementare il trascinamento verso il basso su mobile per forzare l'aggiornamento immediato degli orari (invocando la chiamata con `refresh=1`).
-- [ ] **Widget "Adesso / Prossima Lezione"**: Inserire in evidenza all'inizio della vista orario un riquadro riassuntivo che segnali la lezione attualmente in corso o la successiva con aula, orario e conto alla rovescia.
+- [x] **Bottom Sheet su Smartphone**: Convertire le modali (`setupModal`, `roomScheduleModal`, `exportModal`, `shareModal`) in fogli scorrevoli dal basso su schermi touch (ottimizzazione *thumb zone*), mantenendo la finestra di dialogo centrata su desktop.
+- [x] **Skeleton Screens**: Rimpiazzare lo spinner di attesa con placeholder scheletrici pulsanti che riflettano la struttura delle card, azzerando la percezione di latenza.
+- [x] **Gesture Pull-to-Refresh**: Implementare il trascinamento verso il basso su mobile per forzare l'aggiornamento immediato degli orari (invocando la chiamata con `refresh=1`).
+- [x] **Widget "Adesso / Prossima Lezione"**: Inserire in evidenza all'inizio della vista orario un riquadro riassuntivo che segnali la lezione attualmente in corso o la successiva con aula, orario e conto alla rovescia.
 
 #### Fase 9: Navigazione, Ricerca Avanzata & Accessibilità (A11y)
 - [ ] **Mini-Calendario di Navigazione**: Aggiungere un selettore compatto a calendario per saltare rapidamente a specifiche settimane o mesi futuri.

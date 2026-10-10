@@ -104,6 +104,17 @@
       </div>
     </div>
 
+    <!-- Pull-to-Refresh Indicator -->
+    <div id="pullToRefreshIndicator" class="pull-to-refresh" style="display: none;">
+      <div class="pull-spinner"></div>
+      <span id="pullToRefreshText">Trascina verso il basso per ricaricare</span>
+    </div>
+
+    <!-- Live "Adesso / Prossima Lezione" Campus Widget -->
+    <div id="nowNextWidget" class="now-next-widget" style="display: none;">
+      <!-- Popolato dinamicamente da app.js -->
+    </div>
+
     <!-- Week Navigation Bar -->
     <div class="week-navigator">
       <button id="btnPrevWeek" class="week-nav-btn">◀ Prev</button>
@@ -123,7 +134,21 @@
     <main>
       <div id="spinnerContainer" class="spinner-container" style="display:none">
         <div class="spinner"></div>
-        <p style="font-size:0.85rem; color:var(--text-secondary);">Carico l'orario…</p>
+        <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom: 8px;">Carico l'orario…</p>
+        <div class="skeleton-container">
+          <div class="skeleton-card">
+            <div class="skeleton-shimmer"></div>
+            <div class="skeleton-line" style="width: 38%; height: 16px;"></div>
+            <div class="skeleton-line" style="width: 75%; height: 18px; margin-top: 10px;"></div>
+            <div class="skeleton-line" style="width: 50%; height: 14px; margin-top: 10px;"></div>
+          </div>
+          <div class="skeleton-card">
+            <div class="skeleton-shimmer"></div>
+            <div class="skeleton-line" style="width: 32%; height: 16px;"></div>
+            <div class="skeleton-line" style="width: 82%; height: 18px; margin-top: 10px;"></div>
+            <div class="skeleton-line" style="width: 55%; height: 14px; margin-top: 10px;"></div>
+          </div>
+        </div>
       </div>
 
       <div id="eventsContainer" class="events-container" style="display: none;">

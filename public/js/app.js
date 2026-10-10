@@ -347,6 +347,9 @@ function setupEventListeners() {
   const btnTheme = document.getElementById('btnThemeToggle');
   if (btnTheme) btnTheme.addEventListener('click', toggleTheme);
 
+  // Pull-to-refresh gesture
+  setupPullToRefresh();
+
   // Profile button
   document.getElementById('btnProfile').addEventListener('click', openProfileModal);
   document.getElementById('btnCloseProfile').addEventListener('click', () => {
@@ -2763,6 +2766,158 @@ function renderCalendar() {
 
   renderDayTabs();
   renderEvents();
+  updateNowNextWidget();
+}
+
+function updateNowNextWidget() {
+  const widget = document.getElementById('nowNextWidget');
+  if (!widget) return;
+  if (!state.calendarData || !Array.isArray(state.calendarData.events) || state.calendarData.events.length === 0) {
+    widget.style.display = 'none';
+    return;
+  }
+
+  const now = new Date();
+  const todayStr = formatFormattedDate(now);
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+  // Filtra lezioni di oggi non cancellate
+  const todayEvents = state.calendarData.events.filter(e => {
+    if (e.date !== todayStr) return false;
+    if (e.is_canceled) return false;
+    if (state.activeFilter === 'target' && !isFavorite(e)) return false;
+    return true;
+  });
+
+  if (todayEvents.length === 0) {
+    widget.style.display = 'none';
+    return;
+  }
+
+  function toMinutes(timeStr) {
+    if (!timeStr) return 0;
+    const [h, m] = timeStr.split(':').map(Number);
+    return (h || 0) * 60 + (m || 0);
+  }
+
+  // Cerca lezione in corso
+  const currentEvent = todayEvents.find(e => {
+    const start = toMinutes(e.start_time);
+    const end = toMinutes(e.end_time);
+    return nowMinutes >= start && nowMinutes < end;
+  });
+
+  // Cerca prossima lezione
+  let nextEvent = null;
+  if (!currentEvent) {
+    const upcoming = todayEvents
+      .filter(e => toMinutes(e.start_time) > nowMinutes)
+      .sort((a, b) => toMinutes(a.start_time) - toMinutes(b.start_time));
+    if (upcoming.length > 0) {
+      nextEvent = upcoming[0];
+    }
+  }
+
+  if (currentEvent) {
+    const endMin = toMinutes(currentEvent.end_time);
+    const remMinutes = Math.max(0, endMin - nowMinutes);
+    widget.style.display = 'block';
+    widget.innerHTML = `
+      <div class="now-next-badge live">
+        <span class="status-indicator-dot" style="background:#10B981;"></span>
+        In corso adesso · Mancano ${remMinutes} min
+      </div>
+      <div class="now-next-title">${escapeHtml(currentEvent.course)}</div>
+      <div class="now-next-info">
+        <span>⏰ ${escapeHtml(currentEvent.start_time)} - ${escapeHtml(currentEvent.end_time)}</span>
+        <span>📍 Aula: <strong class="room-pill">${escapeHtml(currentEvent.aula || 'Non specificata')}</strong>${renderBuildingBadgeHtml(currentEvent.aula)}</span>
+        ${currentEvent.docente ? `<span>👨‍🏫 ${escapeHtml(currentEvent.docente)}</span>` : ''}
+      </div>
+    `;
+  } else if (nextEvent) {
+    const startMin = toMinutes(nextEvent.start_time);
+    const diffMin = Math.max(0, startMin - nowMinutes);
+    const timeText = diffMin > 60 ? `tra ${Math.floor(diffMin / 60)}h ${diffMin % 60}m` : `tra ${diffMin} min`;
+    widget.style.display = 'block';
+    widget.innerHTML = `
+      <div class="now-next-badge upcoming">
+        <span class="status-indicator-dot" style="background:#F59E0B;"></span>
+        Prossima lezione (${timeText})
+      </div>
+      <div class="now-next-title">${escapeHtml(nextEvent.course)}</div>
+      <div class="now-next-info">
+        <span>⏰ Inizio: <strong>${escapeHtml(nextEvent.start_time)}</strong> (fino alle ${escapeHtml(nextEvent.end_time)})</span>
+        <span>📍 Aula: <strong class="room-pill">${escapeHtml(nextEvent.aula || 'Non specificata')}</strong>${renderBuildingBadgeHtml(nextEvent.aula)}</span>
+        ${nextEvent.docente ? `<span>👨‍🏫 ${escapeHtml(nextEvent.docente)}</span>` : ''}
+      </div>
+    `;
+  } else {
+    const pastEvents = todayEvents.filter(e => toMinutes(e.end_time) <= nowMinutes);
+    if (pastEvents.length > 0) {
+      widget.style.display = 'block';
+      widget.innerHTML = `
+        <div class="now-next-badge none">
+          ✨ Lezioni terminate
+        </div>
+        <div class="now-next-title" style="font-size:0.88rem; color:var(--text-secondary); font-weight:500;">
+          Hai completato tutte le lezioni previste per oggi (${pastEvents.length} svolte).
+        </div>
+      `;
+    } else {
+      widget.style.display = 'none';
+    }
+  }
+}
+
+function setupPullToRefresh() {
+  const indicator = document.getElementById('pullToRefreshIndicator');
+  const textEl = document.getElementById('pullToRefreshText');
+  if (!indicator) return;
+
+  let startY = 0;
+  let isPulling = false;
+
+  window.addEventListener('touchstart', (e) => {
+    if (window.scrollY === 0 && e.touches.length === 1 && state.activeTab === 'timetable') {
+      startY = e.touches[0].clientY;
+      isPulling = true;
+    } else {
+      isPulling = false;
+    }
+  }, { passive: true });
+
+  window.addEventListener('touchmove', (e) => {
+    if (!isPulling) return;
+    const currentY = e.touches[0].clientY;
+    const diff = currentY - startY;
+    if (diff > 25 && window.scrollY === 0) {
+      indicator.style.display = 'flex';
+      if (diff > 75) {
+        textEl.textContent = 'Rilascia per aggiornare l\'orario…';
+        indicator.style.opacity = '1';
+      } else {
+        textEl.textContent = 'Trascina verso il basso per ricaricare';
+        indicator.style.opacity = '0.7';
+      }
+    } else if (diff < 0) {
+      isPulling = false;
+      indicator.style.display = 'none';
+    }
+  }, { passive: true });
+
+  window.addEventListener('touchend', (e) => {
+    if (!isPulling) return;
+    isPulling = false;
+    const changedTouch = e.changedTouches[0];
+    const diff = changedTouch ? changedTouch.clientY - startY : 0;
+    if (diff > 75 && window.scrollY === 0 && state.activeTab === 'timetable') {
+      textEl.textContent = 'Ricarico orario da UNIMIB…';
+      loadCalendar(state.currentMonday, true);
+    }
+    setTimeout(() => {
+      indicator.style.display = 'none';
+    }, 400);
+  }, { passive: true });
 }
 
 function renderDayTabs() {
