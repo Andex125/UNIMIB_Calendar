@@ -13,13 +13,14 @@ View lecture timetables, check real-time classroom occupancy, track exam session
 ## ✨ Features
 
 - **📅 Lecture Timetables**: View weekly schedules for any degree programme and year of study. Highlight followed courses (*"I Miei Corsi"*) and spot cancelled lectures automatically.
-- **🏛️ Classroom Occupancy**: Real-time room status across all campus buildings (U1–U28). See whether an aula is free or occupied and until what time.
+- **🏛️ Classroom Occupancy**: Accurate real-time room status across all campus buildings (U1–U28) synchronized with client time. See whether an aula is currently free or occupied, inspect whole-day schedules, and search quickly with interactive classroom suggestions.
+- **📍 Campus Maps & Geolocation**: Direct Google Maps geolocation pins for all Bicocca buildings (U1–U28), accessible from classroom badges in cards, the building selector, and the classroom schedule modal.
 - **🧑‍🏫 Professor Schedules**: Directory search across UNIMIB faculty with weekly lecture schedules, semester events, and institutional contact info.
-- **📝 Exam Calendar**: Track upcoming exam appeals for your degree with session filters (Winter, Summer, Autumn) and individual calendar downloads.
+- **📝 Exam Calendar**: Track upcoming exam appeals for your degree with session filters (Winter, Summer, Autumn, or Custom with validated date pickers). Features dynamic study-year filters matching your course duration and autocomplete search for exam titles and faculty.
 - **👥 Study Groups & Shared Calendars**: Create or join multiple study groups via code or link. View combined schedules, overlapping courses, and automatic common free slots to coordinate study sessions or lunch breaks.
 - **📥 Calendar Export & WebCal**: Export schedules to iCalendar (`.ics`), CSV (Excel), or JSON. Subscribe via a live WebCal feed (`webcal://`) to automatically sync with Apple Calendar, Google Calendar, or Outlook.
 - **👤 Cloud Profile & Multi-Device Sync**: Optional lightweight account (nickname + PIN) backed by Redis to keep your courses, exams, and group memberships in sync across devices.
-- **📱 Mobile-First PWA**: Dark mode, swipe gestures, and offline support via Service Worker.
+- **📱 Mobile-First PWA**: Dark mode, Alpine.js reactive UI, Lucide icons, swipe gestures, and offline support via Service Worker.
 
 ---
 
@@ -56,10 +57,11 @@ View lecture timetables, check real-time classroom occupancy, track exam session
 │   ├── manifest.json       # Web App Manifest
 │   └── sw.js               # PWA Service Worker (offline asset cache, stale-while-revalidate)
 ├── scratch/
-│   ├── test_edge_cases.py  # Backend unit tests
-│   ├── test_issues_7_8.py  # Integration & external course tests
-│   └── test_phase3_cache.py # API caching & error handling tests
-├── vercel.json             # Serverless routing and rewrites
+│   ├── test_edge_cases.py     # Backend unit tests
+│   ├── test_issues_7_8.py     # Integration & external course tests
+│   ├── test_phase3_cache.py    # API caching & error handling tests
+│   └── test_rooms_midnight.py # Real-time midnight classroom occupancy tests
+├── vercel.json                # Serverless routing and rewrites
 └── README.md
 ```
 
@@ -71,8 +73,8 @@ View lecture timetables, check real-time classroom occupancy, track exam session
 | :--- | :--- | :--- |
 | `GET` | `/api/options` | Academic years, departments, degree programmes, and study years |
 | `GET` | `/api/calendar` | Weekly lectures for degree and study year (`date=DD-MM-YYYY`) |
-| `GET` | `/api/rooms` | Classroom occupancy and day schedule for a building (`sede=U01`) |
-| `GET` | `/api/exams` | Exam appeals filtered by course and session |
+| `GET` | `/api/rooms` | Classroom occupancy and schedule (`sede=U01`, `date`, `time=now|all|HH:MM`, `client_time=HH:MM`) |
+| `GET` | `/api/exams` | Exam appeals filtered by course codes, session dates, study year, or query |
 | `GET` | `/api/teachers` | Faculty directory search (`?anno=YYYY`) or teacher schedule (`?docente=ID`) |
 | `GET` | `/api/export` | Calendar export in `.ics`, `.csv`, `.json`, or WebCal feed |
 | `GET` | `/api/shared_calendar` | Merged weekly timetable for multiple student codes |
