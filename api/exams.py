@@ -128,6 +128,51 @@ def parse_exam_event(ev):
         'is_canceled': ev.get('Annullato') == '1'
     }
 
+_sister_codes_cache = {}
+
+def get_related_course_codes(target_codes):
+    """
+    Expands degree codes to include sister codes of the same degree program.
+    E.g. E3101Q (Informatica II/III anno) <-> E3102Q (Informatica I anno)
+    """
+    target_set = {c.strip().upper() for c in target_codes if c.strip()}
+    if not target_set:
+        return target_set
+
+    global _sister_codes_cache
+    if not _sister_codes_cache:
+        try:
+            from api.options import get_academic_years, get_areas_and_courses
+            years = get_academic_years()
+            year_vals = [y['value'] for y in (years[:2] if years else [])] or ['2025', '2026']
+            groups = {}
+            for y_val in year_vals:
+                data = get_areas_and_courses(y_val)
+                for c in data.get('courses', []):
+                    clean_title = c['label'].split(' - ')[0].strip().upper()
+                    ctype = c.get('type', '').strip().upper()
+                    key = (clean_title, ctype)
+                    code = c['value'].strip().upper()
+                    if key not in groups:
+                        groups[key] = set()
+                    groups[key].add(code)
+
+            for key, codes in groups.items():
+                for code in codes:
+                    if code not in _sister_codes_cache:
+                        _sister_codes_cache[code] = set()
+                    _sister_codes_cache[code].update(codes)
+        except Exception:
+            pass
+
+    expanded = set(target_set)
+    for code in target_set:
+        sisters = _sister_codes_cache.get(code)
+        if sisters:
+            expanded.update(sisters)
+
+    return expanded
+
 def get_exams(corsi=None, datefrom=None, dateto=None, anni=None, search=None):
     now_it = get_italy_now()
     if not datefrom:
@@ -146,7 +191,8 @@ def get_exams(corsi=None, datefrom=None, dateto=None, anni=None, search=None):
     raw = fetch_json(query_url)
     raw_events = raw.get('events', [])
 
-    filter_corsi = [c.strip().upper() for c in (corsi or []) if c.strip()]
+    raw_filter_corsi = [c.strip().upper() for c in (corsi or []) if c.strip()]
+    filter_corsi = list(get_related_course_codes(raw_filter_corsi))
     filter_anni = [str(a).strip() for a in (anni or []) if str(a).strip()]
     filter_search = search.strip().lower() if search else ''
 
@@ -161,14 +207,20 @@ def get_exams(corsi=None, datefrom=None, dateto=None, anni=None, search=None):
         if filter_corsi:
             matched_code = False
             for c in item['courses']:
-                if c['code'] in filter_corsi:
+                c_code = c.get('code', '')
+                if c_code in filter_corsi:
                     matched_code = True
                     break
+                # Also check base code (first 5 chars, e.g. E3101N vs E3101Q)
+                if any(len(fc) >= 5 and (c_code.startswith(fc[:5]) or fc.startswith(c_code[:5])) for fc in filter_corsi if c_code):
+                    matched_code = True
+                    break
+
             # Also check if course code is mentioned in description or name
             if not matched_code:
                 desc_upper = item['description'].upper()
                 name_upper = item['name'].upper()
-                if any(fc in desc_upper or fc in name_upper for fc in filter_corsi):
+                if any(fc in desc_upper or fc in name_upper or (len(fc) >= 5 and fc[:5] in desc_upper) for fc in filter_corsi):
                     matched_code = True
 
             if not matched_code:

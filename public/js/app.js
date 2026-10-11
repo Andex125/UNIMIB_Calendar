@@ -5490,6 +5490,18 @@ function getActiveExamCourses() {
       isPrimary: true
     });
   }
+  if (state.config && Array.isArray(state.config.externalCourses)) {
+    state.config.externalCourses.forEach(ext => {
+      const cCode = String(ext.corso || '').trim().toUpperCase();
+      if (cCode && !courses.some(existing => String(existing.code || '').trim().toUpperCase() === cCode)) {
+        courses.push({
+          code: cCode,
+          label: ext.corsoLabel || cCode,
+          isPrimary: false
+        });
+      }
+    });
+  }
   (examsState.extraCourses || []).forEach(c => {
     const cCode = String(c.code || '').trim().toUpperCase();
     if (cCode && !courses.some(existing => String(existing.code || '').trim().toUpperCase() === cCode)) {
@@ -5650,22 +5662,22 @@ function getExamDateRange(sessionType) {
 
   if (sessionType === 'winter') {
     const yr = currentMonth >= 9 ? currentYear + 1 : currentYear;
-    return { from: `01-01-${yr}`, to: `28-02-${yr}` };
+    return { from: `01-01-${yr}`, to: `05-03-${yr}` };
   } else if (sessionType === 'summer') {
     const yr = currentMonth >= 9 ? currentYear + 1 : currentYear;
-    return { from: `01-06-${yr}`, to: `31-07-${yr}` };
+    return { from: `15-05-${yr}`, to: `31-07-${yr}` };
   } else if (sessionType === 'autumn') {
-    return { from: `01-09-${currentYear}`, to: `31-10-${currentYear}` };
+    return { from: `25-08-${currentYear}`, to: `31-10-${currentYear}` };
   } else if (sessionType === 'custom') {
     const from = document.getElementById('examDateFrom').value;
     const to = document.getElementById('examDateTo').value;
     return {
       from: from ? isoToFormatted(from) : formatFormattedDate(now),
-      to: to ? isoToFormatted(to) : formatFormattedDate(new Date(now.getTime() + 90 * 86400000))
+      to: to ? isoToFormatted(to) : formatFormattedDate(new Date(now.getTime() + 120 * 86400000))
     };
   } else {
-    // Default: next 120 days from today
-    const future = new Date(now.getTime() + 120 * 86400000);
+    // Default: next 180 days from today (covers entire upcoming exam window)
+    const future = new Date(now.getTime() + 180 * 86400000);
     return { from: formatFormattedDate(now), to: formatFormattedDate(future) };
   }
 }
@@ -5734,23 +5746,72 @@ function setExamFilter(filterType) {
   renderExams();
 }
 
+function isFavoriteExam(ex) {
+  const favorites = [
+    ...((state.config && state.config.favorites) || []),
+    ...((state.config && state.config.externalCourses) || [])
+  ];
+  if (!favorites.length) return false;
+
+  const exName = (ex.name || '').toLowerCase();
+  const exDesc = (ex.description || '').toLowerCase();
+  const exCourses = ex.courses || [];
+
+  return favorites.some(fav => {
+    const fCode = (fav.code || '').toLowerCase().trim();
+    const fLabel = (fav.label || '').toLowerCase().trim();
+
+    if (fCode) {
+      if (exCourses.some(c => (c.code || '').toLowerCase().trim() === fCode)) return true;
+      if (exName.includes(fCode) || exDesc.includes(fCode)) return true;
+      if (fCode.length >= 4 && (exDesc.includes(fCode) || exName.includes(fCode))) return true;
+    }
+    if (fLabel && (exName.includes(fLabel) || fLabel.includes(exName))) return true;
+
+    const stripNoise = s => s.replace(/\b(corso|di|e|ed|il|la|del|della|dei|delle|lab|laboratorio|modulo|avanzato|base|1|2|i|ii)\b/gi, '').replace(/\s+/g, ' ').trim();
+    const cleanF = stripNoise(fLabel);
+    const cleanE = stripNoise(exName);
+    if (cleanF.length >= 4 && (cleanE.includes(cleanF) || cleanF.includes(cleanE))) return true;
+    return false;
+  });
+}
+
 function getExamCourseColor(ex) {
+  const favorites = [
+    ...((state.config && state.config.favorites) || []),
+    ...((state.config && state.config.externalCourses) || [])
+  ];
+  const exName = (ex.name || '').toLowerCase();
+  const exDesc = (ex.description || '').toLowerCase();
+  const exCourses = ex.courses || [];
+
+  for (const fav of favorites) {
+    const fCode = (fav.code || '').toLowerCase().trim();
+    const fLabel = (fav.label || '').toLowerCase().trim();
+    let matched = false;
+    if (fCode && (exCourses.some(c => (c.code || '').toLowerCase().trim() === fCode) || exName.includes(fCode) || exDesc.includes(fCode))) {
+      matched = true;
+    } else if (fLabel && (exName.includes(fLabel) || fLabel.includes(exName))) {
+      matched = true;
+    } else {
+      const stripNoise = s => s.replace(/\b(corso|di|e|ed|il|la|del|della|dei|delle|lab|laboratorio|modulo|avanzato|base|1|2|i|ii)\b/gi, '').replace(/\s+/g, ' ').trim();
+      const cleanF = stripNoise(fLabel);
+      const cleanE = stripNoise(exName);
+      if (cleanF.length >= 4 && (cleanE.includes(cleanF) || cleanF.includes(cleanE))) {
+        matched = true;
+      }
+    }
+    if (matched && fav.code && state.favoriteColors && state.favoriteColors[fav.code]) {
+      return state.favoriteColors[fav.code];
+    }
+  }
+
   const courseInfo = ex.courses && ex.courses.length ? ex.courses[0] : null;
   const code = courseInfo?.code || ex.code || '';
   if (code && state.favoriteColors && state.favoriteColors[code]) {
     return state.favoriteColors[code];
   }
-  if (state.config && state.config.favorites) {
-    const exName = (ex.name || '').toLowerCase();
-    for (const fav of state.config.favorites) {
-      if (fav.code && state.favoriteColors[fav.code]) {
-        const fLabel = (fav.label || '').toLowerCase();
-        if (fLabel && (exName.includes(fLabel) || fLabel.includes(exName))) {
-          return state.favoriteColors[fav.code];
-        }
-      }
-    }
-  }
+
   const key = code || ex.name || 'exam';
   let hash = 0;
   for (let i = 0; i < key.length; i++) {
@@ -5766,7 +5827,10 @@ function renderExams() {
   let list = examsState.exams || [];
 
   if (examsState.filterMode === 'target') {
-    const favorites = (state.config && state.config.favorites) || [];
+    const favorites = [
+      ...((state.config && state.config.favorites) || []),
+      ...((state.config && state.config.externalCourses) || [])
+    ];
     if (!favorites.length) {
       container.innerHTML = `
         <div class="empty-state">
@@ -5781,22 +5845,7 @@ function renderExams() {
       return;
     }
 
-    list = list.filter(ex => {
-      const exName = (ex.name || '').toLowerCase();
-      const exDesc = (ex.description || '').toLowerCase();
-      return favorites.some(fav => {
-        const fCode = (fav.code || '').toLowerCase();
-        const fLabel = (fav.label || '').toLowerCase();
-        if (fCode && (exName.includes(fCode) || exDesc.includes(fCode))) return true;
-        if (fLabel && (exName.includes(fLabel) || fLabel.includes(exName))) return true;
-        const stripNoise = s => s.replace(/\b(corso|di|e|ed|il|la|del|della|dei|delle|lab|laboratorio|modulo|avanzato|base|1|2|i|ii)\b/gi, '').replace(/\s+/g, ' ').trim();
-        const cleanF = stripNoise(fLabel);
-        const cleanE = stripNoise(exName);
-        if (cleanF.length >= 4 && cleanE.includes(cleanF)) return true;
-        if (cleanE.length >= 4 && cleanF.includes(cleanE)) return true;
-        return false;
-      });
-    });
+    list = list.filter(isFavoriteExam);
   }
 
   // Client-side search filtering
@@ -5848,10 +5897,18 @@ function renderExams() {
     const dateHeader = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:6px; vertical-align:-2px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>${first.date_long || formatDateItalianLong(first.date)} (${first.date_formatted || formatDateItalianShort(first.date)})`;
 
     const cardsHtml = list.map(ex => {
+      const isTarget = isFavoriteExam(ex);
       const courseInfo = ex.courses && ex.courses.length ? ex.courses[0] : null;
-      const examColor = getExamCourseColor(ex);
+      const examColor = isTarget ? getExamCourseColor(ex) : '';
+
       const courseBadge = courseInfo
-        ? `<span class="exam-course-badge" style="background: color-mix(in srgb, ${examColor} 16%, transparent); color: ${examColor}; border: 1px solid color-mix(in srgb, ${examColor} 35%, transparent);"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:4px;"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>${escapeHtml(courseInfo.title || courseInfo.code)}${courseInfo.year ? ' · ' + courseInfo.year + '° anno' : ''}</span>`
+        ? (isTarget
+            ? `<span class="exam-course-badge" style="background: color-mix(in srgb, ${examColor} 16%, transparent); color: ${examColor}; border: 1px solid color-mix(in srgb, ${examColor} 35%, transparent);"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:4px;"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>${escapeHtml(courseInfo.title || courseInfo.code)}${courseInfo.year ? ' · ' + courseInfo.year + '° anno' : ''}</span>`
+            : `<span class="exam-course-badge exam-course-badge--neutral"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:4px;"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>${escapeHtml(courseInfo.title || courseInfo.code)}${courseInfo.year ? ' · ' + courseInfo.year + '° anno' : ''}</span>`)
+        : '';
+
+      const myCourseBadge = isTarget
+        ? `<span class="course-badge" style="background: color-mix(in srgb, ${examColor} 18%, transparent); color: ${examColor}; border: 1px solid color-mix(in srgb, ${examColor} 40%, transparent); font-size:0.72rem; padding:3px 8px; border-radius:6px; font-weight:700; display:inline-flex; align-items:center;"><svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor" stroke="none" style="margin-right:3px; vertical-align:-1px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>Mio corso</span>`
         : '';
 
       let countdownBadge = '';
@@ -5873,12 +5930,15 @@ function renderExams() {
       }
 
       const buildingBadge = renderBuildingBadgeHtml(ex.aula || ex.sede || '');
+      const cardClass = `exam-card ${isTarget ? 'target' : ''}`;
+      const cardStyle = isTarget ? `style="--exam-color: ${examColor}; border-left-color: ${examColor};"` : '';
 
       return `
-        <div class="exam-card" style="--exam-color: ${examColor}; border-left-color: ${examColor};">
+        <div class="${cardClass}" ${cardStyle}>
           <div class="exam-top">
             <div class="exam-title">${escapeHtml(ex.name)}</div>
             <div style="display:flex; align-items:center; gap:6px;">
+              ${myCourseBadge}
               ${countdownBadge}
               <span class="exam-time-badge"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:2px; vertical-align:-1px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${escapeHtml(ex.time_label)}</span>
             </div>
