@@ -105,6 +105,12 @@ def _fetch_unimib_grid(anno: str, corso: str, anni_tuple: tuple, monday_str: str
         if time.time() - cached_time < CACHE_TTL:
             return cached_cells
 
+    if len(_grid_cache) > 200:
+        now = time.time()
+        for k in list(_grid_cache.keys()):
+            if now - _grid_cache[k][0] >= CACHE_TTL:
+                _grid_cache.pop(k, None)
+
     params = [
         ("view", "easycourse"),
         ("form-type", "corso"),
@@ -429,7 +435,7 @@ class handler(BaseHTTPRequestHandler):
                 if ev["is_canceled"]:
                     summary = f"[ANNULLATO] {summary}"
                 location = ev["aula"] or "UNIMIB"
-                description = f"Docente: {ev['docente']}\\nInsegnamento: {ev['course_code']}\\nTipo: {ev['type']}"
+                description = f"Docente: {ev['docente']}\nInsegnamento: {ev['course_code']}\nTipo: {ev['type']}"
 
                 vcalendar_lines.extend([
                     "BEGIN:VEVENT",

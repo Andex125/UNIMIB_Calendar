@@ -29,6 +29,11 @@ def fetch_json(url, timeout=12):
     cached = _cache.get(url)
     if cached and time.time() - cached[0] < CACHE_TTL:
         return cached[1]
+    if len(_cache) > 100:
+        now = time.time()
+        for k in list(_cache.keys()):
+            if now - _cache[k][0] >= CACHE_TTL:
+                _cache.pop(k, None)
     req = urllib.request.Request(url, headers={'User-Agent': USER_AGENT})
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         text = resp.read().decode('utf-8', errors='replace')
@@ -57,8 +62,9 @@ def get_buildings():
     # Sort with common Bicocca buildings (U1, U2, ...) nicely
     def sort_key(item):
         v = item["value"]
-        if v.startswith("U") and v[1:3].isdigit():
-            return (0, int(v[1:3]), item["label"])
+        m_bld = re.match(r'^U0*(\d+)', v)
+        if m_bld:
+            return (0, int(m_bld.group(1)), item["label"])
         return (1, 0, item["label"])
     result.sort(key=sort_key)
     _cache[url] = (time.time(), result)

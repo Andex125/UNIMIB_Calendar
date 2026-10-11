@@ -44,6 +44,11 @@ def fetch_json(url, timeout=15):
     cached = _cache.get(url)
     if cached and time.time() - cached[0] < CACHE_TTL:
         return cached[1]
+    if len(_cache) > 100:
+        now = time.time()
+        for k in list(_cache.keys()):
+            if now - _cache[k][0] >= CACHE_TTL:
+                _cache.pop(k, None)
     req = urllib.request.Request(url, headers={'User-Agent': USER_AGENT})
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         text = resp.read().decode('utf-8', errors='replace')

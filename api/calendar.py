@@ -46,6 +46,12 @@ def fetch_unimib_grid(anno, corso, anni_studio, date_str, force_refresh=False):
         if time.time() - cached_time < CACHE_TTL:
             return cached_data
 
+    if len(_grid_cache) > 200:
+        now = time.time()
+        for k in list(_grid_cache.keys()):
+            if now - _grid_cache[k][0] >= CACHE_TTL:
+                _grid_cache.pop(k, None)
+
     params = [
         ('view', 'easycourse'),
         ('form-type', 'corso'),
@@ -218,8 +224,10 @@ class handler(BaseHTTPRequestHandler):
 
             # Sort all events chronologically (date, start_time)
             def _sort_key(ev):
-                d_parts = ev.get("date", "").split("-")
-                d_val = f"{d_parts[2]}-{d_parts[1]}-{d_parts[0]}" if len(d_parts) == 3 else ev.get("date", "")
+                d_val = ev.get("date", "")
+                d_parts = d_val.split("-")
+                if len(d_parts) == 3 and len(d_parts[2]) == 4:
+                    d_val = f"{d_parts[2]}-{d_parts[1]}-{d_parts[0]}"
                 return (d_val, ev.get("start_time", ""))
 
             events.sort(key=_sort_key)

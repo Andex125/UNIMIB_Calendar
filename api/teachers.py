@@ -107,6 +107,11 @@ def get_academic_years():
     if cached and time.time() - cached[0] < CACHE_TEACHERS_TTL:
         text = cached[1]
     else:
+        if len(_cache) > 100:
+            now = time.time()
+            for k in list(_cache.keys()):
+                if now - _cache[k][0] >= CACHE_TEACHERS_TTL:
+                    _cache.pop(k, None)
         text = fetch_text(url)
         _cache[url] = (time.time(), text)
 
