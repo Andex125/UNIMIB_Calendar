@@ -936,14 +936,19 @@ function setupEventListeners() {
     });
   };
 
+  let timetableSearchTimer = null;
   if (searchInput) {
     searchInput.addEventListener('input', (e) => {
-      state.searchQuery = e.target.value.toLowerCase().trim();
+      const val = e.target.value;
       if (btnClearTimetableSearch) {
-        btnClearTimetableSearch.style.display = e.target.value ? 'flex' : 'none';
+        btnClearTimetableSearch.style.display = val ? 'flex' : 'none';
       }
-      updateTimetableAutocomplete();
-      renderEvents();
+      clearTimeout(timetableSearchTimer);
+      timetableSearchTimer = setTimeout(() => {
+        state.searchQuery = val.toLowerCase().trim();
+        updateTimetableAutocomplete();
+        renderEvents();
+      }, 280);
     });
 
     searchInput.addEventListener('focus', () => {
@@ -1518,14 +1523,40 @@ function setupEventListeners() {
 
 // ---------- Configuration ----------
 
-function loadConfig() {
+// ---------- Configuration & Defensive Self-Healing State ----------
+
+function safeLoadConfig() {
   try {
-    const cfg = JSON.parse(localStorage.getItem(CONFIG_KEY));
-    if (cfg && cfg.anno && cfg.corso && Array.isArray(cfg.anni) && cfg.anni.length) return cfg;
-  } catch (e) {
-    console.warn('Config read error', e);
+    const raw = localStorage.getItem(CONFIG_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object') {
+      if (parsed.anno && parsed.corso && Array.isArray(parsed.anni) && parsed.anni.length) {
+        if (!Array.isArray(parsed.favorites)) parsed.favorites = [];
+        if (!Array.isArray(parsed.externalCourses)) parsed.externalCourses = [];
+        if (!Array.isArray(parsed.anniLabels)) parsed.anniLabels = [];
+        return parsed;
+      }
+    }
+    return null;
+  } catch (err) {
+    console.warn("Storage corrotto rilevato in unimib_config. Ripristino sicuro in corso...", err);
+    try {
+      const corruptRaw = localStorage.getItem(CONFIG_KEY);
+      if (corruptRaw) {
+        localStorage.setItem('unimib_config_backup', corruptRaw);
+      }
+      localStorage.removeItem(CONFIG_KEY);
+      if (typeof showToast === 'function') {
+        setTimeout(() => showToast("Configurazione locale ripristinata in modo sicuro.", "warning"), 400);
+      }
+    } catch (_) {}
+    return null;
   }
-  return null;
+}
+
+function loadConfig() {
+  return safeLoadConfig();
 }
 
 function saveConfig(cfg) {
@@ -3431,13 +3462,24 @@ function updateNowNextWidget() {
   }
 
   if (currentEvent) {
+    const startMin = toMinutes(currentEvent.start_time);
     const endMin = toMinutes(currentEvent.end_time);
+    const totalDuration = Math.max(1, endMin - startMin);
+    const elapsed = Math.max(0, nowMinutes - startMin);
+    const progressPercent = Math.min(100, Math.max(0, Math.round((elapsed / totalDuration) * 100)));
     const remMinutes = Math.max(0, endMin - nowMinutes);
+
     widget.style.display = 'block';
     widget.innerHTML = `
-      <div class="now-next-badge live">
-        <span class="status-indicator-dot" style="background:#10B981;"></span>
-        In corso adesso · Mancano ${remMinutes} min
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+        <div class="now-next-badge live">
+          <span class="radar-dot-pulse"></span>
+          In corso adesso · Mancano ${remMinutes} min
+        </div>
+        <span style="font-size:0.75rem; font-weight:700; color:var(--status-live); font-variant-numeric:tabular-nums;">${progressPercent}% completato</span>
+      </div>
+      <div class="hero-progress-track">
+        <div class="hero-progress-bar" style="width: ${progressPercent}%;"></div>
       </div>
       <div class="now-next-title">${escapeHtml(currentEvent.course)}</div>
       <div class="now-next-info">
@@ -4293,6 +4335,16 @@ function selectTeacher(teacher, autoFetch = true) {
     card.style.display = 'block';
     document.getElementById('selectedTeacherName').textContent = teacher.name;
 
+    const avatarEl = document.getElementById('selectedTeacherAvatar');
+    if (avatarEl) {
+      const parts = (teacher.name || '').trim().split(/\s+/).filter(Boolean);
+      const initials = parts.length >= 2
+        ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+        : (teacher.name || 'P').slice(0, 2).toUpperCase();
+      avatarEl.textContent = initials;
+      avatarEl.style.display = 'inline-flex';
+    }
+
     const emailContainer = document.getElementById('selectedTeacherEmails');
     if (emailContainer) emailContainer.innerHTML = '';
 
@@ -4889,7 +4941,7 @@ function setupTeachersEventListeners() {
       clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
         renderTeacherAutocomplete(val);
-      }, 150);
+      }, 280);
     });
 
     searchInput.addEventListener('focus', () => {
@@ -5759,11 +5811,32 @@ function renderExams() {
       const courseInfo = ex.courses && ex.courses.length ? ex.courses[0] : null;
       const courseBadge = courseInfo ? `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:4px;"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>${escapeHtml(courseInfo.title || courseInfo.code)}${courseInfo.year ? ' · ' + courseInfo.year + '° anno' : ''}` : '';
 
+      let countdownBadge = '';
+      if (ex.date) {
+        const parts = ex.date.split('-');
+        if (parts.length === 3) {
+          const exDate = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const diffDays = Math.round((exDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+          if (diffDays === 0) {
+            countdownBadge = `<span class="badge-countdown live">Oggi</span>`;
+          } else if (diffDays > 0) {
+            countdownBadge = `<span class="badge-countdown">-${diffDays} ${diffDays === 1 ? 'giorno' : 'giorni'}</span>`;
+          } else {
+            countdownBadge = `<span class="badge-countdown past">Passato</span>`;
+          }
+        }
+      }
+
       return `
         <div class="exam-card">
           <div class="exam-top">
             <div class="exam-title">${escapeHtml(ex.name)}</div>
-            <span class="exam-time-badge">${escapeHtml(ex.time_label)}</span>
+            <div style="display:flex; align-items:center; gap:6px;">
+              ${countdownBadge}
+              <span class="exam-time-badge">${escapeHtml(ex.time_label)}</span>
+            </div>
           </div>
 
           <div class="exam-meta-grid">

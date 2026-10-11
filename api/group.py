@@ -384,6 +384,10 @@ class handler(BaseHTTPRequestHandler):
         self.send_response(code)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "DENY")
+        self.send_header("Referrer-Policy", "strict-origin-when-cross-origin")
+        self.send_header("Permissions-Policy", "geolocation=(), camera=(), microphone=()")
         self.send_header("Content-Length", str(len(data)))
         self.end_headers()
         self.wfile.write(data)
@@ -392,6 +396,8 @@ class handler(BaseHTTPRequestHandler):
         length = int(self.headers.get("Content-Length", 0))
         if length == 0:
             return {}
+        if length > 65536:
+            raise ValueError("Payload troppo grande (massimo 64KB)")
         return json.loads(self.rfile.read(length))
 
     def _qs(self) -> dict:
@@ -685,6 +691,10 @@ class handler(BaseHTTPRequestHandler):
             else:
                 return self._send_json(400, {"error": f"Azione '{action}' sconosciuta"})
 
+        except ValueError as e:
+            if "Payload troppo grande" in str(e):
+                return self._send_json(413, {"error": "Corpo della richiesta troppo grande (massimo 64KB)"})
+            return self._send_json(400, {"error": str(e)})
         except Exception as e:
             return self._send_json(500, {"error": str(e)})
 

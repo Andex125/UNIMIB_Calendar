@@ -174,6 +174,35 @@ class TestSecurityAndRedis(unittest.TestCase):
         rename_res = json.loads(h.wfile.getvalue())
         self.assertEqual(rename_res["group"]["name"], "Algoritmi Avanzati")
 
+    def test_security_headers_and_payload_limit(self):
+        """Test OWASP security headers and 413 Payload Too Large check."""
+        h = profile_mod.handler.__new__(profile_mod.handler)
+        sent_headers = {}
+        sent_status = None
+        h.send_response = lambda code: globals().update(sent_status=code) or None
+        def mock_send_header(name, val):
+            sent_headers[name] = val
+        h.send_header = mock_send_header
+        h.end_headers = lambda: None
+        h.wfile = io.BytesIO()
+
+        # Check send_json headers
+        h._send_json(200, {"ok": True})
+        self.assertEqual(sent_headers.get("X-Content-Type-Options"), "nosniff")
+        self.assertEqual(sent_headers.get("X-Frame-Options"), "DENY")
+        self.assertEqual(sent_headers.get("Referrer-Policy"), "strict-origin-when-cross-origin")
+        self.assertIn("geolocation=()", sent_headers.get("Permissions-Policy", ""))
+
+        # Check 413 on payload > 64KB
+        big_body = b"A" * 70000
+        h.headers = {"Content-Length": str(len(big_body))}
+        h.rfile = io.BytesIO(big_body)
+        h.wfile = io.BytesIO()
+        h.do_POST()
+        res = json.loads(h.wfile.getvalue())
+        self.assertIn("troppo grande", res.get("error", "").lower())
+
 
 if __name__ == '__main__':
     unittest.main()
+

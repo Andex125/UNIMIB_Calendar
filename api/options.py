@@ -124,6 +124,10 @@ class handler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header('Content-Type', 'application/json')
         self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('X-Content-Type-Options', 'nosniff')
+        self.send_header('X-Frame-Options', 'DENY')
+        self.send_header('Referrer-Policy', 'strict-origin-when-cross-origin')
+        self.send_header('Permissions-Policy', 'geolocation=(), camera=(), microphone=()')
         if cache and status == 200:
             self.send_header('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400')
         else:

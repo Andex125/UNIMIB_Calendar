@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>UNIMIB Orari</title>
 
   <!-- PWA Meta Tags -->
@@ -225,7 +226,8 @@
 
       <!-- Selected Teacher Header & Filter Card -->
       <div id="selectedTeacherCard" style="display: none; background: rgba(255,255,255,0.04); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px; margin-bottom: 10px;">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;">
+          <div id="selectedTeacherAvatar" class="teacher-avatar" style="display: none;"></div>
           <div style="flex: 1; min-width: 0;">
             <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
               <span id="selectedTeacherName" style="font-size: 1rem; font-weight: 700; color: var(--text-primary);"></span>
@@ -285,6 +287,20 @@
       <div id="teachersSpinnerContainer" class="spinner-container" style="display: none;">
         <div class="spinner"></div>
         <p style="font-size:0.85rem; color:var(--text-secondary);">Caricamento orario docente da UNIMIB...</p>
+        <div class="skeleton-container" style="width: 100%; max-width: 535px;">
+          <div class="skeleton-card">
+            <div class="skeleton-shimmer"></div>
+            <div class="skeleton-line" style="width: 38%; height: 16px;"></div>
+            <div class="skeleton-line" style="width: 72%; height: 18px; margin-top: 10px;"></div>
+            <div class="skeleton-line" style="width: 50%; height: 14px; margin-top: 10px;"></div>
+          </div>
+          <div class="skeleton-card">
+            <div class="skeleton-shimmer"></div>
+            <div class="skeleton-line" style="width: 34%; height: 16px;"></div>
+            <div class="skeleton-line" style="width: 80%; height: 18px; margin-top: 10px;"></div>
+            <div class="skeleton-line" style="width: 55%; height: 14px; margin-top: 10px;"></div>
+          </div>
+        </div>
       </div>
 
       <!-- Empty state when no teacher is chosen or no events -->
@@ -385,6 +401,18 @@
     <div id="roomsSpinnerContainer" class="spinner-container" style="display: none;">
       <div class="spinner"></div>
       <p style="font-size:0.85rem; color:var(--text-secondary);">Verifica occupazione aule in corso...</p>
+      <div class="skeleton-container" style="width: 100%; max-width: 535px;">
+        <div class="skeleton-card">
+          <div class="skeleton-shimmer"></div>
+          <div class="skeleton-line" style="width: 45%; height: 16px;"></div>
+          <div class="skeleton-line" style="width: 65%; height: 18px; margin-top: 10px;"></div>
+        </div>
+        <div class="skeleton-card">
+          <div class="skeleton-shimmer"></div>
+          <div class="skeleton-line" style="width: 50%; height: 16px;"></div>
+          <div class="skeleton-line" style="width: 70%; height: 18px; margin-top: 10px;"></div>
+        </div>
+      </div>
     </div>
 
     <!-- Rooms Grid -->
@@ -465,6 +493,20 @@
     <div id="examsSpinnerContainer" class="spinner-container" style="display: none;">
       <div class="spinner"></div>
       <p style="font-size:0.85rem; color:var(--text-secondary);">Ricerca appelli d'esame in corso...</p>
+      <div class="skeleton-container" style="width: 100%; max-width: 535px;">
+        <div class="skeleton-card">
+          <div class="skeleton-shimmer"></div>
+          <div class="skeleton-line" style="width: 55%; height: 16px;"></div>
+          <div class="skeleton-line" style="width: 75%; height: 18px; margin-top: 10px;"></div>
+          <div class="skeleton-line" style="width: 45%; height: 14px; margin-top: 10px;"></div>
+        </div>
+        <div class="skeleton-card">
+          <div class="skeleton-shimmer"></div>
+          <div class="skeleton-line" style="width: 60%; height: 16px;"></div>
+          <div class="skeleton-line" style="width: 80%; height: 18px; margin-top: 10px;"></div>
+          <div class="skeleton-line" style="width: 40%; height: 14px; margin-top: 10px;"></div>
+        </div>
+      </div>
     </div>
 
     <!-- Exams List Container -->
