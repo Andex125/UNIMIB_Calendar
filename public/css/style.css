@@ -17,8 +17,8 @@
 
   --text-primary: #F8FAFC;
   --text-secondary: #94A3B8;
-  --text-muted: #64748B;
-  --text-tertiary: #64748B;
+  --text-muted: #94A3B8;
+  --text-tertiary: #94A3B8;
 
   /* UNIMIB Brand Identity Colors */
   --bicocca-red: #A71E3B;
@@ -4209,5 +4209,15 @@ body {
   padding: 0;
 }
 
-
-
+/* Accessibility: Screen Reader Only Utility */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}

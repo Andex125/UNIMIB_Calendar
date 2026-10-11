@@ -1,55 +1,24 @@
-"""
-UNIMIB Calendar – Shared Calendar API
-======================================
-Returns the combined timetable of multiple students by fetching
-each student's profile from Redis and then calling /api/calendar
-for their individual timetable.
-
-GET /api/shared_calendar?ids=ID1,ID2,ID3&date=DD-MM-YYYY
-GET /api/shared_calendar?codes=CODE1,CODE2&date=DD-MM-YYYY
-
-Returns ONLY the courses each student has marked as favourites
-(config.favorites). If a student has no favourites, all their
-courses are returned (full study-year timetable).
-
-High-Performance Parallel Engine:
-- Profile lookups run in parallel via ThreadPoolExecutor.
-- UNIMIB grid fetches are deduplicated (multiple students in the same
-  degree/year share a single request).
-- Distinct UNIMIB grid requests run concurrently in parallel.
-- Responses are cached in an in-memory TTL cache (300s) for instant response.
-"""
-
-import os
 import json
-import time
 import re
-import tempfile
-import threading
-import urllib.request
 import urllib.parse
-from http.server import BaseHTTPRequestHandler
 from datetime import datetime, timedelta
 import concurrent.futures
 
-def _get_redis_creds():
-    url = (
-        os.environ.get("UPSTASH_REDIS_REST_URL")
-        or os.environ.get("KV_REST_API_URL")
-        or os.environ.get("REDIS_REST_URL")
-        or ""
-    ).strip().strip('"').strip("'").rstrip("/")
-    token = (
-        os.environ.get("UPSTASH_REDIS_REST_TOKEN")
-        or os.environ.get("KV_REST_API_TOKEN")
-        or os.environ.get("REDIS_REST_TOKEN")
-        or ""
-    ).strip().strip('"').strip("'")
-    return url, token
+from api._common import (
+    BaseApiHandler,
+    BoundedTTLCache,
+    get_rome_now,
+    get_monday,
+    parse_date_to_monday,
+    safe_ts,
+    fetch_upstream,
+    UpstreamError,
+    redis_get,
+    get_redis_creds,
+)
 
 GRID_URL = 'https://gestioneorari.didattica.unimib.it/PortaleStudentiUnimib/grid_call.php'
 
-# Curated 12 distinct high-contrast colors for each student in the shared view
 SHARED_COLORS = [
     "#3B82F6",  # Royal Blue
     "#F97316",  # Warm Orange
@@ -68,71 +37,19 @@ SHARED_COLORS = [
 MAX_PROFILES = 8  # safety cap
 CACHE_TTL = 300   # 5 minutes in-memory cache for UNIMIB grids
 
-# In-memory grid cache: (anno, corso, tuple(sorted(anni)), monday) -> (timestamp, list_of_raw_cells)
-_grid_cache = {}
-
-# ── Local File/In-Memory Key-Value Fallback (when Upstash Redis is not configured) ────
-_LOCAL_STORE_PATH = os.path.join(tempfile.gettempdir(), "unimib_kv_store.json")
-_LOCAL_LOCK = threading.Lock()
-
-def _local_kv_load() -> dict:
-    if os.path.exists(_LOCAL_STORE_PATH):
-        try:
-            with open(_LOCAL_STORE_PATH, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                if isinstance(data, dict):
-                    return data
-        except Exception:
-            pass
-    return {}
-
-def _local_redis_get(key: str):
-    with _LOCAL_LOCK:
-        store = _local_kv_load()
-        item = store.get(str(key))
-        if item is None:
-            return None
-        if isinstance(item, dict) and "v" in item:
-            exp = item.get("e")
-            if exp and time.time() > exp:
-                return None
-            return item["v"]
-        return item
+_grid_cache = BoundedTTLCache(maxsize=200, ttl_seconds=CACHE_TTL)
+_safe_ts = safe_ts
+_redis_get = redis_get
 
 
-# ── Redis helper ────────────────────────────────────────────────────────────────
-
-def _redis_get(key: str):
-    url, token = _get_redis_creds()
-    if not url or not token:
-        raw = _local_redis_get(key)
-        if raw is None:
-            return None
-        try:
-            return json.loads(raw)
-        except Exception:
-            return raw
-
-    path = "/GET/" + urllib.parse.quote(key, safe="")
-    req  = urllib.request.Request(
-        url + path,
-        headers={"Authorization": f"Bearer {token}"}
-    )
+def _get_monday(date_str: str) -> str:
+    """Given DD-MM-YYYY or YYYY-MM-DD, return the Monday of that week in DD-MM-YYYY."""
+    if not date_str:
+        return get_monday().strftime("%d-%m-%Y")
     try:
-        with urllib.request.urlopen(req, timeout=5) as resp:
-            body = json.loads(resp.read())
-        if "error" in body:
-            raise RuntimeError(body["error"])
-        raw = body.get("result")
-        return json.loads(raw) if raw else None
+        return parse_date_to_monday(date_str).strftime("%d-%m-%Y")
     except Exception:
-        raw = _local_redis_get(key)
-        if raw is None:
-            return None
-        try:
-            return json.loads(raw)
-        except Exception:
-            return raw
+        return get_monday().strftime("%d-%m-%Y")
 
 
 def _resolve_profile(code: str):
@@ -152,32 +69,6 @@ def _resolve_profile(code: str):
     return code, None
 
 
-# ── UNIMIB grid fetch with caching & deduplication ────────────────────────────
-
-def _get_monday(date_str: str) -> str:
-    """Given DD-MM-YYYY or YYYY-MM-DD, return the Monday of that week in DD-MM-YYYY."""
-    dt = None
-    if date_str:
-        clean = date_str.strip().replace('/', '-')
-        for fmt in ("%d-%m-%Y", "%Y-%m-%d"):
-            try:
-                dt = datetime.strptime(clean, fmt)
-                break
-            except ValueError:
-                pass
-    if not dt:
-        dt = datetime.now()
-    monday = dt - timedelta(days=dt.weekday())
-    return monday.strftime("%d-%m-%Y")
-
-
-def _safe_ts(c):
-    try:
-        return int(c.get("timestamp") or 0)
-    except (ValueError, TypeError):
-        return 0
-
-
 def _fetch_raw_grid(anno: str, corso: str, anni_tuple: tuple, monday_str: str) -> list:
     """Fetch raw UNIMIB cells with memory caching."""
     if not anno or not corso or not anni_tuple:
@@ -185,16 +76,8 @@ def _fetch_raw_grid(anno: str, corso: str, anni_tuple: tuple, monday_str: str) -
 
     cache_key = (anno, corso, anni_tuple, monday_str)
     cached = _grid_cache.get(cache_key)
-    if cached:
-        cached_time, cached_cells = cached
-        if time.time() - cached_time < CACHE_TTL:
-            return cached_cells
-
-    if len(_grid_cache) > 200:
-        now = time.time()
-        for k in list(_grid_cache.keys()):
-            if now - _grid_cache[k][0] >= CACHE_TTL:
-                _grid_cache.pop(k, None)
+    if cached is not None:
+        return cached
 
     params = [
         ("view",      "easycourse"),
@@ -207,13 +90,12 @@ def _fetch_raw_grid(anno: str, corso: str, anni_tuple: tuple, monday_str: str) -
         ("_lang",     "it"),
     ]
     url = f"{GRID_URL}?{urllib.parse.urlencode(params)}"
-    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
     try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            raw_data = json.loads(resp.read().decode("utf-8"))
+        raw_text = fetch_upstream(url, timeout=12)
+        raw_data = json.loads(raw_text)
         if isinstance(raw_data, dict):
-            cells = sorted(raw_data.get("celle", []), key=_safe_ts)
-            _grid_cache[cache_key] = (time.time(), cells)
+            cells = sorted(raw_data.get("celle", []), key=safe_ts)
+            _grid_cache.set(cache_key, cells)
             return cells
     except Exception:
         pass
@@ -242,46 +124,27 @@ def _extract_events_from_cells(cells: list, favorite_codes: list | None) -> list
     return events
 
 
-# ── HTTP Handler ───────────────────────────────────────────────────────────────
-
-class handler(BaseHTTPRequestHandler):
-
-    def _send_json(self, code: int, body):
-        data = json.dumps(body, ensure_ascii=False).encode()
-        self.send_response(code)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("X-Content-Type-Options", "nosniff")
-        self.send_header("X-Frame-Options", "DENY")
-        self.send_header("Referrer-Policy", "strict-origin-when-cross-origin")
-        self.send_header("Permissions-Policy", "geolocation=(), camera=(), microphone=()")
-        self.send_header("Content-Length", str(len(data)))
-        self.end_headers()
-        self.wfile.write(data)
+class handler(BaseApiHandler):
 
     def _qs(self) -> dict:
         parsed = urllib.parse.urlparse(self.path)
         return dict(urllib.parse.parse_qsl(parsed.query))
 
     def do_OPTIONS(self):
-        self.send_response(204)
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
-        self.end_headers()
+        self.handle_options(methods="GET, OPTIONS", headers="Content-Type")
 
     def do_GET(self):
-        qs    = self._qs()
+        qs = self._qs()
         raw_codes = [i.strip().lower() for i in (qs.get("codes", "") or qs.get("ids", "")).split(",") if i.strip()]
         codes = [c for c in raw_codes if re.match(r'^[a-z0-9_-]{3,30}$', c)][:MAX_PROFILES]
-        date  = qs.get("date", "").strip()  # DD-MM-YYYY
+        date = qs.get("date", "").strip()
 
         if not codes:
-            return self._send_json(400, {"error": "codes parameter required and must be alphanumeric"})
+            return self.send_json(400, {"error": "codes parameter required and must be alphanumeric"}, cache_control='no-store')
 
         monday = _get_monday(date)
 
-        # ── 1. Parallel Profile Resolution via ThreadPoolExecutor ────────────
+        # 1. Parallel Profile Resolution via ThreadPoolExecutor
         resolved_profiles = {}
         with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(codes), 8)) as executor:
             future_to_code = {executor.submit(_resolve_profile, c): c for c in codes}
@@ -293,8 +156,7 @@ class handler(BaseHTTPRequestHandler):
                 except Exception:
                     pass
 
-        # ── 2. Collect Distinct UNIMIB Grids to Fetch ─────────────────────────
-        # Distinct course specifications across all students: set of (anno, corso, anni_tuple)
+        # 2. Collect Distinct UNIMIB Grids to Fetch
         needed_grids = set()
         students_plan = []
 
@@ -303,16 +165,16 @@ class handler(BaseHTTPRequestHandler):
             if not profile:
                 continue
 
-            color    = SHARED_COLORS[idx % len(SHARED_COLORS)]
+            color = SHARED_COLORS[idx % len(SHARED_COLORS)]
             share_id = profile.get("share_code", code.upper())
             nickname = profile.get("nickname", share_id)
-            cfg      = profile.get("config") or {}
+            cfg = profile.get("config") or {}
 
-            anno   = cfg.get("anno", "")
-            corso  = cfg.get("corso", "")
-            anni   = tuple(sorted(cfg.get("anni", [])))
+            anno = cfg.get("anno", "")
+            corso = cfg.get("corso", "")
+            anni = tuple(sorted(cfg.get("anni", [])))
 
-            favorites      = cfg.get("favorites") or []
+            favorites = cfg.get("favorites") or []
             favorite_codes = [f.get("code", "") for f in favorites if f.get("code")] if favorites else None
 
             grid_keys = []
@@ -347,7 +209,7 @@ class handler(BaseHTTPRequestHandler):
                 "grid_keys":      grid_keys,
             })
 
-        # ── 3. Parallel Fetch of Distinct UNIMIB Grids ────────────────────────
+        # 3. Parallel Fetch of Distinct UNIMIB Grids
         grids_data = {}
         with concurrent.futures.ThreadPoolExecutor(max_workers=min(max(len(needed_grids), 1), 8)) as executor:
             future_to_grid = {
@@ -361,9 +223,9 @@ class handler(BaseHTTPRequestHandler):
                 except Exception:
                     grids_data[grid_key] = []
 
-        # ── 4. Extract and Filter Events for Each Student ────────────────────
+        # 4. Extract and Filter Events for Each Student
         profiles_out = []
-        all_events   = []
+        all_events = []
 
         for sp in students_plan:
             profiles_out.append({
@@ -383,7 +245,6 @@ class handler(BaseHTTPRequestHandler):
                         ev["color"]      = sp["color"]
                     all_events.extend(student_events)
 
-        # Sort: date (YYYY-MM-DD for lexicographic sort) then start_time then nickname
         def _sort_key(e):
             d = e.get("date", "")
             parts = d.split("-")
@@ -393,11 +254,8 @@ class handler(BaseHTTPRequestHandler):
 
         all_events.sort(key=_sort_key)
 
-        return self._send_json(200, {
+        return self.send_json(200, {
             "profiles": profiles_out,
             "events":   all_events,
             "week":     monday
-        })
-
-    def log_message(self, *args):
-        pass
+        }, cache_control='public, s-maxage=300, stale-while-revalidate=600')

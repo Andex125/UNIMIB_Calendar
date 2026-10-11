@@ -1,4 +1,7 @@
-const CACHE_NAME = 'unimib-calendar-v23';
+const CACHE_NAME = 'unimib-calendar-v24';
+const FONTS_CACHE_NAME = 'unimib-fonts-v1';
+const MAX_API_ENTRIES = 50;
+
 const ASSETS = [
   '/',
   '/index.html',
@@ -14,6 +17,16 @@ const ASSETS = [
   '/icons/apple-touch-icon.png',
   '/icons/favicon-32.png'
 ];
+
+function trimCache(cacheName, maxItems) {
+  caches.open(cacheName).then((cache) => {
+    cache.keys().then((keys) => {
+      if (keys.length > maxItems) {
+        cache.delete(keys[0]).then(() => trimCache(cacheName, maxItems));
+      }
+    });
+  }).catch(() => {});
+}
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -35,7 +48,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((keys) => {
       return Promise.all(
         keys.map((key) => {
-          if (key !== CACHE_NAME) {
+          if (key !== CACHE_NAME && key !== FONTS_CACHE_NAME) {
             return caches.delete(key);
           }
         })
@@ -48,12 +61,34 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const requestUrl = new URL(event.request.url);
 
-  // Ignore cross-origin requests (e.g. api.qrserver.com)
+  // 1. Google Fonts Cache (PT Sans official university typography offline resilience)
+  if (requestUrl.origin === 'https://fonts.googleapis.com' || requestUrl.origin === 'https://fonts.gstatic.com') {
+    event.respondWith(
+      caches.open(FONTS_CACHE_NAME).then(async (fontCache) => {
+        const cachedResponse = await fontCache.match(event.request);
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+        try {
+          const networkResponse = await fetch(event.request);
+          if (networkResponse && networkResponse.status === 200) {
+            fontCache.put(event.request, networkResponse.clone());
+          }
+          return networkResponse;
+        } catch (err) {
+          return cachedResponse || new Response('', { status: 503 });
+        }
+      })
+    );
+    return;
+  }
+
+  // Ignore other cross-origin requests (e.g. api.qrserver.com)
   if (requestUrl.origin !== self.location.origin) {
     return;
   }
 
-  // API Requests: Network-first, only cache successful GET 200 responses
+  // 2. API Requests: Network-first, only cache successful GET 200 responses with bounded size
   if (requestUrl.pathname.startsWith('/api/')) {
     if (event.request.method !== 'GET') {
       return;
@@ -66,6 +101,7 @@ self.addEventListener('fetch', (event) => {
             const resClone = response.clone();
             caches.open(CACHE_NAME).then((cache) => {
               cache.put(event.request, resClone);
+              trimCache(CACHE_NAME, MAX_API_ENTRIES);
             });
           }
           return response;
@@ -75,7 +111,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static Assets: Stale-while-revalidate
+  // 3. Static Assets: Stale-while-revalidate
   event.respondWith(
     caches.open(CACHE_NAME).then(async (cache) => {
       const matchOptions = event.request.mode === 'navigate' ? { ignoreSearch: true } : {};

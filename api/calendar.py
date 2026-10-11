@@ -1,56 +1,46 @@
-from http.server import BaseHTTPRequestHandler
 import json
 import re
-import time
-import urllib.request
 import urllib.parse
 from datetime import datetime, timedelta
 import concurrent.futures
 
+from api._common import (
+    BaseApiHandler,
+    get_monday,
+    safe_ts,
+    split_curricula,
+    BoundedTTLCache,
+    fetch_upstream,
+    UpstreamError,
+)
+
 GRID_URL = 'https://gestioneorari.didattica.unimib.it/PortaleStudentiUnimib/grid_call.php'
-_grid_cache = {}
 CACHE_TTL = 300
+_grid_cache = BoundedTTLCache(maxsize=200, ttl_seconds=CACHE_TTL)
+_safe_ts = safe_ts
 
-def get_monday(dt=None):
-    if dt is None:
-        dt = datetime.now()
-    return dt - timedelta(days=dt.weekday())
 
-def _safe_ts(c):
-    try:
-        return int(c.get("timestamp") or 0)
-    except (ValueError, TypeError):
-        return 0
-
-def split_curricula(percorso):
-    # Lessons shared by several years of study list each curriculum separated by an <hr> tag
-    parts = re.split(r'<hr[^>]*>', percorso or '')
-    return [re.sub(r'<[^>]+>', '', p).strip() for p in parts if p.strip()]
-
-class UnimibError(Exception):
+class UnimibError(UpstreamError):
     """Base exception for UNIMIB upstream requests."""
     pass
+
 
 class UnimibNetworkError(UnimibError):
     """Network connection error or timeout to UNIMIB."""
     pass
 
+
 class UnimibParseError(UnimibError):
     """Invalid or non-JSON response from UNIMIB."""
     pass
 
+
 def fetch_unimib_grid(anno, corso, anni_studio, date_str, force_refresh=False):
     cache_key = (anno, corso, tuple(sorted(anni_studio)), date_str)
-    if not force_refresh and cache_key in _grid_cache:
-        cached_time, cached_data = _grid_cache[cache_key]
-        if time.time() - cached_time < CACHE_TTL:
+    if not force_refresh:
+        cached_data = _grid_cache.get(cache_key)
+        if cached_data is not None:
             return cached_data
-
-    if len(_grid_cache) > 200:
-        now = time.time()
-        for k in list(_grid_cache.keys()):
-            if now - _grid_cache[k][0] >= CACHE_TTL:
-                _grid_cache.pop(k, None)
 
     params = [
         ('view', 'easycourse'),
@@ -63,12 +53,13 @@ def fetch_unimib_grid(anno, corso, anni_studio, date_str, force_refresh=False):
         ('_lang', 'it'),
     ]
     url = f'{GRID_URL}?{urllib.parse.urlencode(params)}'
-    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
+
     try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            content = resp.read().decode('utf-8')
-    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, OSError) as e:
+        content = fetch_upstream(url, timeout=12)
+    except UpstreamError as e:
         raise UnimibNetworkError(f"Errore di rete o timeout durante la connessione a UNIMIB: {e}")
+    except Exception as e:
+        raise UnimibNetworkError(f"Errore di connessione a UNIMIB: {e}")
 
     try:
         data = json.loads(content)
@@ -78,10 +69,14 @@ def fetch_unimib_grid(anno, corso, anni_studio, date_str, force_refresh=False):
     if not isinstance(data, dict):
         raise UnimibParseError("Struttura dati non valida ricevuta da UNIMIB")
 
-    _grid_cache[cache_key] = (time.time(), data)
+    _grid_cache.set(cache_key, data)
     return data
 
-class handler(BaseHTTPRequestHandler):
+
+class handler(BaseApiHandler):
+    def do_OPTIONS(self):
+        self.handle_options(methods="GET, OPTIONS", headers="Content-Type")
+
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
         qs = urllib.parse.parse_qs(parsed.query)
@@ -115,7 +110,7 @@ class handler(BaseHTTPRequestHandler):
             raw_data = fetch_unimib_grid(anno, corso, anni_studio, date_arg, force_refresh=is_refresh)
             if not isinstance(raw_data, dict):
                 return self.send_json(502, {"error": "Risposta non valida dal server UNIMIB"}, cache_control='no-store')
-            celle = sorted(raw_data.get("celle", []), key=_safe_ts)
+            celle = sorted(raw_data.get("celle", []), key=safe_ts)
             giorni = raw_data.get("giorni", [])
 
             events = []
@@ -187,7 +182,7 @@ class handler(BaseHTTPRequestHandler):
 
                                 codes_to_item = {item.get("code"): item for item in g_items if item.get("code")}
 
-                                ext_cells = sorted(ext_raw.get("celle", []), key=_safe_ts)
+                                ext_cells = sorted(ext_raw.get("celle", []), key=safe_ts)
                                 for c in ext_cells:
                                     c_code = c.get("codice_insegnamento", "")
                                     if codes_to_item and c_code not in codes_to_item:
@@ -241,25 +236,7 @@ class handler(BaseHTTPRequestHandler):
             }
             cache_ctrl = 'no-store' if is_refresh else 'public, s-maxage=300, stale-while-revalidate=600'
             self.send_json(200, payload, cache_control=cache_ctrl)
-        except UnimibError as e:
+        except UpstreamError as e:
             self.send_json(502, {"error": str(e)}, cache_control='no-store')
         except Exception as e:
             self.send_json(502, {"error": f"Errore server: {e}"}, cache_control='no-store')
-
-    def send_json(self, status, payload, cache_control=None):
-        self.send_response(status)
-        self.send_header('Content-Type', 'application/json')
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('X-Content-Type-Options', 'nosniff')
-        self.send_header('X-Frame-Options', 'DENY')
-        self.send_header('Referrer-Policy', 'strict-origin-when-cross-origin')
-        self.send_header('Permissions-Policy', 'geolocation=(), camera=(), microphone=()')
-        if cache_control:
-            self.send_header('Cache-Control', cache_control)
-        elif status == 200:
-            self.send_header('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600')
-        else:
-            self.send_header('Cache-Control', 'no-store')
-        self.end_headers()
-        self.wfile.write(json.dumps(payload, ensure_ascii=False).encode('utf-8'))
-

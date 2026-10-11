@@ -378,39 +378,36 @@ def _reset_failed_attempts(clean_nick: str, prefix: str = "login"):
 
 # ── HTTP Handler ───────────────────────────────────────────────────────────────
 
-class handler(BaseHTTPRequestHandler):
+from api._common import BaseApiHandler
+
+class handler(BaseApiHandler):
+
+    def _get_allow_origin(self) -> str:
+        headers = getattr(self, "headers", None) or {}
+        origin = headers.get("Origin") or headers.get("origin") or ""
+        if not origin:
+            return "*"
+        if re.match(r'^https?://(localhost|127\.0\.0\.1)(:\d+)?$', origin) or \
+           re.match(r'^https://[a-zA-Z0-9_.-]+(\.vercel\.app|\.unimib\.it)$', origin):
+            return origin
+        return "*"
 
     def _send_json(self, code: int, body):
-        data = json.dumps(body, ensure_ascii=False).encode()
-        self.send_response(code)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("X-Content-Type-Options", "nosniff")
-        self.send_header("X-Frame-Options", "DENY")
-        self.send_header("Referrer-Policy", "strict-origin-when-cross-origin")
-        self.send_header("Permissions-Policy", "geolocation=(), camera=(), microphone=()")
-        self.send_header("Content-Length", str(len(data)))
-        self.end_headers()
-        self.wfile.write(data)
+        self.send_json(code, body, cache_control='no-store', allow_origin=self._get_allow_origin())
 
     def _read_body(self) -> dict:
-        length = int(self.headers.get("Content-Length", 0))
-        if length == 0:
-            return {}
-        if length > 65536:
-            raise ValueError("Payload troppo grande (max 64KB)")
-        return json.loads(self.rfile.read(length))
+        return self.read_json_body(max_bytes=65536)
 
     def _qs(self) -> dict:
         parsed = urllib.parse.urlparse(self.path)
         return dict(urllib.parse.parse_qsl(parsed.query))
 
     def do_OPTIONS(self):
-        self.send_response(204)
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
-        self.end_headers()
+        self.handle_options(
+            methods="GET, POST, PUT, DELETE, OPTIONS",
+            headers="Content-Type, Authorization",
+            allow_origin=self._get_allow_origin()
+        )
 
     def do_GET(self):
         qs = self._qs()

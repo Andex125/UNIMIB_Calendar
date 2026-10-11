@@ -362,7 +362,18 @@ function toggleTheme() {
 
 // ---------- Alpine.js Integration (Reactive Store & Modal Architecture) ----------
 
+let lastActiveTrigger = null;
+
+function announceA11y(message) {
+  const el = document.getElementById('a11yAnnouncer');
+  if (el) {
+    el.textContent = '';
+    setTimeout(() => { el.textContent = message; }, 50);
+  }
+}
+
 function openModal(modalId) {
+  lastActiveTrigger = document.activeElement;
   if (window.Alpine && window.Alpine.store && window.Alpine.store('modals')) {
     window.Alpine.store('modals').open(modalId);
   } else {
@@ -378,18 +389,47 @@ function closeModal(modalId) {
     const el = document.getElementById(modalId);
     if (el) el.classList.remove('active');
   }
+  if (lastActiveTrigger && typeof lastActiveTrigger.focus === 'function') {
+    setTimeout(() => { try { lastActiveTrigger.focus(); } catch (e) {} }, 80);
+  }
 }
 
 document.addEventListener('alpine:init', () => {
   Alpine.store('modals', {
     active: null,
+    _trapKeydownHandler: null,
     open(modalId) {
       this.active = modalId;
       const el = document.getElementById(modalId);
       if (el) {
         el.classList.add('active');
-        const focusable = el.querySelector('input:not([type="hidden"]), select, button:not(.btn-icon)');
-        if (focusable) setTimeout(() => focusable.focus(), 60);
+        const focusable = el.querySelectorAll('input:not([type="hidden"]), select, button:not([disabled]), textarea, [tabindex="0"]');
+        if (focusable.length) {
+          setTimeout(() => focusable[0].focus(), 60);
+        }
+
+        // Focus trap
+        if (this._trapKeydownHandler) {
+          document.removeEventListener('keydown', this._trapKeydownHandler);
+        }
+        this._trapKeydownHandler = (e) => {
+          if (e.key === 'Escape') {
+            closeModal(modalId);
+            return;
+          }
+          if (e.key === 'Tab' && focusable.length > 0) {
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (e.shiftKey && document.activeElement === first) {
+              e.preventDefault();
+              last.focus();
+            } else if (!e.shiftKey && document.activeElement === last) {
+              e.preventDefault();
+              first.focus();
+            }
+          }
+        };
+        document.addEventListener('keydown', this._trapKeydownHandler);
       }
     },
     close(modalId) {
@@ -398,6 +438,10 @@ document.addEventListener('alpine:init', () => {
         const el = document.getElementById(targetId);
         if (el) el.classList.remove('active');
         if (this.active === targetId) this.active = null;
+      }
+      if (this._trapKeydownHandler) {
+        document.removeEventListener('keydown', this._trapKeydownHandler);
+        this._trapKeydownHandler = null;
       }
     },
     isOpen(modalId) {
@@ -3965,6 +4009,21 @@ function escapeHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+function safeHtmlTag(strings, ...values) {
+  return strings.reduce((acc, str, i) => {
+    const val = values[i - 1];
+    let sanitized = '';
+    if (val !== undefined && val !== null) {
+      if (typeof val === 'object' && val.__isSafeHtml) {
+        sanitized = val.content;
+      } else {
+        sanitized = escapeHtml(String(val));
+      }
+    }
+    return acc + sanitized + str;
+  });
 }
 
 function getMonday(d) {

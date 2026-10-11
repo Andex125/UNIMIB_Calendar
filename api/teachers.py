@@ -1,75 +1,35 @@
-from http.server import BaseHTTPRequestHandler
 import json
 import re
-import time
-import urllib.request
 import urllib.parse
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
+
+from api._common import (
+    BaseApiHandler,
+    BoundedTTLCache,
+    get_rome_now,
+    get_monday,
+    parse_date_to_monday,
+    safe_ts,
+    clean_html,
+    split_curricula,
+    fetch_upstream,
+    UpstreamError,
+)
 
 COMBO_URL = 'https://gestioneorari.didattica.unimib.it/PortaleStudentiUnimib/combo.php'
 GRID_URL = 'https://gestioneorari.didattica.unimib.it/PortaleStudentiUnimib/grid_call.php'
-USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
 
 CACHE_TEACHERS_TTL = 3600  # 1 hour
 CACHE_GRID_TTL = 300       # 5 minutes
 
-_cache = {}
-
-try:
-    import zoneinfo
-    TZ_ROME = zoneinfo.ZoneInfo("Europe/Rome")
-except Exception:
-    TZ_ROME = timezone(timedelta(hours=1))
-
-
-def get_italy_now():
-    try:
-        return datetime.now(TZ_ROME)
-    except Exception:
-        return datetime.now(timezone(timedelta(hours=1)))
-
-
-def get_monday(dt=None):
-    if dt is None:
-        dt = get_italy_now()
-    return dt - timedelta(days=dt.weekday())
-
-
-def parse_date_to_monday(date_str):
-    if not date_str:
-        return get_monday()
-    date_str = date_str.strip()
-    m1 = re.fullmatch(r'(\d{2})-(\d{2})-(\d{4})', date_str)
-    if m1:
-        day, month, year = map(int, m1.groups())
-        dt = datetime(year, month, day)
-        return dt - timedelta(days=dt.weekday())
-    m2 = re.fullmatch(r'(\d{4})-(\d{2})-(\d{2})', date_str)
-    if m2:
-        year, month, day = map(int, m2.groups())
-        dt = datetime(year, month, day)
-        return dt - timedelta(days=dt.weekday())
-    raise ValueError("Parametro 'date' non valido (atteso GG-MM-AAAA o AAAA-MM-GG)")
-
-
-def _safe_ts(c):
-    try:
-        return int(c.get("timestamp") or 0)
-    except (ValueError, TypeError):
-        return 0
-
-
-def clean_html(text):
-    if not text:
-        return ''
-    cleaned = re.sub(r'<[^>]+>', '', str(text))
-    return re.sub(r'\s+', ' ', cleaned).strip()
+_cache = BoundedTTLCache(maxsize=150, ttl_seconds=CACHE_GRID_TTL)
+get_italy_now = get_rome_now
+_safe_ts = safe_ts
 
 
 def extract_emails(mail_str, link_str=''):
     combined = f"{mail_str or ''} {link_str or ''}"
     emails = re.findall(r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+', combined)
-    # Deduplicate while preserving order
     seen = set()
     result = []
     for e in emails:
@@ -78,11 +38,6 @@ def extract_emails(mail_str, link_str=''):
             seen.add(low)
             result.append(low)
     return result
-
-
-def split_curricula(percorso):
-    parts = re.split(r'<hr[^>]*>', percorso or '')
-    return [clean_html(p) for p in parts if clean_html(p)]
 
 
 def js_var(script, name):
@@ -96,24 +51,17 @@ def js_var(script, name):
 
 
 def fetch_text(url, timeout=15):
-    req = urllib.request.Request(url, headers={'User-Agent': USER_AGENT})
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        return resp.read().decode('utf-8', errors='replace')
+    return fetch_upstream(url, timeout=timeout)
 
 
 def get_academic_years():
     url = f"{COMBO_URL}?sw=ec_&aa=1"
     cached = _cache.get(url)
-    if cached and time.time() - cached[0] < CACHE_TEACHERS_TTL:
-        text = cached[1]
+    if cached is not None:
+        text = cached
     else:
-        if len(_cache) > 100:
-            now = time.time()
-            for k in list(_cache.keys()):
-                if now - _cache[k][0] >= CACHE_TEACHERS_TTL:
-                    _cache.pop(k, None)
         text = fetch_text(url)
-        _cache[url] = (time.time(), text)
+        _cache.set(url, text)
 
     data = js_var(text, 'anni_accademici_ec') or {}
     items = data.values() if isinstance(data, dict) else data
@@ -125,11 +73,11 @@ def get_academic_years():
 def get_teachers_list(anno):
     url = f"{COMBO_URL}?sw=ec_&aa={anno}&page=docenti"
     cached = _cache.get(url)
-    if cached and time.time() - cached[0] < CACHE_TEACHERS_TTL:
-        text = cached[1]
+    if cached is not None:
+        text = cached
     else:
         text = fetch_text(url)
-        _cache[url] = (time.time(), text)
+        _cache.set(url, text)
 
     raw_teachers = js_var(text, 'elenco_docenti') or []
     teachers = []
@@ -188,7 +136,10 @@ def fetch_teacher_grid(anno, docente, date_str, corso=None, all_events=False):
     return json.loads(text)
 
 
-class handler(BaseHTTPRequestHandler):
+class handler(BaseApiHandler):
+    def do_OPTIONS(self):
+        self.handle_options(methods="GET, OPTIONS", headers="Content-Type")
+
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
         qs = urllib.parse.parse_qs(parsed.query)
@@ -208,34 +159,34 @@ class handler(BaseHTTPRequestHandler):
                 if years:
                     anno = years[0]["value"]
                 else:
-                    now = get_italy_now()
+                    now = get_rome_now()
                     anno = str(now.year)
             elif not re.fullmatch(r'\d{4}', anno):
-                return self.send_json(400, {"error": "Parametro 'anno' non valido (atteso formato AAAA)"})
+                return self.send_json(400, {"error": "Parametro 'anno' non valido (atteso formato AAAA)"}, cache_control='no-store')
 
             # 2. Case A: Fetch single Teacher's Calendar / Timetable
             if docente:
                 if not re.fullmatch(r'[A-Za-z0-9_-]+', docente):
-                    return self.send_json(400, {"error": "Parametro 'docente' non valido"})
+                    return self.send_json(400, {"error": "Parametro 'docente' non valido"}, cache_control='no-store')
                 if corso and not re.fullmatch(r'[A-Za-z0-9_-]+', corso):
-                    return self.send_json(400, {"error": "Parametro 'corso' non valido"})
+                    return self.send_json(400, {"error": "Parametro 'corso' non valido"}, cache_control='no-store')
 
                 try:
                     monday_dt = parse_date_to_monday(date_arg)
                     monday_str = monday_dt.strftime('%d-%m-%Y')
                 except ValueError as ve:
-                    return self.send_json(400, {"error": str(ve)})
+                    return self.send_json(400, {"error": str(ve)}, cache_control='no-store')
 
                 cache_key = f"teacher_grid:{anno}:{docente}:{corso}:{monday_str}:{all_events_flag}"
                 cached = _cache.get(cache_key)
-                if not force_refresh and cached and time.time() - cached[0] < CACHE_GRID_TTL:
-                    return self.send_json(200, cached[1], cache_control=True)
+                if not force_refresh and cached is not None:
+                    return self.send_json(200, cached, cache_control='public, s-maxage=300, stale-while-revalidate=3600')
 
                 raw_data = fetch_teacher_grid(anno, docente, monday_str, corso=corso, all_events=all_events_flag)
                 if not isinstance(raw_data, dict):
-                    return self.send_json(502, {"error": "Risposta non valida dal server UNIMIB"})
+                    return self.send_json(502, {"error": "Risposta non valida dal server UNIMIB"}, cache_control='no-store')
 
-                celle = sorted(raw_data.get("celle", []), key=_safe_ts)
+                celle = sorted(raw_data.get("celle", []), key=safe_ts)
                 giorni = raw_data.get("giorni", [])
 
                 events = []
@@ -288,8 +239,8 @@ class handler(BaseHTTPRequestHandler):
                     "events": events
                 }
 
-                _cache[cache_key] = (time.time(), payload)
-                return self.send_json(200, payload, cache_control=True)
+                _cache.set(cache_key, payload)
+                return self.send_json(200, payload, cache_control='public, s-maxage=300, stale-while-revalidate=3600')
 
             # 3. Case B: Fetch List of all Teachers for the Academic Year
             teachers = get_teachers_list(anno)
@@ -300,7 +251,6 @@ class handler(BaseHTTPRequestHandler):
                     if search_query in t["name"].lower():
                         filtered.append(t)
                         continue
-                    # Check in courses
                     if any(search_query in c["name"].lower() or search_query in c["code"].lower() for c in t.get("courses", [])):
                         filtered.append(t)
                 teachers = filtered
@@ -310,20 +260,7 @@ class handler(BaseHTTPRequestHandler):
                 "total": len(teachers),
                 "teachers": teachers
             }
-            return self.send_json(200, payload, cache_control=True)
+            return self.send_json(200, payload, cache_control='public, s-maxage=300, stale-while-revalidate=3600')
 
         except Exception as e:
-            self.send_json(500, {"error": str(e)})
-
-    def send_json(self, status, payload, cache_control=False):
-        self.send_response(status)
-        self.send_header('Content-Type', 'application/json; charset=utf-8')
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('X-Content-Type-Options', 'nosniff')
-        self.send_header('X-Frame-Options', 'DENY')
-        self.send_header('Referrer-Policy', 'strict-origin-when-cross-origin')
-        self.send_header('Permissions-Policy', 'geolocation=(), camera=(), microphone=()')
-        if cache_control:
-            self.send_header('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=3600')
-        self.end_headers()
-        self.wfile.write(json.dumps(payload, ensure_ascii=False).encode('utf-8'))
+            self.send_json(502, {"error": str(e)}, cache_control='no-store')

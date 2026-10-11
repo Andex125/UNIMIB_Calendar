@@ -1,65 +1,39 @@
-from http.server import BaseHTTPRequestHandler
 import json
 import re
-import time
-import urllib.request
 import urllib.parse
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
+
+from api._common import (
+    BaseApiHandler,
+    BoundedTTLCache,
+    get_rome_now,
+    DAYS_IT,
+    MONTHS_IT,
+    fetch_upstream,
+    UpstreamError,
+)
 
 BOOKINGS_CALL_URL = 'https://gestioneorari.didattica.unimib.it/PortaleStudentiUnimib/bookings_call.php'
-USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
 CACHE_TTL = 600  # 10 minutes
 
-_cache = {}
+_cache = BoundedTTLCache(maxsize=100, ttl_seconds=CACHE_TTL)
+get_italy_now = get_rome_now
 
-DAYS_IT = {
-    0: 'Lunedì',
-    1: 'Martedì',
-    2: 'Mercoledì',
-    3: 'Giovedì',
-    4: 'Venerdì',
-    5: 'Sabato',
-    6: 'Domenica'
-}
-
-MONTHS_IT = {
-    1: 'Gennaio', 2: 'Febbraio', 3: 'Marzo', 4: 'Aprile',
-    5: 'Maggio', 6: 'Giugno', 7: 'Luglio', 8: 'Agosto',
-    9: 'Settembre', 10: 'Ottobre', 11: 'Novembre', 12: 'Dicembre'
-}
-
-try:
-    import zoneinfo
-    TZ_ROME = zoneinfo.ZoneInfo("Europe/Rome")
-except Exception:
-    TZ_ROME = timezone(timedelta(hours=1))
-
-def get_italy_now():
-    try:
-        return datetime.now(TZ_ROME)
-    except Exception:
-        return datetime.now(timezone(timedelta(hours=1)))
 
 def fetch_json(url, timeout=15):
     cached = _cache.get(url)
-    if cached and time.time() - cached[0] < CACHE_TTL:
-        return cached[1]
-    if len(_cache) > 100:
-        now = time.time()
-        for k in list(_cache.keys()):
-            if now - _cache[k][0] >= CACHE_TTL:
-                _cache.pop(k, None)
-    req = urllib.request.Request(url, headers={'User-Agent': USER_AGENT})
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        text = resp.read().decode('utf-8', errors='replace')
+    if cached is not None:
+        return cached
+    text = fetch_upstream(url, timeout=timeout)
     data = json.loads(text)
-    _cache[url] = (time.time(), data)
+    _cache.set(url, data)
     return data
+
 
 def parse_exam_event(ev):
     desc = ev.get('description', '')
     name = ev.get('name', '').strip()
-    
+
     parts = re.split(r'\s*//\s*|/(?=[^/\[]*\[[A-Za-z0-9_-]+\])', desc) if desc else ['']
     courses = []
     yr_fallback_m = re.search(r'(\d+)\s*anno', desc or '', re.IGNORECASE)
@@ -70,7 +44,7 @@ def parse_exam_event(ev):
         yr_m = re.search(r'(\d+)\s*anno', p, re.IGNORECASE)
         title_m = re.search(r'(?:Nome corso di laurea:\s*|Corso di laurea:\s*)([^\[]+)', p)
         curr_m = re.search(r'(?:Curriculum|,)\s*([^/\-]+)$', p.strip(), re.IGNORECASE)
-        
+
         c_code = code_m.group(1).upper() if code_m else ''
         c_year = yr_m.group(1) if yr_m else (yr_fallback if len(parts) == 1 else '')
         c_title = title_m.group(1).strip() if title_m else ''
@@ -84,7 +58,7 @@ def parse_exam_event(ev):
             })
         elif yr_m and courses and not courses[-1]['year']:
             courses[-1]['year'] = yr_m.group(1)
-            
+
     appello_m = re.search(r'Numero appello:\s*(\d+)', desc)
     appello_num = appello_m.group(1) if appello_m else ''
 
@@ -133,7 +107,9 @@ def parse_exam_event(ev):
         'is_canceled': ev.get('Annullato') == '1'
     }
 
+
 _sister_codes_cache = {}
+
 
 def get_related_course_codes(target_codes):
     """
@@ -178,8 +154,9 @@ def get_related_course_codes(target_codes):
 
     return expanded
 
+
 def get_exams(corsi=None, datefrom=None, dateto=None, anni=None, search=None):
-    now_it = get_italy_now()
+    now_it = get_rome_now()
     if not datefrom:
         datefrom = now_it.strftime('%d-%m-%Y')
     if not dateto:
@@ -260,7 +237,11 @@ def get_exams(corsi=None, datefrom=None, dateto=None, anni=None, search=None):
         'exams': results
     }
 
-class handler(BaseHTTPRequestHandler):
+
+class handler(BaseApiHandler):
+    def do_OPTIONS(self):
+        self.handle_options(methods="GET, OPTIONS", headers="Content-Type")
+
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
         qs = urllib.parse.parse_qs(parsed.query)
@@ -279,13 +260,13 @@ class handler(BaseHTTPRequestHandler):
                 y, m, d = datefrom_arg.split('-')
                 datefrom_arg = f"{d}-{m}-{y}"
             elif datefrom_arg and not re.fullmatch(r'\d{2}-\d{2}-\d{4}', datefrom_arg):
-                return self.send_json(400, {"error": "Parametro 'datefrom' non valido (atteso GG-MM-AAAA)"})
+                return self.send_json(400, {"error": "Parametro 'datefrom' non valido (atteso GG-MM-AAAA)"}, cache_control='no-store')
 
             if dateto_arg and re.fullmatch(r'\d{4}-\d{2}-\d{2}', dateto_arg):
                 y, m, d = dateto_arg.split('-')
                 dateto_arg = f"{d}-{m}-{y}"
             elif dateto_arg and not re.fullmatch(r'\d{2}-\d{2}-\d{4}', dateto_arg):
-                return self.send_json(400, {"error": "Parametro 'dateto' non valido (atteso GG-MM-AAAA)"})
+                return self.send_json(400, {"error": "Parametro 'dateto' non valido (atteso GG-MM-AAAA)"}, cache_control='no-store')
 
             payload = get_exams(
                 corsi=corsi,
@@ -294,21 +275,6 @@ class handler(BaseHTTPRequestHandler):
                 anni=anni,
                 search=search_arg
             )
-            self.send_json(200, payload, cache=True)
+            self.send_json(200, payload, cache_control='public, s-maxage=300, stale-while-revalidate=600')
         except Exception as e:
-            self.send_json(502, {"error": str(e)})
-
-    def send_json(self, status, payload, cache=False):
-        self.send_response(status)
-        self.send_header('Content-Type', 'application/json')
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('X-Content-Type-Options', 'nosniff')
-        self.send_header('X-Frame-Options', 'DENY')
-        self.send_header('Referrer-Policy', 'strict-origin-when-cross-origin')
-        self.send_header('Permissions-Policy', 'geolocation=(), camera=(), microphone=()')
-        if cache:
-            self.send_header('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600')
-        else:
-            self.send_header('Cache-Control', 'no-cache')
-        self.end_headers()
-        self.wfile.write(json.dumps(payload, ensure_ascii=False).encode('utf-8'))
+            self.send_json(502, {"error": str(e)}, cache_control='no-store')

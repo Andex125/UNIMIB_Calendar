@@ -25,29 +25,14 @@
   <!-- CSS Styles -->
   <link rel="stylesheet" href="/css/style.css">
 
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      corePlugins: {
-        preflight: false,
-      },
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            unimib: '#A71E3B',
-            'unimib-dark': '#83142C',
-          }
-        }
-      }
-    };
-  </script>
 
   <!-- Alpine.js Lightweight Reactive Layer -->
   <script defer src="/js/alpine.min.js"></script>
 </head>
 <body>
+
+  <!-- Screen Reader Live Announcer (WCAG 2.2 AA) -->
+  <div id="a11yAnnouncer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
 
   <!-- Sticky Mobile Header -->
   <header class="app-header">

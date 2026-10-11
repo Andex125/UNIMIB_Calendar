@@ -103,10 +103,20 @@ The app will be available at `http://localhost:3000`.
 
 ### Running Tests
 
-Run the Python unit test suite:
+Run the full test suite with npm:
 
 ```bash
-python3 -m unittest discover -s scratch -p "test_*.py"
+npm test
+```
+
+Or execute backend / frontend suites individually:
+
+```bash
+# Python backend tests
+python3 -m unittest discover -s tests/backend -p "test_*.py"
+
+# Frontend Node.js tests
+npm run test:frontend
 ```
 
 ### Environment Variables

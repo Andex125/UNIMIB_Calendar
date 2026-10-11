@@ -1,0 +1,31 @@
+name: CI Test Suite
+
+on:
+  push:
+    branches: [ main, miglioramenti ]
+  pull_request:
+    branches: [ main, miglioramenti ]
+
+jobs:
+  test:
+    name: Run Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run Backend Tests
+        run: python3 -m unittest discover -s tests/backend -p "test_*.py"
+
+      - name: Run Frontend Tests
+        run: node --test tests/frontend/*.test.js

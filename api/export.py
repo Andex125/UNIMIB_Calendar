@@ -1,97 +1,44 @@
-"""
-UNIMIB Calendar – Standard Export & WebCal Subscription API
-============================================================
-Exports university course timetables into standard calendar formats:
-- iCalendar (.ics) [RFC 5545] (Apple Calendar, Google Calendar, Outlook, Thunderbird)
-- CSV (.csv) (Excel, Google Sheets, Calc)
-- JSON (.json) (Structured raw data)
-
-Supports both file download and live WebCal feed subscriptions:
-- webcal://.../api/export?code=SHARE_CODE&format=ics
-- GET /api/export?code=SHARE_CODE[&format=ics|csv|json][&weeks=4][&start=DD-MM-YYYY]
-- GET /api/export?anno=2526&corso=F1801Q&anno2=GGG|1[&fav=CODE1,CODE2][&format=ics|csv|json]
-"""
-
-import os
 import json
 import csv
 import io
 import re
-import time
-import urllib.request
 import urllib.parse
-from http.server import BaseHTTPRequestHandler
 from datetime import datetime, timedelta, timezone
 import concurrent.futures
 
-GRID_URL = 'https://gestioneorari.didattica.unimib.it/PortaleStudentiUnimib/grid_call.php'
-USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+from api._common import (
+    BaseApiHandler,
+    BoundedTTLCache,
+    get_rome_now,
+    get_monday,
+    parse_date_to_monday,
+    safe_ts,
+    fetch_upstream,
+    UpstreamError,
+    redis_get,
+)
 
-# In-memory grid cache with 300s TTL: (anno, corso, tuple(sorted(anni)), monday) -> (time, cells)
-_grid_cache = {}
+GRID_URL = 'https://gestioneorari.didattica.unimib.it/PortaleStudentiUnimib/grid_call.php'
 CACHE_TTL = 300
 
+_grid_cache = BoundedTTLCache(maxsize=200, ttl_seconds=CACHE_TTL)
 
-def _get_redis_creds():
-    url = (
-        os.environ.get("UPSTASH_REDIS_REST_URL")
-        or os.environ.get("KV_REST_API_URL")
-        or os.environ.get("REDIS_REST_URL")
-        or ""
-    ).strip().strip('"').strip("'").rstrip("/")
-    token = (
-        os.environ.get("UPSTASH_REDIS_REST_TOKEN")
-        or os.environ.get("KV_REST_API_TOKEN")
-        or os.environ.get("REDIS_REST_TOKEN")
-        or ""
-    ).strip().strip('"').strip("'")
-    return url, token
-
-
-def _redis_get(key: str):
-    url, token = _get_redis_creds()
-    if not url or not token:
-        return None
-    path = "/GET/" + urllib.parse.quote(key, safe="")
-    req = urllib.request.Request(
-        url + path,
-        headers={"Authorization": f"Bearer {token}"}
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=5) as resp:
-            body = json.loads(resp.read().decode())
-        if "error" in body:
-            return None
-        raw = body.get("result")
-        return json.loads(raw) if raw else None
-    except Exception:
-        return None
-
-
-def _get_monday(dt=None):
-    if dt is None:
-        dt = datetime.now()
-    return dt - timedelta(days=dt.weekday())
+_get_monday = get_monday
+_safe_ts = safe_ts
+_redis_get = redis_get
 
 
 def _parse_date_to_monday(date_str: str) -> datetime:
     if not date_str:
-        return _get_monday()
-    clean = date_str.strip().replace('/', '-')
+        return get_monday()
+    clean = str(date_str).strip().replace('/', '-')
     for fmt in ("%d-%m-%Y", "%Y-%m-%d"):
         try:
             dt = datetime.strptime(clean, fmt)
-            return _get_monday(dt)
+            return get_monday(dt)
         except ValueError:
             pass
-    return _get_monday()
-
-
-def _safe_ts(c):
-    try:
-        return int(c.get("timestamp") or 0)
-    except (ValueError, TypeError):
-        return 0
+    return get_monday()
 
 
 def _fetch_unimib_grid(anno: str, corso: str, anni_tuple: tuple, monday_str: str) -> list:
@@ -100,16 +47,8 @@ def _fetch_unimib_grid(anno: str, corso: str, anni_tuple: tuple, monday_str: str
 
     cache_key = (anno, corso, anni_tuple, monday_str)
     cached = _grid_cache.get(cache_key)
-    if cached:
-        cached_time, cached_cells = cached
-        if time.time() - cached_time < CACHE_TTL:
-            return cached_cells
-
-    if len(_grid_cache) > 200:
-        now = time.time()
-        for k in list(_grid_cache.keys()):
-            if now - _grid_cache[k][0] >= CACHE_TTL:
-                _grid_cache.pop(k, None)
+    if cached is not None:
+        return cached
 
     params = [
         ("view", "easycourse"),
@@ -122,13 +61,12 @@ def _fetch_unimib_grid(anno: str, corso: str, anni_tuple: tuple, monday_str: str
         ("_lang", "it"),
     ]
     url = f"{GRID_URL}?{urllib.parse.urlencode(params)}"
-    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
     try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            raw_data = json.loads(resp.read().decode("utf-8"))
+        raw_text = fetch_upstream(url, timeout=12)
+        raw_data = json.loads(raw_text)
         if isinstance(raw_data, dict):
-            cells = sorted(raw_data.get("celle", []), key=_safe_ts)
-            _grid_cache[cache_key] = (time.time(), cells)
+            cells = sorted(raw_data.get("celle", []), key=safe_ts)
+            _grid_cache.set(cache_key, cells)
             return cells
     except Exception:
         pass
@@ -141,8 +79,23 @@ def _escape_ical(text: str) -> str:
     return str(text).replace("\\", "\\\\").replace(";", r"\;").replace(",", r"\,").replace("\n", r"\n")
 
 
+def _fold_ical_line(line: str) -> str:
+    """RFC 5545 section 3.1: lines of text SHOULD NOT be longer than 75 octets."""
+    encoded = line.encode('utf-8')
+    if len(encoded) <= 75:
+        return line
+    parts = []
+    while len(encoded) > 75:
+        cut = 75
+        while cut > 0 and (encoded[cut] & 0xC0) == 0x80:
+            cut -= 1
+        parts.append(encoded[:cut].decode('utf-8'))
+        encoded = b' ' + encoded[cut:]
+    parts.append(encoded.decode('utf-8'))
+    return "\r\n".join(parts)
+
+
 def _format_ical_date(day_date: str, time_str: str) -> str:
-    """Convert DD-MM-YYYY or YYYY-MM-DD to YYYYMMDDTHHMMSS"""
     clean = (day_date or "").strip().replace("/", "-")
     parts = clean.split("-")
     if len(parts) == 3:
@@ -151,7 +104,7 @@ def _format_ical_date(day_date: str, time_str: str) -> str:
         else:
             d_clean = f"{parts[2]}{parts[1]}{parts[0]}"
     else:
-        d_clean = datetime.now().strftime("%Y%m%d")
+        d_clean = get_rome_now().strftime("%Y%m%d")
     t_clean = (time_str or "09:00").replace(":", "")
     if len(t_clean) == 4:
         t_clean += "00"
@@ -159,7 +112,6 @@ def _format_ical_date(day_date: str, time_str: str) -> str:
 
 
 def _format_csv_date(day_date: str) -> str:
-    """Convert DD-MM-YYYY or YYYY-MM-DD to YYYY-MM-DD for standard CSV import"""
     clean = (day_date or "").strip().replace("/", "-")
     parts = clean.split("-")
     if len(parts) == 3:
@@ -170,23 +122,19 @@ def _format_csv_date(day_date: str) -> str:
     return clean
 
 
-class handler(BaseHTTPRequestHandler):
+class handler(BaseApiHandler):
 
     def _qs(self) -> dict:
         parsed = urllib.parse.urlparse(self.path)
         return urllib.parse.parse_qs(parsed.query)
 
     def do_OPTIONS(self):
-        self.send_response(204)
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
-        self.end_headers()
+        self.handle_options(methods="GET, OPTIONS", headers="Content-Type")
 
     def do_GET(self):
         qs = self._qs()
 
-        # ── 1. Resolve Profile or Query Parameters ───────────────────────────
+        # 1. Resolve Profile or Query Parameters
         code = qs.get("code", [""])[0].strip().lower()
         cfg = None
         cal_name = "Orario UNIMIB"
@@ -218,16 +166,7 @@ class handler(BaseHTTPRequestHandler):
                     cal_name = f"Orario UNIMIB - {c_label}"
 
         if not cfg or not cfg.get("anno") or not cfg.get("corso") or not cfg.get("anni"):
-            self.send_response(400)
-            self.send_header("Content-Type", "application/json; charset=utf-8")
-            self.send_header("Access-Control-Allow-Origin", "*")
-            self.send_header("X-Content-Type-Options", "nosniff")
-            self.send_header("X-Frame-Options", "DENY")
-            self.send_header("Referrer-Policy", "strict-origin-when-cross-origin")
-            self.send_header("Permissions-Policy", "geolocation=(), camera=(), microphone=()")
-            self.end_headers()
-            self.wfile.write(json.dumps({"error": "Parametri insufficienti. Specificare 'code' oppure 'anno', 'corso' e 'anno2'."}).encode())
-            return
+            return self.send_json(400, {"error": "Parametri insufficienti. Specificare 'code' oppure 'anno', 'corso' e 'anno2'."}, cache_control='no-store')
 
         extra_arg = qs.get("extra", [""])[0].strip()
         extra_courses = cfg.get("externalCourses") or []
@@ -250,29 +189,25 @@ class handler(BaseHTTPRequestHandler):
         if not fav_set and not favorites:
             fav_set = None
 
-        # Filter mode: 'all' to export all courses, or default favorites if defined
         filter_mode = qs.get("filter", ["target"])[0].strip().lower()
         if filter_mode == "all":
             fav_set = None
 
-        # Number of weeks (1 to 12, default 4)
         try:
             weeks_count = max(1, min(12, int(qs.get("weeks", ["4"])[0])))
         except ValueError:
             weeks_count = 4
 
-        # Start date
+        # Start date: if omitted, default to current week Monday in Rome time
         start_date_str = qs.get("date", qs.get("start", [""]))[0].strip()
-        start_monday = _parse_date_to_monday(start_date_str)
+        start_monday = parse_date_to_monday(start_date_str) if start_date_str else get_monday()
 
         export_format = qs.get("format", ["ics"])[0].strip().lower()
 
-        # ── 2. Fetch Weeks in Parallel ───────────────────────────────────────
+        # 2. Fetch Weeks in Parallel
         weeks_mondays = [(start_monday + timedelta(days=7 * w)).strftime("%d-%m-%Y") for w in range(weeks_count)]
 
-        # Prepare external grid specs
         ext_specs = []
-        ext_codes_set = set()
         for ext in extra_courses:
             if not isinstance(ext, dict):
                 continue
@@ -287,8 +222,6 @@ class handler(BaseHTTPRequestHandler):
             if not ext_y_tuple:
                 continue
             ext_code = (ext.get("code") or "").upper()
-            if ext_code:
-                ext_codes_set.add(ext_code)
             ext_specs.append((ext_a, ext_c, ext_y_tuple, ext_code))
 
         week_cells = {mon: [] for mon in weeks_mondays}
@@ -311,7 +244,7 @@ class handler(BaseHTTPRequestHandler):
                 except Exception:
                     pass
 
-        # ── 3. Deduplicate and Filter Events ─────────────────────────────────
+        # 3. Deduplicate and Filter Events
         seen_events = set()
         events = []
 
@@ -346,7 +279,6 @@ class handler(BaseHTTPRequestHandler):
                     "is_canceled": c.get("Annullato") == "1"
                 })
 
-        # Chronological sort
         def _sort_key(e):
             d = e.get("date", "")
             parts = d.split("-")
@@ -356,7 +288,7 @@ class handler(BaseHTTPRequestHandler):
 
         events.sort(key=_sort_key)
 
-        # ── 4. Format Output ─────────────────────────────────────────────────
+        # 4. Format Output
         if export_format == "csv":
             output = io.StringIO()
             writer = csv.writer(output, lineterminator="\r\n")
@@ -380,7 +312,7 @@ class handler(BaseHTTPRequestHandler):
                     ev["aula"] or "UNIMIB"
                 ])
 
-            data_bytes = output.getvalue().encode("utf-8-sig")  # UTF-8 BOM for Excel compatibility
+            data_bytes = output.getvalue().encode("utf-8-sig")
             self.send_response(200)
             self.send_header("Content-Type", "text/csv; charset=utf-8")
             self.send_header("Content-Disposition", 'attachment; filename="orario_unimib.csv"')
@@ -424,8 +356,26 @@ class handler(BaseHTTPRequestHandler):
                 "PRODID:-//UNIMIB Orari//IT",
                 "CALSCALE:GREGORIAN",
                 "METHOD:PUBLISH",
-                f"X-WR-CALNAME:{_escape_ical(cal_name)}",
-                "X-WR-TIMEZONE:Europe/Rome"
+                _fold_ical_line(f"X-WR-CALNAME:{_escape_ical(cal_name)}"),
+                "X-WR-TIMEZONE:Europe/Rome",
+                "BEGIN:VTIMEZONE",
+                "TZID:Europe/Rome",
+                "X-LIC-LOCATION:Europe/Rome",
+                "BEGIN:DAYLIGHT",
+                "TZOFFSETFROM:+0100",
+                "TZOFFSETTO:+0200",
+                "TZNAME:CEST",
+                "DTSTART:19700329T020000",
+                "RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU",
+                "END:DAYLIGHT",
+                "BEGIN:STANDARD",
+                "TZOFFSETFROM:+0200",
+                "TZOFFSETTO:+0100",
+                "TZNAME:CET",
+                "DTSTART:19701025T030000",
+                "RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU",
+                "END:STANDARD",
+                "END:VTIMEZONE"
             ]
 
             for ev in events:
@@ -439,13 +389,13 @@ class handler(BaseHTTPRequestHandler):
 
                 vcalendar_lines.extend([
                     "BEGIN:VEVENT",
-                    f"UID:unimib-lesson-{ev['id']}@unimib.it",
+                    _fold_ical_line(f"UID:unimib-lesson-{ev['id']}@unimib.it"),
                     f"DTSTAMP:{now_stamp}",
                     f"DTSTART;TZID=Europe/Rome:{dt_start}",
                     f"DTEND;TZID=Europe/Rome:{dt_end}",
-                    f"SUMMARY:{_escape_ical(summary)}",
-                    f"LOCATION:{_escape_ical(location)}",
-                    f"DESCRIPTION:{_escape_ical(description)}",
+                    _fold_ical_line(f"SUMMARY:{_escape_ical(summary)}"),
+                    _fold_ical_line(f"LOCATION:{_escape_ical(location)}"),
+                    _fold_ical_line(f"DESCRIPTION:{_escape_ical(description)}"),
                     "STATUS:CANCELLED" if ev["is_canceled"] else "STATUS:CONFIRMED",
                     "END:VEVENT"
                 ])
@@ -465,6 +415,3 @@ class handler(BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(len(data_bytes)))
             self.end_headers()
             self.wfile.write(data_bytes)
-
-    def log_message(self, *args):
-        pass

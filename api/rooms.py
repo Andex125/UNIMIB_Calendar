@@ -1,54 +1,43 @@
-from http.server import BaseHTTPRequestHandler
 import json
 import re
-import time
-import urllib.request
 import urllib.parse
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
+import concurrent.futures
+
+from api._common import (
+    BaseApiHandler,
+    BoundedTTLCache,
+    get_rome_now,
+    DAYS_IT,
+    MONTHS_IT,
+    fetch_upstream,
+    UpstreamError,
+)
 
 ROOMS_CALL_URL = 'https://gestioneorari.didattica.unimib.it/PortaleStudentiUnimib/rooms_call.php'
 COMBO_URL = 'https://gestioneorari.didattica.unimib.it/PortaleStudentiUnimib/combo.php'
-USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
 CACHE_TTL = 300  # 5 minutes
 
-_cache = {}
+_cache = BoundedTTLCache(maxsize=150, ttl_seconds=CACHE_TTL)
+get_italy_now = get_rome_now
 
-try:
-    import zoneinfo
-    TZ_ROME = zoneinfo.ZoneInfo("Europe/Rome")
-except Exception:
-    TZ_ROME = timezone(timedelta(hours=1))
-
-def get_italy_now():
-    try:
-        return datetime.now(TZ_ROME)
-    except Exception:
-        return datetime.now(timezone(timedelta(hours=1)))
 
 def fetch_json(url, timeout=12):
     cached = _cache.get(url)
-    if cached and time.time() - cached[0] < CACHE_TTL:
-        return cached[1]
-    if len(_cache) > 100:
-        now = time.time()
-        for k in list(_cache.keys()):
-            if now - _cache[k][0] >= CACHE_TTL:
-                _cache.pop(k, None)
-    req = urllib.request.Request(url, headers={'User-Agent': USER_AGENT})
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        text = resp.read().decode('utf-8', errors='replace')
+    if cached is not None:
+        return cached
+    text = fetch_upstream(url, timeout=timeout)
     data = json.loads(text)
-    _cache[url] = (time.time(), data)
+    _cache.set(url, data)
     return data
+
 
 def get_buildings():
     url = f"{COMBO_URL}?sw=rooms_"
     cached = _cache.get(url)
-    if cached and time.time() - cached[0] < 3600:
-        return cached[1]
-    req = urllib.request.Request(url, headers={'User-Agent': USER_AGENT})
-    with urllib.request.urlopen(req, timeout=12) as resp:
-        text = resp.read().decode('utf-8', errors='replace')
+    if cached is not None:
+        return cached
+    text = fetch_upstream(url, timeout=12)
     m = re.search(r'var\s+elenco_sedi\s*=\s*', text)
     if not m:
         return []
@@ -59,6 +48,7 @@ def get_buildings():
         label = s.get("label")
         if val and label and val != "SPAZI_MANCANTI":
             result.append({"value": val, "label": label})
+
     # Sort with common Bicocca buildings (U1, U2, ...) nicely
     def sort_key(item):
         v = item["value"]
@@ -66,23 +56,13 @@ def get_buildings():
         if m_bld:
             return (0, int(m_bld.group(1)), item["label"])
         return (1, 0, item["label"])
+
     result.sort(key=sort_key)
-    _cache[url] = (time.time(), result)
+    _cache.set(url, result)
     return result
 
-DAYS_IT = {
-    0: 'Lunedì', 1: 'Martedì', 2: 'Mercoledì', 3: 'Giovedì',
-    4: 'Venerdì', 5: 'Sabato', 6: 'Domenica'
-}
-
-MONTHS_IT = {
-    1: 'Gennaio', 2: 'Febbraio', 3: 'Marzo', 4: 'Aprile',
-    5: 'Maggio', 6: 'Giugno', 7: 'Luglio', 8: 'Agosto',
-    9: 'Settembre', 10: 'Ottobre', 11: 'Novembre', 12: 'Dicembre'
-}
 
 def parse_time_str(t_str):
-    # parses "08:30:00" or "08:30" to minutes from midnight
     if not t_str:
         return 0
     parts = t_str.split(':')
@@ -90,24 +70,25 @@ def parse_time_str(t_str):
     m = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else 0
     return h * 60 + m
 
+
 def format_minutes(mins):
     h = mins // 60
     m = mins % 60
     return f"{h:02d}:{m:02d}"
 
+
 def get_room_occupancy(sede, date_str, time_str=None, client_time=None, client_date=None):
-    now_it = get_italy_now()
+    now_it = get_rome_now()
     today_str = now_it.strftime('%d-%m-%Y')
     is_today = (date_str == today_str) or (bool(client_date) and date_str == client_date) or (time_str == 'now')
 
     # Parse date to Italian format representations
     date_clean = date_str.replace('/', '-')
     dt_obj = None
-    try:
-        dt_obj = datetime.strptime(date_clean, '%d-%m-%Y')
-    except ValueError:
+    for fmt in ('%d-%m-%Y', '%Y-%m-%d'):
         try:
-            dt_obj = datetime.strptime(date_clean, '%Y-%m-%d')
+            dt_obj = datetime.strptime(date_clean, fmt)
+            break
         except ValueError:
             pass
 
@@ -156,7 +137,7 @@ def get_room_occupancy(sede, date_str, time_str=None, client_time=None, client_d
         code = ev.get("CodiceAula") or ev.get("NomeAula")
         if not code:
             continue
-        
+
         docenti = []
         for u in ev.get("Utenti", []):
             cognome = u.get("Cognome", "").strip()
@@ -203,6 +184,11 @@ def get_room_occupancy(sede, date_str, time_str=None, client_time=None, client_d
                 "capacity": r_val.get("capacity", 0)
             }
 
+    # Building hours (U12 open until 23:00, other buildings close around 20:00)
+    closing_mins = 1380 if 'U12' in sede.upper() else 1200
+    opening_mins = 450  # 07:30
+    is_building_closed = bool(check_mins is not None and (check_mins >= closing_mins or check_mins < opening_mins))
+
     for code, meta in all_rooms_dict.items():
         evs = room_events_map.get(code, [])
         r_name = meta.get("room_name") or meta.get("NomeAula") or code
@@ -226,7 +212,6 @@ def get_room_occupancy(sede, date_str, time_str=None, client_time=None, client_d
                     is_free = False
                     current_event = ev
                     occupied_from = ev["from"]
-                    # Chain contiguous/consecutive events (start within 15 min of previous end)
                     curr_end_mins = ev["to_mins"]
                     curr_end = ev["to"]
                     for j in range(i + 1, len(evs)):
@@ -244,10 +229,11 @@ def get_room_occupancy(sede, date_str, time_str=None, client_time=None, client_d
             if is_free:
                 if next_event:
                     free_until = next_event["from"]
+                elif is_building_closed:
+                    free_until = "Edificio chiuso"
                 else:
                     free_until = "fine giornata"
         else:
-            # Whole-day overview
             is_free = (len(evs) == 0)
             if evs:
                 occupied_from = evs[0]["from"]
@@ -283,6 +269,7 @@ def get_room_occupancy(sede, date_str, time_str=None, client_time=None, client_d
         "date_long": date_long,
         "day_name": day_name,
         "is_today": is_today,
+        "is_building_closed": is_building_closed,
         "check_time": format_minutes(check_mins) if check_mins is not None else None,
         "total_rooms": len(rooms_output),
         "free_rooms": sum(1 for r in rooms_output if r["is_free"]),
@@ -290,7 +277,54 @@ def get_room_occupancy(sede, date_str, time_str=None, client_time=None, client_d
         "rooms": rooms_output
     }
 
-class handler(BaseHTTPRequestHandler):
+
+def get_campus_summary(date_str, time_str=None, client_time=None, client_date=None):
+    """Aggregate room availability across key campus buildings."""
+    buildings = get_buildings()
+    summary_list = []
+
+    def _fetch_bld(bld):
+        try:
+            val = bld["value"]
+            res = get_room_occupancy(val, date_str, time_str, client_time, client_date)
+            return {
+                "value": val,
+                "label": bld["label"],
+                "total_rooms": res["total_rooms"],
+                "free_rooms": res["free_rooms"],
+                "occupied_rooms": res["occupied_rooms"],
+                "is_building_closed": res.get("is_building_closed", False)
+            }
+        except Exception:
+            return None
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
+        futures = [executor.submit(_fetch_bld, b) for b in buildings]
+        for fut in concurrent.futures.as_completed(futures):
+            res = fut.result()
+            if res:
+                summary_list.append(res)
+
+    def _bld_sort_key(b):
+        m = re.match(r'^U0*(\d+)', b["value"])
+        return (0, int(m.group(1))) if m else (1, b["value"])
+
+    summary_list.sort(key=_bld_sort_key)
+    return {
+        "summary": True,
+        "date": date_str,
+        "check_time": client_time or time_str or "now",
+        "total_buildings": len(summary_list),
+        "total_free_rooms": sum(b["free_rooms"] for b in summary_list),
+        "total_rooms": sum(b["total_rooms"] for b in summary_list),
+        "buildings": summary_list
+    }
+
+
+class handler(BaseApiHandler):
+    def do_OPTIONS(self):
+        self.handle_options(methods="GET, OPTIONS", headers="Content-Type")
+
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
         qs = urllib.parse.parse_qs(parsed.query)
@@ -299,49 +333,39 @@ class handler(BaseHTTPRequestHandler):
         time_arg = qs.get('time', [''])[0]
         client_time_arg = qs.get('client_time', [''])[0]
         client_date_arg = qs.get('client_date', [''])[0]
+        mode = qs.get('mode', [''])[0]
 
         try:
-            if not sede:
+            if not sede and mode != 'summary':
                 buildings = get_buildings()
-                return self.send_json(200, {"buildings": buildings}, cache=True)
+                return self.send_json(200, {"buildings": buildings}, cache_control='public, s-maxage=3600, stale-while-revalidate=86400')
 
-            if not re.fullmatch(r'[A-Za-z0-9_.\-]+', sede):
-                return self.send_json(400, {"error": "Parametro 'sede' non valido"})
+            if sede and sede != 'all' and not re.fullmatch(r'[A-Za-z0-9_.\-]+', sede):
+                return self.send_json(400, {"error": "Parametro 'sede' non valido"}, cache_control='no-store')
 
             if not date_arg:
-                now_it = get_italy_now()
+                now_it = get_rome_now()
                 date_arg = now_it.strftime('%d-%m-%Y')
             elif re.fullmatch(r'\d{4}-\d{2}-\d{2}', date_arg):
                 y, m, d = date_arg.split('-')
                 date_arg = f"{d}-{m}-{y}"
             elif not re.fullmatch(r'\d{2}-\d{2}-\d{4}', date_arg):
-                return self.send_json(400, {"error": "Parametro 'date' non valido (atteso GG-MM-AAAA)"})
+                return self.send_json(400, {"error": "Parametro 'date' non valido (atteso GG-MM-AAAA)"}, cache_control='no-store')
 
             if time_arg and time_arg not in ('now', 'all') and not re.fullmatch(r'\d{1,2}:\d{2}', time_arg):
-                return self.send_json(400, {"error": "Parametro 'time' non valido (atteso HH:MM, 'now' o 'all')"})
+                return self.send_json(400, {"error": "Parametro 'time' non valido (atteso HH:MM, 'now' o 'all')"}, cache_control='no-store')
 
             if client_time_arg and not re.fullmatch(r'\d{1,2}:\d{2}', client_time_arg):
-                return self.send_json(400, {"error": "Parametro 'client_time' non valido (atteso HH:MM)"})
+                return self.send_json(400, {"error": "Parametro 'client_time' non valido (atteso HH:MM)"}, cache_control='no-store')
 
             if client_date_arg and not re.fullmatch(r'\d{2}-\d{2}-\d{4}', client_date_arg):
-                return self.send_json(400, {"error": "Parametro 'client_date' non valido (atteso GG-MM-AAAA)"})
+                return self.send_json(400, {"error": "Parametro 'client_date' non valido (atteso GG-MM-AAAA)"}, cache_control='no-store')
 
-            payload = get_room_occupancy(sede, date_arg, time_arg, client_time_arg, client_date_arg)
-            self.send_json(200, payload, cache=False)
+            if sede == 'all' or mode == 'summary':
+                payload = get_campus_summary(date_arg, time_arg, client_time_arg, client_date_arg)
+            else:
+                payload = get_room_occupancy(sede, date_arg, time_arg, client_time_arg, client_date_arg)
+
+            self.send_json(200, payload, cache_control='no-cache')
         except Exception as e:
-            self.send_json(502, {"error": str(e)})
-
-    def send_json(self, status, payload, cache=False):
-        self.send_response(status)
-        self.send_header('Content-Type', 'application/json')
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('X-Content-Type-Options', 'nosniff')
-        self.send_header('X-Frame-Options', 'DENY')
-        self.send_header('Referrer-Policy', 'strict-origin-when-cross-origin')
-        self.send_header('Permissions-Policy', 'geolocation=(), camera=(), microphone=()')
-        if cache:
-            self.send_header('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400')
-        else:
-            self.send_header('Cache-Control', 'no-cache')
-        self.end_headers()
-        self.wfile.write(json.dumps(payload, ensure_ascii=False).encode('utf-8'))
+            self.send_json(502, {"error": str(e)}, cache_control='no-store')
