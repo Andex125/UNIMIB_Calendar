@@ -4,7 +4,6 @@
   "description": "Progressive Web App per gli orari e il campus dell'Università degli Studi di Milano-Bicocca",
   "private": true,
   "scripts": {
-    "dev": "vercel dev",
     "test": "npm run test:backend && npm run test:frontend",
     "test:backend": "python3 -m unittest discover -s tests/backend -p \"test_*.py\"",
     "test:frontend": "node --test tests/frontend/*.test.js",
