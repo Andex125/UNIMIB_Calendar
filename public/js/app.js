@@ -825,13 +825,137 @@ function setupEventListeners() {
     });
   }
 
-  // Timetable Search Bar with Debounce
+  // Timetable Search Bar with Autocomplete & Clear
   const searchInput = document.getElementById('searchInput');
+  const btnClearTimetableSearch = document.getElementById('btnClearTimetableSearch');
+  const timetableAutocompleteList = document.getElementById('timetableAutocompleteList');
+
+  const updateTimetableAutocomplete = () => {
+    if (!timetableAutocompleteList || !searchInput) return;
+    const q = (searchInput.value || '').trim().toLowerCase();
+    const events = (state.calendarData && state.calendarData.events) || [];
+
+    const coursesMap = new Map();
+    const docentiMap = new Map();
+    const auleMap = new Map();
+
+    events.forEach(e => {
+      if (e.course) {
+        const clean = e.course.trim();
+        if (!coursesMap.has(clean.toLowerCase())) coursesMap.set(clean.toLowerCase(), clean);
+      }
+      if (e.docente && e.docente !== 'Non specificato') {
+        const clean = e.docente.trim();
+        if (!docentiMap.has(clean.toLowerCase())) docentiMap.set(clean.toLowerCase(), clean);
+      }
+      if (e.aula && e.aula !== 'Non specificata') {
+        const clean = e.aula.trim();
+        if (!auleMap.has(clean.toLowerCase())) auleMap.set(clean.toLowerCase(), clean);
+      }
+    });
+
+    if (state.config && Array.isArray(state.config.favorites)) {
+      state.config.favorites.forEach(f => {
+        if (f.label) {
+          const clean = f.label.trim();
+          if (!coursesMap.has(clean.toLowerCase())) coursesMap.set(clean.toLowerCase(), clean);
+        }
+      });
+    }
+
+    const favCourseNames = new Set((state.config && state.config.favorites || []).map(f => (f.label || '').toLowerCase().trim()));
+
+    const items = [];
+    coursesMap.forEach((name, lower) => {
+      if (!q || lower.includes(q)) {
+        const isFav = favCourseNames.has(lower);
+        items.push({
+          type: isFav ? 'fav' : 'course',
+          label: name,
+          badge: isFav ? '⭐ Mio Corso' : '📚 Materia'
+        });
+      }
+    });
+    docentiMap.forEach((name, lower) => {
+      if (!q || lower.includes(q)) {
+        items.push({
+          type: 'prof',
+          label: name,
+          badge: '👨‍🏫 Docente'
+        });
+      }
+    });
+    auleMap.forEach((name, lower) => {
+      if (!q || lower.includes(q)) {
+        items.push({
+          type: 'room',
+          label: name,
+          badge: '📍 Aula'
+        });
+      }
+    });
+
+    const matches = items.slice(0, 15);
+    if (!matches.length) {
+      if (q) {
+        timetableAutocompleteList.innerHTML = '<div class="autocomplete-empty">Nessuna materia, docente o aula trovata</div>';
+        timetableAutocompleteList.style.display = 'block';
+      } else {
+        timetableAutocompleteList.style.display = 'none';
+      }
+      return;
+    }
+
+    timetableAutocompleteList.innerHTML = matches.map(item => `
+      <div class="autocomplete-item" data-text="${escapeHtml(item.label)}">
+        <div class="autocomplete-item-text">
+          <strong>${escapeHtml(item.label)}</strong>
+        </div>
+        <span class="autocomplete-badge ${item.type}">${escapeHtml(item.badge)}</span>
+      </div>
+    `).join('');
+    timetableAutocompleteList.style.display = 'block';
+
+    timetableAutocompleteList.querySelectorAll('.autocomplete-item').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const text = el.getAttribute('data-text');
+        searchInput.value = text;
+        state.searchQuery = text.toLowerCase().trim();
+        if (btnClearTimetableSearch) btnClearTimetableSearch.style.display = 'flex';
+        timetableAutocompleteList.style.display = 'none';
+        renderEvents();
+      });
+    });
+  };
+
   if (searchInput) {
-    searchInput.addEventListener('input', debounce((e) => {
+    searchInput.addEventListener('input', (e) => {
       state.searchQuery = e.target.value.toLowerCase().trim();
+      if (btnClearTimetableSearch) {
+        btnClearTimetableSearch.style.display = e.target.value ? 'flex' : 'none';
+      }
+      updateTimetableAutocomplete();
       renderEvents();
-    }, 200));
+    });
+
+    searchInput.addEventListener('focus', () => {
+      updateTimetableAutocomplete();
+    });
+  }
+
+  if (btnClearTimetableSearch) {
+    btnClearTimetableSearch.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (searchInput) {
+        searchInput.value = '';
+        searchInput.focus();
+      }
+      state.searchQuery = '';
+      btnClearTimetableSearch.style.display = 'none';
+      if (timetableAutocompleteList) timetableAutocompleteList.style.display = 'none';
+      renderEvents();
+    });
   }
 
   // Mini-Calendar Jump Date Picker
@@ -1210,6 +1334,14 @@ function setupEventListeners() {
     }
     if (examsAutocompleteList && !e.target.closest('#examsSearchInput') && !e.target.closest('#examsAutocompleteList')) {
       examsAutocompleteList.style.display = 'none';
+    }
+    const timetableAutocomplete = document.getElementById('timetableAutocompleteList');
+    if (timetableAutocomplete && !e.target.closest('#searchInput') && !e.target.closest('#timetableAutocompleteList')) {
+      timetableAutocomplete.style.display = 'none';
+    }
+    const teachersAutocomplete = document.getElementById('teachersAutocompleteList');
+    if (teachersAutocomplete && !e.target.closest('#teachersSearchInput') && !e.target.closest('#teachersAutocompleteList')) {
+      teachersAutocomplete.style.display = 'none';
     }
   });
 
@@ -3985,28 +4117,102 @@ function normalizeSearchText(str) {
   return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 }
 
-function renderTeacherAutocomplete(query) {
+function renderTeacherAutocomplete(query = '') {
   const container = document.getElementById('teachersAutocompleteList');
   if (!container) return;
 
   const q = normalizeSearchText(query);
-  if (!q || q.length < 2) {
-    container.style.display = 'none';
-    container.innerHTML = '';
+
+  if (!teachersState.allTeachers || !teachersState.allTeachers.length) {
+    if (teachersState.selectedYear) {
+      container.innerHTML = '<div class="autocomplete-empty">Caricamento elenco docenti in corso...</div>';
+      container.style.display = 'block';
+      loadTeachersList();
+    } else {
+      container.style.display = 'none';
+    }
     return;
   }
 
-  const matches = teachersState.allTeachers.filter(t => {
-    const nameNorm = normalizeSearchText(t.name);
-    if (nameNorm.includes(q)) return true;
-    return (t.courses || []).some(c => 
-      normalizeSearchText(c.name).includes(q) || normalizeSearchText(c.code).includes(q)
-    );
-  }).slice(0, 20);
+  // Find docenti associated with student's schedule or favorites
+  const studentDocenti = new Set();
+  (state.calendarData && state.calendarData.events ? state.calendarData.events : []).forEach(e => {
+    if (e.docente && e.docente !== 'Non specificato') {
+      studentDocenti.add(normalizeSearchText(e.docente));
+    }
+  });
+  if (state.config && Array.isArray(state.config.favorites)) {
+    state.config.favorites.forEach(f => {
+      if (f.docente) {
+        studentDocenti.add(normalizeSearchText(f.docente));
+      }
+    });
+  }
+
+  const favCodes = new Set((teachersState.favoriteTeachers || []).map(f => f.code));
+
+  let matches = [];
+
+  if (!q) {
+    // When input is focused but empty: provide smart recommendations!
+    const seen = new Set();
+
+    // 1. Favorite teachers first
+    (teachersState.favoriteTeachers || []).forEach(fav => {
+      const full = teachersState.allTeachers.find(t => t.code === fav.code) || { code: fav.code, name: fav.name, courses: [] };
+      if (!seen.has(full.code)) {
+        seen.add(full.code);
+        matches.push({ teacher: full, type: 'fav', badge: '⭐ Preferito' });
+      }
+    });
+
+    // 2. Teachers from the student's courses
+    teachersState.allTeachers.forEach(t => {
+      const norm = normalizeSearchText(t.name);
+      if (Array.from(studentDocenti).some(sd => sd && (norm.includes(sd) || sd.includes(norm)))) {
+        if (!seen.has(t.code)) {
+          seen.add(t.code);
+          matches.push({ teacher: t, type: 'course', badge: '🎓 Tuo Docente' });
+        }
+      }
+    });
+
+    // 3. Fallback / alphabetical popular teachers to fill up to 15 items
+    for (const t of teachersState.allTeachers) {
+      if (matches.length >= 15) break;
+      if (!seen.has(t.code)) {
+        seen.add(t.code);
+        matches.push({ teacher: t, type: 'prof', badge: '👨‍🏫 Docente' });
+      }
+    }
+  } else {
+    // When query is typed: filter allTeachers
+    teachersState.allTeachers.forEach(t => {
+      const nameNorm = normalizeSearchText(t.name);
+      const matchName = nameNorm.includes(q);
+      const matchCourse = (t.courses || []).some(c =>
+        normalizeSearchText(c.name).includes(q) || normalizeSearchText(c.code).includes(q)
+      );
+
+      if (matchName || matchCourse) {
+        let badgeType = 'prof';
+        let badgeText = '👨‍🏫 Docente';
+        if (favCodes.has(t.code)) {
+          badgeType = 'fav';
+          badgeText = '⭐ Preferito';
+        } else if (Array.from(studentDocenti).some(sd => sd && (nameNorm.includes(sd) || sd.includes(nameNorm)))) {
+          badgeType = 'course';
+          badgeText = '🎓 Tuo Docente';
+        }
+        matches.push({ teacher: t, type: badgeType, badge: badgeText });
+      }
+    });
+    matches = matches.slice(0, 20);
+  }
 
   if (!matches.length) {
     container.innerHTML = `
-      <div style="padding: 12px 14px; color: var(--text-muted); font-size: 0.82rem; text-align: center;">
+      <div class="autocomplete-empty">
         Nessun docente trovato per "<strong>${escapeHtml(query)}</strong>"
       </div>
     `;
@@ -4014,28 +4220,27 @@ function renderTeacherAutocomplete(query) {
     return;
   }
 
-  container.innerHTML = '';
-  matches.forEach((t, idx) => {
-    const item = document.createElement('div');
-    item.className = 'teachers-autocomplete-item';
-    if (idx === 0) item.classList.add('active');
-
-    const isFav = teachersState.favoriteTeachers.some(f => f.code === t.code);
+  container.innerHTML = matches.map((m, idx) => {
+    const t = m.teacher;
     const coursesSummary = (t.courses || []).map(c => c.name).slice(0, 2).join(' · ');
-
-    item.innerHTML = `
-      <div class="teacher-item-name">
-        <span>👨‍🏫 ${escapeHtml(t.name)}</span>
-        ${isFav ? '<span title="Docente preferito">⭐</span>' : ''}
+    return `
+      <div class="autocomplete-item ${idx === 0 ? 'active' : ''}" data-code="${escapeHtml(t.code)}">
+        <div class="autocomplete-item-text" style="display:flex; flex-direction:column; gap:2px; min-width:0;">
+          <strong>👨‍🏫 ${escapeHtml(t.name)}</strong>
+          ${coursesSummary ? `<span style="font-size:0.74rem; color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(coursesSummary)}</span>` : ''}
+        </div>
+        <span class="autocomplete-badge ${m.type}">${escapeHtml(m.badge)}</span>
       </div>
-      ${coursesSummary ? `<div class="teacher-item-courses">${escapeHtml(coursesSummary)}</div>` : ''}
     `;
+  }).join('');
 
-    item.addEventListener('click', () => {
-      selectTeacher(t);
+  container.querySelectorAll('.autocomplete-item').forEach(itemEl => {
+    itemEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const code = itemEl.getAttribute('data-code');
+      const found = teachersState.allTeachers.find(t => t.code === code);
+      if (found) selectTeacher(found);
     });
-
-    container.appendChild(item);
   });
 
   container.style.display = 'block';
@@ -4050,7 +4255,7 @@ function selectTeacher(teacher, autoFetch = true) {
   if (input) input.value = teacher.name;
 
   const btnClear = document.getElementById('btnClearTeacherSearch');
-  if (btnClear) btnClear.style.display = 'block';
+  if (btnClear) btnClear.style.display = 'flex';
 
   const dropdown = document.getElementById('teachersAutocompleteList');
   if (dropdown) dropdown.style.display = 'none';
@@ -4647,7 +4852,7 @@ function setupTeachersEventListeners() {
   if (searchInput) {
     searchInput.addEventListener('input', () => {
       const val = searchInput.value;
-      if (btnClear) btnClear.style.display = val ? 'block' : 'none';
+      if (btnClear) btnClear.style.display = val ? 'flex' : 'none';
 
       clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
@@ -4656,14 +4861,12 @@ function setupTeachersEventListeners() {
     });
 
     searchInput.addEventListener('focus', () => {
-      if (searchInput.value.trim().length >= 2) {
-        renderTeacherAutocomplete(searchInput.value);
-      }
+      renderTeacherAutocomplete(searchInput.value);
     });
 
     searchInput.addEventListener('keydown', (e) => {
       if (!autocompleteList || autocompleteList.style.display === 'none') return;
-      const items = autocompleteList.querySelectorAll('.teachers-autocomplete-item');
+      const items = autocompleteList.querySelectorAll('.autocomplete-item');
       if (!items.length) return;
 
       let activeIndex = Array.from(items).findIndex(el => el.classList.contains('active'));

@@ -3018,6 +3018,24 @@ body {
   border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
+.autocomplete-badge.course {
+  background: rgba(245, 158, 11, 0.15);
+  color: #FBBF24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.autocomplete-badge.room {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60A5FA;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.autocomplete-badge.fav {
+  background: rgba(234, 179, 8, 0.2);
+  color: #FACC15;
+  border: 1px solid rgba(234, 179, 8, 0.4);
+}
+
 .autocomplete-item-text {
   flex: 1;
   min-width: 0;

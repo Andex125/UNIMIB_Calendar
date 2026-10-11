@@ -75,26 +75,28 @@
   <!-- 1. Timetable View -->
   <section id="viewTimetable" class="app-view">
     <!-- Filter & Mode Selection -->
-    <div class="filter-container">
-      <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
+    <div class="control-card">
+      <div style="display: flex; gap: 8px; align-items: center;">
         <div class="toggle-group" style="flex: 1; margin-bottom: 0;">
           <button id="btnFilterTarget" class="toggle-btn active" @click="$store.app.setTimetableFilter('target')">⭐ I Miei Corsi</button>
           <button id="btnFilterAll" class="toggle-btn" @click="$store.app.setTimetableFilter('all')">📚 Tutti i Corsi</button>
         </div>
-        <button id="btnQuickAddExternal" class="btn-secondary" type="button" style="width: auto; padding: 10px 12px; font-size: 0.8rem; font-weight: 600; white-space: nowrap; display: flex; align-items: center; gap: 5px; border-radius: 12px;" title="Aggiungi materia da un altro corso di studio">
+        <button id="btnQuickAddExternal" class="btn-secondary" type="button" style="width: auto; padding: 10px 14px; font-size: 0.8rem; font-weight: 600; white-space: nowrap; display: flex; align-items: center; gap: 6px; border-radius: 10px;" title="Aggiungi materia da un altro corso di studio">
           <span>🌐</span> + Corso Esterno
         </button>
       </div>
 
       <!-- Active External Courses Chips Bar -->
-      <div id="externalCoursesChipsBar" class="exam-courses-bar" style="display: none; margin-bottom: 8px;">
+      <div id="externalCoursesChipsBar" class="exam-courses-bar" style="display: none; margin-bottom: 0;">
         <!-- Chips rendered dynamically -->
       </div>
 
-      <!-- Live Search Bar -->
-      <div style="position: relative;">
+      <!-- Live Search Bar with Autocomplete -->
+      <div class="search-input-wrapper">
         <input type="text" id="searchInput" placeholder="🔍 Cerca per corso, docente o aula..." 
-               style="width: 100%; padding: 10px 14px; border-radius: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: #FFF; font-size: 0.85rem; outline: none;">
+               style="width: 100%; padding: 10px 36px 10px 14px; border-radius: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: #FFF; font-size: 0.85rem; outline: none;" autocomplete="off">
+        <button id="btnClearTimetableSearch" class="search-clear-btn" style="display:none;" title="Cancella ricerca">✕</button>
+        <div id="timetableAutocompleteList" class="search-autocomplete-dropdown" style="display:none;"></div>
       </div>
     </div>
 
@@ -182,12 +184,12 @@
       </div>
 
       <!-- Autocomplete Search Container -->
-      <div style="position: relative; margin-bottom: 10px;">
+      <div class="search-input-wrapper" style="margin-bottom: 10px;">
         <input type="text" id="teachersSearchInput" placeholder="🔍 Cerca docente (es. Abbotto, Arcelli, Antoniotti)..." 
                style="width: 100%; padding: 10px 36px 10px 14px; border-radius: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: #FFF; font-size: 0.88rem; outline: none;"
                autocomplete="off">
-        <button id="btnClearTeacherSearch" class="btn-icon" style="position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 28px; height: 28px; font-size: 0.8rem; display: none;" title="Cancella ricerca">✕</button>
-        <div id="teachersAutocompleteList" class="teachers-autocomplete-dropdown" style="display: none;">
+        <button id="btnClearTeacherSearch" class="search-clear-btn" style="display: none;" title="Cancella ricerca">✕</button>
+        <div id="teachersAutocompleteList" class="search-autocomplete-dropdown" style="display: none;">
           <!-- Autocomplete results populated dynamically -->
         </div>
       </div>
