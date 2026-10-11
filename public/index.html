@@ -238,9 +238,11 @@
       </div>
 
       <!-- Filter events search within selected schedule -->
-      <div style="position: relative;">
+      <div class="search-input-wrapper">
         <input type="text" id="teachersEventFilterInput" placeholder="🔍 Filtra lezioni per materia o aula..." 
-               style="width: 100%; padding: 8px 12px; border-radius: 8px; background: rgba(0,0,0,0.25); border: 1px solid var(--border-color); color: #FFF; font-size: 0.82rem; outline: none;">
+               style="width: 100%; padding: 10px 36px 10px 14px; border-radius: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: #FFF; font-size: 0.85rem; outline: none;" autocomplete="off">
+        <button id="btnClearTeacherEventFilter" class="search-clear-btn" style="display:none;" title="Cancella filtro">✕</button>
+        <div id="teachersEventFilterAutocompleteList" class="search-autocomplete-dropdown" style="display:none;"></div>
       </div>
     </div>
 

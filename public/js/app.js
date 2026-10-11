@@ -1343,6 +1343,10 @@ function setupEventListeners() {
     if (teachersAutocomplete && !e.target.closest('#teachersSearchInput') && !e.target.closest('#teachersAutocompleteList')) {
       teachersAutocomplete.style.display = 'none';
     }
+    const teacherFilterAutocomplete = document.getElementById('teachersEventFilterAutocompleteList');
+    if (teacherFilterAutocomplete && !e.target.closest('#teachersEventFilterInput') && !e.target.closest('#teachersEventFilterAutocompleteList')) {
+      teacherFilterAutocomplete.style.display = 'none';
+    }
   });
 
   document.getElementById('examYearFilter').addEventListener('change', (e) => {
@@ -4250,6 +4254,14 @@ function selectTeacher(teacher, autoFetch = true) {
   if (!teacher) return;
   teachersState.selectedTeacher = teacher;
   teachersState.selectedCourseFilter = '';
+  teachersState.searchFilter = '';
+
+  const eventFilterInput = document.getElementById('teachersEventFilterInput');
+  if (eventFilterInput) eventFilterInput.value = '';
+  const btnClearFilter = document.getElementById('btnClearTeacherEventFilter');
+  if (btnClearFilter) btnClearFilter.style.display = 'none';
+  const filterDropdown = document.getElementById('teachersEventFilterAutocompleteList');
+  if (filterDropdown) filterDropdown.style.display = 'none';
 
   const input = document.getElementById('teachersSearchInput');
   if (input) input.value = teacher.name;
@@ -4960,9 +4972,107 @@ function setupTeachersEventListeners() {
   }
 
   const eventFilterInput = document.getElementById('teachersEventFilterInput');
+  const btnClearTeacherEventFilter = document.getElementById('btnClearTeacherEventFilter');
+  const teachersEventFilterAutocompleteList = document.getElementById('teachersEventFilterAutocompleteList');
+
+  const updateTeacherEventFilterAutocomplete = () => {
+    if (!teachersEventFilterAutocompleteList || !eventFilterInput) return;
+    const q = (eventFilterInput.value || '').trim().toLowerCase();
+    const events = (teachersState.eventsData && teachersState.eventsData.events) || [];
+
+    const coursesMap = new Map();
+    const auleMap = new Map();
+
+    events.forEach(e => {
+      if (e.course) {
+        const clean = e.course.trim();
+        if (!coursesMap.has(clean.toLowerCase())) coursesMap.set(clean.toLowerCase(), clean);
+      }
+      if (e.aula && e.aula !== 'Non specificata') {
+        const clean = e.aula.trim();
+        if (!auleMap.has(clean.toLowerCase())) auleMap.set(clean.toLowerCase(), clean);
+      }
+    });
+
+    const items = [];
+    coursesMap.forEach((name, lower) => {
+      if (!q || lower.includes(q)) {
+        items.push({
+          type: 'course',
+          label: name,
+          badge: '📚 Materia'
+        });
+      }
+    });
+    auleMap.forEach((name, lower) => {
+      if (!q || lower.includes(q)) {
+        items.push({
+          type: 'room',
+          label: name,
+          badge: '📍 Aula'
+        });
+      }
+    });
+
+    const matches = items.slice(0, 15);
+    if (!matches.length) {
+      if (q) {
+        teachersEventFilterAutocompleteList.innerHTML = '<div class="autocomplete-empty">Nessuna materia o aula trovata</div>';
+        teachersEventFilterAutocompleteList.style.display = 'block';
+      } else {
+        teachersEventFilterAutocompleteList.style.display = 'none';
+      }
+      return;
+    }
+
+    teachersEventFilterAutocompleteList.innerHTML = matches.map(item => `
+      <div class="autocomplete-item" data-text="${escapeHtml(item.label)}">
+        <div class="autocomplete-item-text">
+          <strong>${escapeHtml(item.label)}</strong>
+        </div>
+        <span class="autocomplete-badge ${item.type}">${escapeHtml(item.badge)}</span>
+      </div>
+    `).join('');
+    teachersEventFilterAutocompleteList.style.display = 'block';
+
+    teachersEventFilterAutocompleteList.querySelectorAll('.autocomplete-item').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const text = el.getAttribute('data-text');
+        eventFilterInput.value = text;
+        teachersState.searchFilter = text.toLowerCase().trim();
+        if (btnClearTeacherEventFilter) btnClearTeacherEventFilter.style.display = 'flex';
+        teachersEventFilterAutocompleteList.style.display = 'none';
+        renderTeacherEvents();
+      });
+    });
+  };
+
   if (eventFilterInput) {
     eventFilterInput.addEventListener('input', () => {
       teachersState.searchFilter = eventFilterInput.value.trim().toLowerCase();
+      if (btnClearTeacherEventFilter) {
+        btnClearTeacherEventFilter.style.display = eventFilterInput.value ? 'flex' : 'none';
+      }
+      updateTeacherEventFilterAutocomplete();
+      renderTeacherEvents();
+    });
+
+    eventFilterInput.addEventListener('focus', () => {
+      updateTeacherEventFilterAutocomplete();
+    });
+  }
+
+  if (btnClearTeacherEventFilter) {
+    btnClearTeacherEventFilter.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (eventFilterInput) {
+        eventFilterInput.value = '';
+        eventFilterInput.focus();
+      }
+      teachersState.searchFilter = '';
+      btnClearTeacherEventFilter.style.display = 'none';
+      if (teachersEventFilterAutocompleteList) teachersEventFilterAutocompleteList.style.display = 'none';
       renderTeacherEvents();
     });
   }
