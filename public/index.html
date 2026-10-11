@@ -24,6 +24,25 @@
   <!-- CSS Styles -->
   <link rel="stylesheet" href="/css/style.css">
 
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      corePlugins: {
+        preflight: false,
+      },
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            unimib: '#A71E3B',
+            'unimib-dark': '#83142C',
+          }
+        }
+      }
+    };
+  </script>
+
   <!-- Alpine.js Lightweight Reactive Layer -->
   <script defer src="/js/alpine.min.js"></script>
 </head>
@@ -40,8 +59,8 @@
         </div>
       </div>
       <div class="header-actions">
-        <button id="btnChangesNotice" class="btn-icon changes-btn" title="Variazioni orario" style="display:none; position:relative;">🔔<span id="changesBadgeCount" class="changes-badge-dot"></span></button>
-        <button id="btnThemeToggle" class="btn-icon" title="Tema chiaro o scuro" aria-label="Cambia tema chiaro o scuro">🌓</button>
+        <button id="btnChangesNotice" class="btn-icon changes-btn" title="Variazioni orario" style="display:none; position:relative;"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span id="changesBadgeCount" class="changes-badge-dot"></span></button>
+        <button id="btnThemeToggle" class="btn-icon" title="Tema chiaro o scuro" aria-label="Cambia tema chiaro o scuro"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg></button>
         <button id="btnExportCalendar" class="btn-icon" title="Esporta calendario (.ics / .csv)"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
         <button id="btnProfile" class="btn-icon" title="Il tuo profilo"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></button>
         <button id="btnSettings" class="btn-icon" title="Scegli corso di studio"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
@@ -61,13 +80,13 @@
   <!-- Shared Timetable Preview Banner -->
   <div id="previewBanner" class="preview-banner">
     <div class="preview-info">
-      <strong>👁 Orario condiviso</strong>
+      <strong><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-2px; margin-right:4px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Orario condiviso</strong>
       <span id="previewLabel"></span>
       <span id="previewHint" class="preview-hint"></span>
     </div>
     <div class="preview-actions">
       <button id="btnImportShared" class="btn-primary">Importa</button>
-      <button id="btnExitPreview" class="btn-secondary">✕ Esci</button>
+      <button id="btnExitPreview" class="btn-secondary" style="display:inline-flex; align-items:center; gap:4px;"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Esci</button>
     </div>
   </div>
 
@@ -78,11 +97,11 @@
     <div class="control-card">
       <div style="display: flex; gap: 8px; align-items: center;">
         <div class="toggle-group" style="flex: 1; margin-bottom: 0;">
-          <button id="btnFilterTarget" class="toggle-btn active" @click="$store.app.setTimetableFilter('target')">⭐ I Miei Corsi</button>
-          <button id="btnFilterAll" class="toggle-btn" @click="$store.app.setTimetableFilter('all')">📚 Tutti i Corsi</button>
+          <button id="btnFilterTarget" class="toggle-btn active" @click="$store.app.setTimetableFilter('target')"><svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" stroke="none" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>I Miei Corsi</button>
+          <button id="btnFilterAll" class="toggle-btn" @click="$store.app.setTimetableFilter('all')"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>Tutti i Corsi</button>
         </div>
         <button id="btnQuickAddExternal" class="btn-secondary" type="button" style="width: auto; padding: 10px 14px; font-size: 0.8rem; font-weight: 600; white-space: nowrap; display: flex; align-items: center; gap: 6px; border-radius: 10px;" title="Aggiungi materia da un altro corso di studio">
-          <span>🌐</span> + Corso Esterno
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>+ Corso Esterno
         </button>
       </div>
 
@@ -93,9 +112,9 @@
 
       <!-- Live Search Bar with Autocomplete -->
       <div class="search-input-wrapper">
-        <input type="text" id="searchInput" placeholder="🔍 Cerca per corso, docente o aula..." 
+        <input type="text" id="searchInput" placeholder="Cerca per corso, docente o aula..." 
                style="width: 100%; padding: 10px 36px 10px 14px; border-radius: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: var(--text-primary); font-size: 0.85rem; outline: none;" autocomplete="off">
-        <button id="btnClearTimetableSearch" class="search-clear-btn" style="display:none;" title="Cancella ricerca">✕</button>
+        <button id="btnClearTimetableSearch" class="search-clear-btn" style="display:none;" title="Cancella ricerca"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         <div id="timetableAutocompleteList" class="search-autocomplete-dropdown" style="display:none;"></div>
       </div>
     </div>
@@ -103,7 +122,7 @@
     <!-- Timetable Changes Banner -->
     <div id="timetableChangesBanner" class="timetable-changes-banner" style="display: none;">
       <div class="changes-banner-content">
-        <span class="changes-banner-icon">⚠️</span>
+        <span class="changes-banner-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
         <div class="changes-banner-text">
           <strong id="changesBannerTitle">Variazioni nel calendario</strong>
           <span id="changesBannerSubtitle">Rilevate modifiche per questa settimana</span>
@@ -111,7 +130,7 @@
       </div>
       <div class="changes-banner-actions">
         <button id="btnBannerViewChanges" class="btn-changes-view" type="button">Vedi dettagli</button>
-        <button id="btnBannerDismissChanges" class="btn-changes-dismiss" type="button" title="Nascondi avviso">✕</button>
+        <button id="btnBannerDismissChanges" class="btn-changes-dismiss" type="button" title="Nascondi avviso" style="display:inline-flex; align-items:center; justify-content:center;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
     </div>
 
@@ -128,13 +147,13 @@
 
     <!-- Week Navigation Bar -->
     <div class="week-navigator">
-      <button id="btnPrevWeek" class="week-nav-btn" aria-label="Settimana precedente">◀ Prev</button>
+      <button id="btnPrevWeek" class="week-nav-btn" aria-label="Settimana precedente" style="display:inline-flex; align-items:center; justify-content:center; gap:3px;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><polyline points="15 18 9 12 15 6"/></svg>Prev</button>
       <div class="week-label" style="position: relative;">
         <div id="weekLabelText" class="date-range" title="Clicca per scegliere una data specifica nel calendario" style="cursor: pointer;">Caricamento...</div>
         <input type="date" id="weekDatePicker" aria-label="Seleziona data da calendario" style="position: absolute; opacity: 0; pointer-events: none; width: 0; height: 0;">
         <span id="btnToday" class="badge-status" style="cursor: pointer;" aria-label="Vai alla data odierna">Oggi</span>
       </div>
-      <button id="btnNextWeek" class="week-nav-btn" aria-label="Settimana successiva">Next ▶</button>
+      <button id="btnNextWeek" class="week-nav-btn" aria-label="Settimana successiva" style="display:inline-flex; align-items:center; justify-content:center; gap:3px;">Next<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><polyline points="9 18 15 12 9 6"/></svg></button>
     </div>
 
     <!-- Day Tabs (Horizontal Scroll on Mobile) -->
@@ -174,7 +193,7 @@
     <!-- Controls: Academic Year, Search Docente, Favorites, Course Filter -->
     <div class="control-card">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-        <label for="teachersSearchInput" style="font-size:0.75rem; font-weight:700; color:var(--text-secondary); text-transform:uppercase; margin:0;">🧑‍🏫 Cerca Docente</label>
+        <label for="teachersSearchInput" style="font-size:0.75rem; font-weight:700; color:var(--text-secondary); text-transform:uppercase; margin:0;"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Cerca Docente</label>
         <div style="display: flex; align-items: center; gap: 6px;">
           <label for="teachersYearSelect" style="font-size:0.75rem; color:var(--text-muted); margin:0;">A.A.:</label>
           <select id="teachersYearSelect" style="padding: 4px 8px; font-size: 0.78rem; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: var(--text-primary); outline: none;">
@@ -185,10 +204,10 @@
 
       <!-- Autocomplete Search Container -->
       <div class="search-input-wrapper" style="margin-bottom: 10px;">
-        <input type="text" id="teachersSearchInput" placeholder="🔍 Cerca docente (es. Abbotto, Arcelli, Antoniotti)..." 
+        <input type="text" id="teachersSearchInput" placeholder="Cerca docente (es. Abbotto, Arcelli, Antoniotti)..." 
                style="width: 100%; padding: 10px 36px 10px 14px; border-radius: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: var(--text-primary); font-size: 0.88rem; outline: none;"
                autocomplete="off">
-        <button id="btnClearTeacherSearch" class="search-clear-btn" style="display: none;" title="Cancella ricerca">✕</button>
+        <button id="btnClearTeacherSearch" class="search-clear-btn" style="display: none;" title="Cancella ricerca"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         <div id="teachersAutocompleteList" class="search-autocomplete-dropdown" style="display: none;">
           <!-- Autocomplete results populated dynamically -->
         </div>
@@ -197,7 +216,7 @@
       <!-- Bookmarked / Favorite Teachers Quick Bar -->
       <div id="teachersFavoritesSection" style="margin-bottom: 10px; display: none;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-          <span style="font-size: 0.72rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">⭐ I tuoi docenti salvati</span>
+          <span style="font-size: 0.72rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;"><svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" stroke="none" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>I tuoi docenti salvati</span>
         </div>
         <div id="teachersFavoritesList" class="exam-courses-bar" style="margin-bottom: 0;">
           <!-- Favorite chips populated dynamically -->
@@ -217,8 +236,8 @@
             </div>
           </div>
           <div style="display: flex; gap: 6px; flex-shrink: 0;">
-            <button id="btnToggleTeacherFavorite" class="btn-icon" style="width: 34px; height: 34px;" title="Aggiungi ai preferiti">⭐</button>
-            <button id="btnShareTeacherLink" class="btn-icon" style="width: 34px; height: 34px;" title="Condividi orario docente">🔗</button>
+            <button id="btnToggleTeacherFavorite" class="btn-icon" style="width: 34px; height: 34px;" title="Aggiungi ai preferiti"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
+            <button id="btnShareTeacherLink" class="btn-icon" style="width: 34px; height: 34px;" title="Condividi orario docente"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
           </div>
         </div>
 
@@ -226,34 +245,34 @@
         <div id="teacherCourseFilterContainer" style="margin-top: 10px; display: none;">
           <label for="teacherCourseSelect" style="font-size: 0.74rem; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 4px;">Filtra per corso di laurea:</label>
           <select id="teacherCourseSelect" style="width: 100%; padding: 8px 10px; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: var(--text-primary); font-size: 0.82rem; outline: none;">
-            <option value="">📚 Tutti i corsi del docente</option>
+            <option value="">Tutti i corsi del docente</option>
           </select>
         </div>
       </div>
 
       <!-- View Mode: Week vs All Semester -->
       <div class="toggle-group" style="margin-bottom: 10px;">
-        <button id="btnTeacherViewWeek" class="toggle-btn active">📅 Settimana</button>
-        <button id="btnTeacherViewAll" class="toggle-btn">📚 Tutti gli Eventi</button>
+        <button id="btnTeacherViewWeek" class="toggle-btn active"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Settimana</button>
+        <button id="btnTeacherViewAll" class="toggle-btn"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>Tutti gli Eventi</button>
       </div>
 
       <!-- Filter events search within selected schedule -->
       <div class="search-input-wrapper">
-        <input type="text" id="teachersEventFilterInput" placeholder="🔍 Filtra lezioni per materia o aula..." 
+        <input type="text" id="teachersEventFilterInput" placeholder="Filtra lezioni per materia o aula..." 
                style="width: 100%; padding: 10px 36px 10px 14px; border-radius: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: var(--text-primary); font-size: 0.85rem; outline: none;" autocomplete="off">
-        <button id="btnClearTeacherEventFilter" class="search-clear-btn" style="display:none;" title="Cancella filtro">✕</button>
+        <button id="btnClearTeacherEventFilter" class="search-clear-btn" style="display:none;" title="Cancella filtro"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         <div id="teachersEventFilterAutocompleteList" class="search-autocomplete-dropdown" style="display:none;"></div>
       </div>
     </div>
 
     <!-- Week Navigator Bar (only in week mode) -->
     <div id="teachersWeekNavigator" class="week-navigator">
-      <button id="btnTeachersPrevWeek" class="week-nav-btn">◀ Prev</button>
+      <button id="btnTeachersPrevWeek" class="week-nav-btn" style="display:inline-flex; align-items:center; justify-content:center; gap:3px;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><polyline points="15 18 9 12 15 6"/></svg>Prev</button>
       <div class="week-label">
         <div id="teachersWeekLabelText" class="date-range">Caricamento...</div>
         <span id="btnTeachersToday" class="badge-status" style="cursor: pointer;">Oggi / Questa Settimana</span>
       </div>
-      <button id="btnTeachersNextWeek" class="week-nav-btn">Next ▶</button>
+      <button id="btnTeachersNextWeek" class="week-nav-btn" style="display:inline-flex; align-items:center; justify-content:center; gap:3px;">Next<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><polyline points="9 18 15 12 9 6"/></svg></button>
     </div>
 
     <!-- Day Tabs Bar -->
@@ -270,7 +289,7 @@
 
       <!-- Empty state when no teacher is chosen or no events -->
       <div id="teachersEmptyState" class="empty-state" style="padding: 40px 20px;">
-        <div class="empty-icon" style="font-size: 2.8rem; margin-bottom: 12px;">🧑‍🏫</div>
+        <div class="empty-icon" style="display:flex; justify-content:center; margin-bottom: 12px;"><svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="var(--text-muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></div>
         <h3 id="teachersEmptyTitle" style="font-size: 1.15rem; color: var(--text-primary); margin-bottom: 8px;">Cerca un docente</h3>
         <p id="teachersEmptyDesc" style="font-size: 0.85rem; color: var(--text-secondary); max-width: 320px; margin: 0 auto 16px;">
           Digita il cognome o nome di un professore per visualizzare l'orario settimanale delle sue lezioni e l'aula.
@@ -293,9 +312,9 @@
       <div class="rooms-select-row">
         <div class="rooms-select-group">
           <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
-            <label for="roomsBuildingSelect" style="margin-bottom:0;">🏛️ Edificio / Sede</label>
+            <label for="roomsBuildingSelect" style="margin-bottom:0;"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><line x1="9" y1="22" x2="9" y2="22.01"/><line x1="15" y1="22" x2="15" y2="22.01"/><line x1="8" y1="6" x2="10" y2="6"/><line x1="14" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="10" y2="10"/><line x1="14" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="10" y2="14"/><line x1="14" y1="14" x2="16" y2="14"/></svg>Edificio / Sede</label>
             <a id="btnRoomsBuildingMap" href="#" target="_blank" rel="noopener noreferrer" style="font-size:0.75rem; font-weight:600; color:var(--accent-cyan); text-decoration:none; display:inline-flex; align-items:center; gap:3px;" title="Apri su Google Maps">
-              📍 Mappa edificio ↗
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-1px; margin-right:3px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Mappa edificio ↗
             </a>
           </div>
           <select id="roomsBuildingSelect">
@@ -305,14 +324,14 @@
 
         <div class="rooms-select-group">
           <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
-            <label for="roomsDateInput" style="margin-bottom:0;">📅 Data</label>
+            <label for="roomsDateInput" style="margin-bottom:0;"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Data</label>
             <span id="roomsDateDisplay" style="font-size: 0.78rem; font-weight: 600; color: var(--accent-cyan);"></span>
           </div>
           <div class="rooms-date-nav">
             <button id="btnRoomsPrevDay" class="btn-icon" style="width:36px;height:36px;" title="Giorno precedente">◀</button>
             <div id="roomsDateWrapper" class="date-picker-custom-wrapper" title="Clicca per aprire il calendario">
               <span id="roomsDateFormattedText" class="custom-date-text">gg/mm/aaaa</span>
-              <span class="custom-date-icon">📅</span>
+              <span class="custom-date-icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
               <input type="date" id="roomsDateInput" class="hidden-date-input" aria-label="Seleziona data">
             </div>
             <button id="btnRoomsNextDay" class="btn-icon" style="width:36px;height:36px;" title="Giorno successivo">▶</button>
@@ -323,23 +342,23 @@
 
       <!-- Time Filter Selector -->
       <div style="margin-top: 10px; margin-bottom: 10px;">
-        <label style="font-size:0.75rem; font-weight:700; color:var(--text-secondary); text-transform:uppercase; margin-bottom:6px; display:block;">🕒 Orario di verifica</label>
+        <label style="font-size:0.75rem; font-weight:700; color:var(--text-secondary); text-transform:uppercase; margin-bottom:6px; display:block;"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Orario di verifica</label>
         <div id="roomsTimeBar" class="rooms-filter-pills" style="margin: 0;">
-          <button class="filter-pill active" data-time="now">⚡ In tempo reale</button>
+          <button class="filter-pill active" data-time="now"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-1px; margin-right:3px;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>In tempo reale</button>
           <button class="filter-pill" data-time="09:00">09:00</button>
           <button class="filter-pill" data-time="11:00">11:00</button>
           <button class="filter-pill" data-time="13:00">13:00</button>
           <button class="filter-pill" data-time="14:30">14:30</button>
           <button class="filter-pill" data-time="16:30">16:30</button>
-          <button class="filter-pill" data-time="all">📅 Tutta la giornata</button>
+          <button class="filter-pill" data-time="all"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-1px; margin-right:3px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Tutta la giornata</button>
         </div>
       </div>
 
       <!-- Quick Room Search -->
       <div class="search-input-wrapper">
-        <input type="text" id="roomsSearchInput" placeholder="🔍 Cerca aula (es. 01, Lab, Magna)..." 
+        <input type="text" id="roomsSearchInput" placeholder="Cerca aula (es. 01, Lab, Magna)..." 
                style="width: 100%; padding: 10px 36px 10px 14px; border-radius: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: var(--text-primary); font-size: 0.85rem; outline: none;" autocomplete="off">
-        <button id="btnClearRoomsSearch" class="search-clear-btn" style="display:none;" title="Cancella ricerca">✕</button>
+        <button id="btnClearRoomsSearch" class="search-clear-btn" style="display:none;" title="Cancella ricerca"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         <div id="roomsAutocompleteList" class="search-autocomplete-dropdown" style="display:none;"></div>
       </div>
     </div>
@@ -349,17 +368,17 @@
       <div id="roomsSummaryText" style="color:var(--text-primary); font-weight:600;">Caricamento stato...</div>
       <div class="stats-badges">
         <span id="badgeRoomsTotal" class="badge-stat total">0 aule</span>
-        <span id="badgeRoomsFree" class="badge-stat free">🟢 0 libere</span>
-        <span id="badgeRoomsOccupied" class="badge-stat occupied">🔴 0 occupate</span>
-        <button id="btnRefreshRooms" class="btn-secondary" style="width:auto; padding:4px 10px; font-size:0.75rem;">🔄 Ricarica</button>
+        <span id="badgeRoomsFree" class="badge-stat free">0 libere</span>
+        <span id="badgeRoomsOccupied" class="badge-stat occupied">0 occupate</span>
+        <button id="btnRefreshRooms" class="btn-secondary" style="width:auto; padding:4px 10px; font-size:0.75rem;"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>Ricarica</button>
       </div>
     </div>
 
     <!-- Rooms Filter Pills -->
     <div id="roomsFilterBar" class="rooms-filter-pills" style="display: none;">
       <button class="filter-pill active" data-filter="all">Tutte le aule</button>
-      <button class="filter-pill" data-filter="free">🟢 Solo libere</button>
-      <button class="filter-pill" data-filter="occupied">🔴 Solo occupate</button>
+      <button class="filter-pill" data-filter="free">Solo libere</button>
+      <button class="filter-pill" data-filter="occupied">Solo occupate</button>
     </div>
 
     <!-- Rooms Spinner -->
@@ -378,7 +397,7 @@
   <section id="viewExams" class="app-view hidden">
     <div class="control-card">
       <div style="display: flex; justify-content: space-between; align-items: center;">
-        <label style="font-size:0.75rem; font-weight:700; color:var(--text-secondary); text-transform:uppercase;">🎓 Corsi monitorati</label>
+        <label style="font-size:0.75rem; font-weight:700; color:var(--text-secondary); text-transform:uppercase;"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>Corsi monitorati</label>
         <button id="btnOpenAddExamCourse" class="btn-icon" style="width:28px;height:28px;font-size:0.85rem;" title="Aggiungi corso">+</button>
       </div>
 
@@ -389,30 +408,30 @@
 
       <!-- Exam Filter Mode Toggle (All vs My Courses) -->
       <div class="toggle-group" style="margin-bottom: 0;">
-        <button id="btnExamFilterAll" class="toggle-btn active" @click="$store.app.setExamsFilter('all')">📚 Tutti gli Appelli</button>
-        <button id="btnExamFilterTarget" class="toggle-btn" @click="$store.app.setExamsFilter('target')">⭐ I Miei Corsi</button>
+        <button id="btnExamFilterAll" class="toggle-btn active" @click="$store.app.setExamsFilter('all')"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>Tutti gli Appelli</button>
+        <button id="btnExamFilterTarget" class="toggle-btn" @click="$store.app.setExamsFilter('target')"><svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" stroke="none" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>I Miei Corsi</button>
       </div>
 
       <!-- Session Quick Pills -->
       <div class="exam-session-section">
-        <label class="exam-session-section-label">🗓️ Sessione d'esame</label>
+        <label class="exam-session-section-label"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Sessione d'esame</label>
         <div id="examSessionPills" class="rooms-filter-pills" style="margin: 0;">
           <button class="filter-pill active" data-session="upcoming">Tutti i prossimi</button>
-          <button class="filter-pill" data-session="winter">❄️ Invernale (Gen-Feb)</button>
-          <button class="filter-pill" data-session="summer">☀️ Estiva (Giu-Lug)</button>
-          <button class="filter-pill" data-session="autumn">🍂 Autunnale (Set-Ott)</button>
-          <button class="filter-pill" data-session="custom">📅 Personalizzato</button>
+          <button class="filter-pill" data-session="winter">Invernale (Gen-Feb)</button>
+          <button class="filter-pill" data-session="summer">Estiva (Giu-Lug)</button>
+          <button class="filter-pill" data-session="autumn">Autunnale (Set-Ott)</button>
+          <button class="filter-pill" data-session="custom">Personalizzato</button>
         </div>
         <div id="examCustomDateRange" style="display:none; align-items:center; gap:8px; margin-top:8px;">
           <div id="examDateFromWrapper" class="date-picker-custom-wrapper" style="flex:1;" title="Clicca per selezionare data inizio">
             <span id="examDateFromText" class="custom-date-text" style="font-size:0.8rem;">gg/mm/aaaa</span>
-            <span class="custom-date-icon" style="font-size:0.8rem;">📅</span>
+            <span class="custom-date-icon" style="font-size:0.8rem;"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
             <input type="date" id="examDateFrom" class="hidden-date-input" aria-label="Data inizio">
           </div>
           <span style="color:var(--text-muted); font-size:0.8rem;">al</span>
           <div id="examDateToWrapper" class="date-picker-custom-wrapper" style="flex:1;" title="Clicca per selezionare data fine">
             <span id="examDateToText" class="custom-date-text" style="font-size:0.8rem;">gg/mm/aaaa</span>
-            <span class="custom-date-icon" style="font-size:0.8rem;">📅</span>
+            <span class="custom-date-icon" style="font-size:0.8rem;"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
             <input type="date" id="examDateTo" class="hidden-date-input" aria-label="Data fine">
           </div>
           <button id="btnApplyExamDates" class="btn-primary" style="width:auto; padding:8px 12px; font-size:0.8rem;">Filtra</button>
@@ -422,9 +441,9 @@
       <!-- Search & Year Filter -->
       <div style="display: flex; gap: 8px;">
         <div class="search-input-wrapper" style="flex: 1;">
-          <input type="text" id="examsSearchInput" placeholder="🔍 Cerca esame o docente..." 
+          <input type="text" id="examsSearchInput" placeholder="Cerca esame o docente..." 
                  style="width: 100%; padding: 10px 36px 10px 14px; border-radius: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: var(--text-primary); font-size: 0.85rem; outline: none;" autocomplete="off">
-          <button id="btnClearExamsSearch" class="search-clear-btn" style="display:none;" title="Cancella ricerca">✕</button>
+          <button id="btnClearExamsSearch" class="search-clear-btn" style="display:none;" title="Cancella ricerca"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
           <div id="examsAutocompleteList" class="search-autocomplete-dropdown" style="display:none;"></div>
         </div>
         <select id="examYearFilter" style="width:auto; padding:10px; border-radius:10px; background:rgba(0,0,0,0.3); border:1px solid var(--border-color); color:var(--text-primary); font-size:0.85rem; outline:none;">
@@ -437,8 +456,8 @@
     <div id="examsSummaryBanner" class="rooms-summary-banner" style="display: none;">
       <div id="examsCountText" style="color:var(--text-primary); font-weight:600;">0 appelli trovati</div>
       <div style="display:flex; gap:6px;">
-        <button id="btnExportAllExams" class="btn-secondary" style="width:auto; padding:4px 10px; font-size:0.75rem;">📥 Esporta (.ics / .csv)</button>
-        <button id="btnRefreshExams" class="btn-secondary" style="width:auto; padding:4px 10px; font-size:0.75rem;">🔄 Ricarica</button>
+        <button id="btnExportAllExams" class="btn-secondary" style="width:auto; padding:4px 10px; font-size:0.75rem;"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Esporta (.ics / .csv)</button>
+        <button id="btnRefreshExams" class="btn-secondary" style="width:auto; padding:4px 10px; font-size:0.75rem;"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>Ricarica</button>
       </div>
     </div>
 
@@ -467,23 +486,23 @@
         </div>
         <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
           <button id="btnNewGroup" class="btn-primary" style="width:auto; padding:6px 12px; font-size:0.78rem; white-space:nowrap;" title="Crea un nuovo gruppo">+ Nuovo Gruppo</button>
-          <button id="btnJoinGroupModal" class="btn-secondary" style="width:auto; padding:6px 11px; font-size:0.78rem; white-space:nowrap;" title="Unisciti a un gruppo con codice">🤝 Unisciti</button>
-          <button id="btnRenameGroup" class="btn-secondary" style="width:auto; padding:6px 10px; font-size:0.78rem; white-space:nowrap;" title="Rinomina questo gruppo">✏️ Rinomina</button>
-          <button id="btnLeaveGroup" class="btn-secondary" style="width:auto; padding:6px 10px; font-size:0.78rem; white-space:nowrap; color:#EF4444;" title="Esci da questo gruppo">🚪 Esci</button>
+          <button id="btnJoinGroupModal" class="btn-secondary" style="width:auto; padding:6px 11px; font-size:0.78rem; white-space:nowrap;" title="Unisciti a un gruppo con codice"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Unisciti</button>
+          <button id="btnRenameGroup" class="btn-secondary" style="width:auto; padding:6px 10px; font-size:0.78rem; white-space:nowrap;" title="Rinomina questo gruppo"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Rinomina</button>
+          <button id="btnLeaveGroup" class="btn-secondary" style="width:auto; padding:6px 10px; font-size:0.78rem; white-space:nowrap; color:#EF4444;" title="Esci da questo gruppo"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Esci</button>
         </div>
       </div>
     </div>
 
     <!-- Zero Groups Empty State -->
     <div id="friendsNoGroupsState" class="control-card" style="display:none; text-align:center; padding:36px 18px; margin-bottom:14px;">
-      <div style="font-size:3rem; margin-bottom:10px;">👥</div>
+      <div style="display:flex; justify-content:center; margin-bottom:10px;"><svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--text-muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
       <h3 style="font-size:1.15rem; color:var(--text-primary); margin-bottom:6px;">Nessun Gruppo Condiviso</h3>
       <p style="font-size:0.85rem; color:var(--text-secondary); max-width:420px; margin:0 auto 20px; line-height:1.45;">
         Puoi creare più gruppi di studio diversi (es. per singoli corsi o progetti) o unirti ai calendari condivisi dei tuoi compagni tramite codice.
       </p>
       <div style="display:flex; justify-content:center; gap:10px; flex-wrap:wrap;">
-        <button id="btnEmptyCreateGroup" class="btn-primary" style="width:auto; padding:10px 18px; font-size:0.88rem; font-weight:600;">✨ Crea il tuo primo gruppo</button>
-        <button id="btnEmptyJoinGroup" class="btn-secondary" style="width:auto; padding:10px 18px; font-size:0.88rem; font-weight:600;">🤝 Unisciti con codice</button>
+        <button id="btnEmptyCreateGroup" class="btn-primary" style="width:auto; padding:10px 18px; font-size:0.88rem; font-weight:600;">Crea il tuo primo gruppo</button>
+        <button id="btnEmptyJoinGroup" class="btn-secondary" style="width:auto; padding:10px 18px; font-size:0.88rem; font-weight:600;">Unisciti con codice</button>
       </div>
     </div>
 
@@ -491,12 +510,12 @@
     <div id="friendsActiveGroupContainer" class="control-card">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
         <div>
-          <h3 id="friendsGroupTitle" style="font-size:1rem; color:var(--text-primary); margin:0 0 2px;">👥 Calendario Gruppo</h3>
+          <h3 id="friendsGroupTitle" style="font-size:1rem; color:var(--text-primary); margin:0 0 2px;"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-2px; margin-right:4px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Calendario Gruppo</h3>
           <p id="friendsGroupSubtitle" style="font-size:0.78rem; color:var(--text-secondary); margin:0;">Confronta i vostri orari e trovate i momenti liberi in comune</p>
         </div>
         <div style="display:flex; gap:8px;">
-          <button id="btnExportFriendsGroup" class="btn-secondary" style="width:auto; padding:8px 12px; font-size:0.82rem; white-space:nowrap;" title="Esporta calendario gruppo (.ics / .csv)">📥 Esporta</button>
-          <button id="btnShareFriendsGroup" class="btn-secondary" style="width:auto; padding:8px 12px; font-size:0.82rem; white-space:nowrap;" title="Condividi link gruppo con amici">🔗 Condividi</button>
+          <button id="btnExportFriendsGroup" class="btn-secondary" style="width:auto; padding:8px 12px; font-size:0.82rem; white-space:nowrap;" title="Esporta calendario gruppo (.ics / .csv)"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Esporta</button>
+          <button id="btnShareFriendsGroup" class="btn-secondary" style="width:auto; padding:8px 12px; font-size:0.82rem; white-space:nowrap;" title="Condividi link gruppo con amici"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>Condividi</button>
           <button id="btnAddFriend" class="btn-primary" style="width:auto; padding:8px 14px; font-size:0.82rem; white-space:nowrap;">+ Aggiungi</button>
         </div>
       </div>
@@ -508,15 +527,15 @@
 
       <!-- "Include myself" toggle (only shown when user is logged in with a profile) -->
       <div id="friendsMyselfRow" style="margin-bottom:10px; display:flex; align-items:center; gap:8px;">
-        <button id="btnToggleMyself" class="toggle-btn active" style="width:auto; padding:6px 12px; font-size:0.8rem; white-space:nowrap;">👤 Includi me</button>
-        <span style="font-size:0.75rem; color:var(--text-muted); flex:1;">Il tuo orario (⭐ materie selezionate) verrà mostrato insieme a quello degli amici</span>
+        <button id="btnToggleMyself" class="toggle-btn active" style="width:auto; padding:6px 12px; font-size:0.8rem; white-space:nowrap;"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Includi me</button>
+        <span style="font-size:0.75rem; color:var(--text-muted); flex:1;">Il tuo orario (materie selezionate) verrà mostrato insieme a quello degli amici</span>
       </div>
 
       <!-- View Mode Toggle: Combined List | Hourly Grid | Free Slots -->
       <div class="toggle-group" style="margin-bottom:10px;">
-        <button id="btnFriendsViewCombined" class="toggle-btn">📋 Elenco</button>
-        <button id="btnFriendsViewGrid" class="toggle-btn active">📊 Vista Oraria</button>
-        <button id="btnFriendsViewFreeSlots" class="toggle-btn">🟢 Slot liberi</button>
+        <button id="btnFriendsViewCombined" class="toggle-btn">Elenco</button>
+        <button id="btnFriendsViewGrid" class="toggle-btn active">Vista Oraria</button>
+        <button id="btnFriendsViewFreeSlots" class="toggle-btn"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#10B981;margin-right:4px;"></span>Slot liberi</button>
       </div>
 
       <!-- Week navigation for shared calendar -->
@@ -543,7 +562,7 @@
 
     <!-- Empty state for no friends inside selected group -->
     <div id="friendsEmptyState" style="text-align:center; padding:40px 20px; display:none;">
-      <div style="font-size:2.5rem; margin-bottom:12px;">👥</div>
+      <div style="display:flex; justify-content:center; margin-bottom:12px;"><svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="var(--text-muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
       <p style="color:var(--text-secondary); font-size:0.9rem; margin-bottom:8px;">Nessun altro membro nel gruppo</p>
       <p style="color:var(--text-muted); font-size:0.8rem;">Invita i tuoi amici condividendo il codice del gruppo o aggiungendo i loro codici calendario.</p>
     </div>
@@ -572,8 +591,8 @@
   <div id="shareModal" class="modal-overlay">
     <div class="modal-content">
       <div class="modal-header">
-        <h3>🔗 Condividi il tuo orario</h3>
-        <button id="btnCloseShare" class="btn-icon" style="width:30px; height:30px;">✕</button>
+        <h3><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-2px; margin-right:6px;"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>Condividi il tuo orario</h3>
+        <button id="btnCloseShare" class="btn-icon" style="width:30px; height:30px;" title="Chiudi"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
       <p id="shareHint" style="font-size:0.85rem; color:var(--text-secondary);"></p>
       <div class="qr-box">
@@ -581,29 +600,29 @@
       </div>
       <div id="shareUrlText" class="mobile-url-box"></div>
       <div class="share-actions">
-        <button id="btnCopyShare" class="btn-primary">📋 Copia link</button>
-        <button id="btnNativeShare" class="btn-secondary">📤 Condividi…</button>
+        <button id="btnCopyShare" class="btn-primary">Copia link</button>
+        <button id="btnNativeShare" class="btn-secondary">Condividi…</button>
       </div>
     </div>
   </div>
 
   <!-- Export Calendar Modal (iCal, CSV, JSON, WebCal) -->
   <div id="exportModal" class="modal-overlay">
-    <div class="modal-content" style="max-width: 480px; text-align: left;">
+    <div class="modal-content" style="max-width: 514px; text-align: left;">
       <div class="modal-header">
         <div>
-          <h3 style="font-size:1.15rem; color:var(--text-primary); margin:0 0 2px;">📥 Esporta Calendario</h3>
+          <h3 style="font-size:1.15rem; color:var(--text-primary); margin:0 0 2px;"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-2px; margin-right:6px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Esporta Calendario</h3>
           <p id="exportModalSubtitle" style="font-size:0.8rem; color:var(--text-secondary); margin:0;">Esporta nei formati standard per le tue app di calendario</p>
         </div>
-        <button id="btnCloseExportModal" class="btn-icon" style="width:30px; height:30px;">✕</button>
+        <button id="btnCloseExportModal" class="btn-icon" style="width:30px; height:30px;" title="Chiudi"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
 
       <!-- Export Scope Selector -->
       <div id="exportScopeGroup" class="form-field" style="margin-top:14px;">
         <label>Ambito temporale</label>
         <div class="toggle-group">
-          <button id="btnExportScopeWeek" class="toggle-btn active" type="button">📅 Settimana corrente</button>
-          <button id="btnExportScopeMonth" class="toggle-btn" type="button">🗓️ Prossime 4 settimane</button>
+          <button id="btnExportScopeWeek" class="toggle-btn active" type="button">Settimana corrente</button>
+          <button id="btnExportScopeMonth" class="toggle-btn" type="button">Prossime 4 settimane</button>
         </div>
       </div>
 
@@ -611,8 +630,8 @@
       <div id="exportFilterGroup" class="form-field" style="margin-top:10px;">
         <label>Corsi da includere</label>
         <div class="toggle-group">
-          <button id="btnExportFilterTarget" class="toggle-btn active" type="button">⭐ Solo corsi seguiti</button>
-          <button id="btnExportFilterAll" class="toggle-btn" type="button">📚 Tutti i corsi</button>
+          <button id="btnExportFilterTarget" class="toggle-btn active" type="button">Solo corsi seguiti</button>
+          <button id="btnExportFilterAll" class="toggle-btn" type="button">Tutti i corsi</button>
         </div>
       </div>
 
@@ -621,13 +640,13 @@
         <label style="font-size:0.78rem; font-weight:700; color:var(--text-secondary); text-transform:uppercase; margin-bottom:8px; display:block;">Scarica file standard</label>
         <div style="display:flex; flex-direction:column; gap:8px;">
           <button id="btnDownloadIcs" class="btn-primary" style="display:flex; align-items:center; justify-content:center; gap:8px; padding:12px; font-size:0.9rem;">
-            📅 iCalendar (.ics) <span style="font-size:0.75rem; opacity:0.85;">(Apple Calendar, Google, Outlook)</span>
+            iCalendar (.ics) <span style="font-size:0.75rem; opacity:0.85;">(Apple Calendar, Google, Outlook)</span>
           </button>
           <button id="btnDownloadCsv" class="btn-secondary" style="display:flex; align-items:center; justify-content:center; gap:8px; padding:10px; font-size:0.85rem;">
-            📊 Foglio di calcolo (.csv) <span style="font-size:0.75rem; opacity:0.85;">(Excel, Google Fogli)</span>
+            Foglio di calcolo (.csv) <span style="font-size:0.75rem; opacity:0.85;">(Excel, Google Fogli)</span>
           </button>
           <button id="btnDownloadJson" class="btn-secondary" style="display:flex; align-items:center; justify-content:center; gap:8px; padding:10px; font-size:0.85rem;">
-            📋 Dati strutturati (.json)
+            Dati strutturati (.json)
           </button>
         </div>
       </div>
@@ -635,7 +654,7 @@
       <!-- Live WebCal Subscription Card -->
       <div id="exportWebCalBox" style="margin-top:18px; padding:12px 14px; background:rgba(139,92,246,0.12); border:1px solid rgba(139,92,246,0.3); border-radius:12px;">
         <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
-          <span style="font-size:1.1rem;">🔄</span>
+          <span style="display:inline-flex; align-items:center;"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></span>
           <strong style="font-size:0.88rem; color:var(--text-primary);">Sottoscrizione Live (WebCal)</strong>
         </div>
         <p style="font-size:0.78rem; color:var(--text-secondary); line-height:1.4; margin-bottom:10px;">
@@ -644,11 +663,11 @@
         <div style="display:flex; gap:6px; align-items:center;">
           <input type="text" id="exportWebCalUrl" readonly
                  style="flex:1; padding:8px 10px; border-radius:8px; background:rgba(0,0,0,0.3); border:1px solid var(--border-color); color:var(--text-primary); font-size:0.75rem; outline:none; font-family:monospace;">
-          <button id="btnCopyWebCal" class="btn-secondary" style="width:auto; padding:8px 12px; font-size:0.78rem; white-space:nowrap;">📋 Copia</button>
+          <button id="btnCopyWebCal" class="btn-secondary" style="width:auto; padding:8px 12px; font-size:0.78rem; white-space:nowrap;">Copia</button>
         </div>
         <div style="margin-top:8px; text-align:right;">
           <a id="btnSubscribeNativeCal" href="#" class="btn-secondary" style="display:inline-block; width:auto; padding:6px 12px; font-size:0.78rem; text-decoration:none;">
-            📲 Sottoscrivi in Apple / Google Calendar
+            Sottoscrivi in Apple / Google Calendar
           </a>
         </div>
       </div>
@@ -657,22 +676,22 @@
 
   <!-- Classroom Day Schedule Modal -->
   <div id="roomScheduleModal" class="modal-overlay">
-    <div class="modal-content" style="max-width: 480px; text-align: left;">
+    <div class="modal-content" style="max-width: 514px; text-align: left;">
       <div class="modal-header">
         <div>
           <h3 id="modalRoomTitle" style="font-size:1.15rem; color:var(--text-primary); margin-bottom:2px;">Aula</h3>
           <div style="display:flex; align-items:center; gap:8px; margin-top:2px;">
             <span id="modalRoomSubtitle" style="font-size:0.8rem; color:var(--text-secondary);">Edificio</span>
-            <a id="modalRoomMapLink" href="#" target="_blank" rel="noopener noreferrer" class="btn-secondary" style="display:inline-flex; align-items:center; gap:3px; padding:2px 8px; font-size:0.72rem; text-decoration:none; border-radius:6px;" title="Apri posizione su Google Maps">📍 Mappa Campus</a>
+            <a id="modalRoomMapLink" href="#" target="_blank" rel="noopener noreferrer" class="btn-secondary" style="display:inline-flex; align-items:center; gap:3px; padding:2px 8px; font-size:0.72rem; text-decoration:none; border-radius:6px;" title="Apri posizione su Google Maps"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-1px; margin-right:2px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Mappa Campus</a>
           </div>
         </div>
-        <button id="btnCloseRoomSchedule" class="btn-icon" style="width:32px; height:32px;">✕</button>
+        <button id="btnCloseRoomSchedule" class="btn-icon" style="width:32px; height:32px;" title="Chiudi"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
 
       <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.05); padding:8px 12px; border-radius:8px; margin-bottom:12px;">
-        <button id="btnModalPrevDay" class="btn-icon" style="width:30px;height:30px;font-size:0.8rem;">◀</button>
+        <button id="btnModalPrevDay" class="btn-icon" style="width:30px;height:30px;" title="Giorno precedente"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><polyline points="15 18 9 12 15 6"/></svg></button>
         <span id="modalDateLabel" style="font-size:0.85rem; font-weight:700; color:var(--accent-cyan);">Oggi</span>
-        <button id="btnModalNextDay" class="btn-icon" style="width:30px;height:30px;font-size:0.8rem;">▶</button>
+        <button id="btnModalNextDay" class="btn-icon" style="width:30px;height:30px;" title="Giorno successivo"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><polyline points="9 18 15 12 9 6"/></svg></button>
       </div>
 
       <div id="modalRoomEventsList" class="room-timeline" style="max-height: 55vh; overflow-y: auto;">
@@ -683,10 +702,10 @@
 
   <!-- Add Exam Course Modal -->
   <div id="addExamCourseModal" class="modal-overlay">
-    <div class="modal-content setup-content" style="max-width: 440px;">
+    <div class="modal-content setup-content" style="max-width: 470px;">
       <div class="modal-header">
-        <h3>➕ Aggiungi corso agli esami</h3>
-        <button id="btnCloseAddExamCourse" class="btn-icon" style="width:30px; height:30px;">✕</button>
+        <h3>Aggiungi corso agli esami</h3>
+        <button id="btnCloseAddExamCourse" class="btn-icon" style="width:30px; height:30px;" title="Chiudi"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
       <p style="font-size:0.82rem; color:var(--text-secondary); margin-bottom:14px;">
         Seleziona un corso di studio per includere i suoi appelli nel calendario esami:
@@ -718,12 +737,12 @@
 
   <!-- Add External Course Modal (Corso Esterno da altro CdL) -->
   <div id="addExternalCourseModal" class="modal-overlay">
-    <div class="modal-content setup-content" style="max-width: 460px;">
+    <div class="modal-content setup-content" style="max-width: 492px;">
       <div class="modal-header">
         <h3 style="font-size:1.15rem; display:flex; align-items:center; gap:6px;">
-          <span>🌐</span> Aggiungi corso esterno
+          <span><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span> Aggiungi corso esterno
         </h3>
-        <button id="btnCloseAddExternalCourse" class="btn-icon" style="width:30px; height:30px;">✕</button>
+        <button id="btnCloseAddExternalCourse" class="btn-icon" style="width:30px; height:30px;" title="Chiudi"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
       <p style="font-size:0.82rem; color:var(--text-secondary); margin-bottom:14px; line-height:1.45;">
         Seleziona un insegnamento erogato da un altro corso di laurea dell'Ateneo per aggiungerlo al tuo calendario.
@@ -763,7 +782,7 @@
       </div>
 
       <div id="extCourseTeachingSearchBox" style="display:none; margin-bottom:10px;">
-        <input type="text" id="extCourseTeachingSearch" placeholder="🔍 Filtra materie per nome o docente..."
+        <input type="text" id="extCourseTeachingSearch" placeholder="Filtra materie per nome o docente..." 
                style="width: 100%; padding: 8px 12px; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: var(--text-primary); font-size: 0.82rem; outline: none;">
       </div>
 
@@ -771,7 +790,7 @@
         Caricamento materie da UNIMIB...
       </div>
 
-      <button id="btnConfirmAddExternalCourse" class="btn-primary" style="margin-top:10px;" disabled>➕ Aggiungi ai Miei Corsi</button>
+      <button id="btnConfirmAddExternalCourse" class="btn-primary" style="margin-top:10px;" disabled>Aggiungi ai Miei Corsi</button>
     </div>
   </div>
 
@@ -779,14 +798,14 @@
   <div id="setupModal" class="modal-overlay">
     <div class="modal-content setup-content">
       <div class="modal-header">
-        <h3 id="setupModalTitle">🎓 Il tuo corso di studio</h3>
-        <button id="btnCloseSetup" class="btn-icon" style="width:30px; height:30px;">✕</button>
+        <h3 id="setupModalTitle">Il tuo corso di studio</h3>
+        <button id="btnCloseSetup" class="btn-icon" style="width:30px; height:30px;" title="Chiudi"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
 
       <!-- Profile Creation Banner (Step 2) -->
       <div id="setupProfileBanner" style="display:none; background:rgba(139,92,246,0.15); border:1px solid rgba(139,92,246,0.35); border-radius:10px; padding:10px 14px; margin-bottom:14px; font-size:0.85rem; line-height:1.45;">
-        👤 Stai configurando i corsi per <strong id="setupProfileBannerNick" style="color:var(--text-primary);"></strong>.<br>
-        <span style="font-size:0.78rem; color:var(--text-secondary);">Scegli il tuo corso di studio e seleziona con la stella ⭐ le materie che segui.</span>
+        Stai configurando i corsi per <strong id="setupProfileBannerNick" style="color:var(--text-primary);"></strong>.<br>
+        <span style="font-size:0.78rem; color:var(--text-secondary);">Scegli il tuo corso di studio e seleziona le materie che segui.</span>
       </div>
 
       <div class="form-field">
@@ -808,14 +827,14 @@
         </div>
       </div>
       <div class="form-field">
-        <label>⭐ I miei corsi seguiti <span class="field-hint">(seleziona le materie che frequenti)</span></label>
+        <label>I miei corsi seguiti <span class="field-hint">(seleziona le materie che frequenti)</span></label>
         <div id="cfgFavorites" class="choice-list">
           <p class="field-hint">Seleziona prima l'anno di studio.</p>
         </div>
       </div>
       <div class="form-field">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-          <label style="margin:0;">🌐 Corsi da altri corsi di laurea <span class="field-hint">(corsi esterni)</span></label>
+          <label style="margin:0;">Corsi da altri corsi di laurea <span class="field-hint">(corsi esterni)</span></label>
           <button id="btnOpenAddExternalFromSetup" type="button" class="btn-secondary" style="width:auto; padding:4px 10px; font-size:0.75rem;">+ Aggiungi</button>
         </div>
         <div id="cfgExternalCoursesList" class="choice-list" style="margin-bottom:0; max-height:160px; overflow-y:auto;">
@@ -824,7 +843,7 @@
       </div>
 
       <div style="display:flex; gap:8px; margin-top:8px;">
-        <button id="btnBackToProfileStep1" class="btn-secondary" style="display:none; width:auto; padding:10px 14px; font-size:0.85rem;">⬅️ Indietro</button>
+        <button id="btnBackToProfileStep1" class="btn-secondary" style="display:none; width:auto; padding:10px 14px; font-size:0.85rem;">Indietro</button>
         <button id="btnSaveSetup" class="btn-primary" style="flex:1;" disabled>Salva</button>
       </div>
     </div>
@@ -856,8 +875,8 @@
 
   <!-- Welcome / Onboarding Modal (shown on first visit) -->
   <div id="onboardingModal" class="modal-overlay">
-    <div class="modal-content setup-content" style="max-width: 440px; text-align: center;">
-      <div style="font-size: 3rem; margin-bottom: 8px;">🎓</div>
+    <div class="modal-content setup-content" style="max-width: 470px; text-align: center;">
+      <div style="display:flex; justify-content:center; margin-bottom: 8px;"><svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--accent-red)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></div>
       <h2 style="font-size: 1.35rem; color: var(--text-primary); margin-bottom: 8px;">Benvenuto su UNIMIB Orari</h2>
       <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 20px; line-height: 1.5;">
         Visualizza l'orario delle lezioni, l'occupazione delle aule in tempo reale e il calendario degli esami.
@@ -865,13 +884,13 @@
 
       <div style="display: flex; flex-direction: column; gap: 10px;">
         <button id="btnOnboardingCreate" class="btn-primary" style="padding: 12px; font-size: 0.95rem; font-weight: 600;">
-          ✨ Crea il tuo profilo
+          Crea il tuo profilo
         </button>
         <button id="btnOnboardingLogin" class="btn-secondary" style="padding: 12px; font-size: 0.95rem; font-weight: 600;">
-          🔑 Ho già un profilo (Accedi)
+          Ho già un profilo (Accedi)
         </button>
         <button id="btnOnboardingGuest" class="btn-secondary" style="padding: 12px; font-size: 0.9rem; opacity: 0.85; border-style: dashed;">
-          👤 Continua come ospite
+          Continua come ospite
         </button>
       </div>
 
@@ -883,10 +902,10 @@
 
   <!-- Profile Modal -->
   <div id="profileModal" class="modal-overlay">
-    <div class="modal-content setup-content" style="max-width: 440px;">
+    <div class="modal-content setup-content" style="max-width: 470px;">
       <div class="modal-header">
-        <h3>👤 Il tuo profilo</h3>
-        <button id="btnCloseProfile" class="btn-icon" style="width:30px; height:30px;">✕</button>
+        <h3><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-2px; margin-right:6px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Il tuo profilo</h3>
+        <button id="btnCloseProfile" class="btn-icon" style="width:30px; height:30px;" title="Chiudi"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
 
       <!-- Not logged in state -->
@@ -897,8 +916,8 @@
 
         <!-- Tabs: Crea / Accedi -->
         <div class="toggle-group" style="margin-bottom:16px;">
-          <button id="profileTabCreate" class="toggle-btn active" onclick="showProfileTab('create')">✨ Crea profilo</button>
-          <button id="profileTabLogin" class="toggle-btn" onclick="showProfileTab('login')">🔑 Accedi</button>
+          <button id="profileTabCreate" class="toggle-btn active" onclick="showProfileTab('create')">Crea profilo</button>
+          <button id="profileTabLogin" class="toggle-btn" onclick="showProfileTab('login')">Accedi</button>
         </div>
 
         <!-- Create Form -->
@@ -927,8 +946,8 @@
           </div>
 
           <p id="profileCreateError" style="color:#EF4444; font-size:0.8rem; display:none; margin-bottom:8px;"></p>
-          <button id="btnCreateProfile" class="btn-primary" style="width:100%; margin-top:4px;">Continua: Scegli i tuoi corsi ➡️</button>
-          <button id="btnCreateWithExistingConfig" class="btn-secondary" style="width:100%; margin-top:8px; display:none;">✨ Salva profilo con questo corso</button>
+          <button id="btnCreateProfile" class="btn-primary" style="width:100%; margin-top:4px;">Continua: Scegli i tuoi corsi</button>
+          <button id="btnCreateWithExistingConfig" class="btn-secondary" style="width:100%; margin-top:8px; display:none;">Salva profilo con questo corso</button>
         </div>
 
         <!-- Login Form -->
@@ -993,37 +1012,37 @@
               <span style="font-size:0.75rem; color:var(--text-secondary); display:block; margin-top:2px;">Codice Calendario Amici:</span>
               <span class="profile-id-code" id="profileDisplayId">K9X2P4</span>
             </div>
-            <button id="btnCopyProfileId" class="btn-secondary" style="width:auto; padding:6px 12px; font-size:0.8rem;" title="Copia codice">📋 Copia</button>
+            <button id="btnCopyProfileId" class="btn-secondary" style="width:auto; padding:6px 12px; font-size:0.8rem;" title="Copia codice">Copia</button>
           </div>
           <button id="btnShareMyCalLink" class="btn-primary" style="width:100%; padding:9px 12px; font-size:0.82rem; margin-top:4px;">
-            🔗 Invia link calendario agli amici
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-2px; margin-right:4px;"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>Invia link calendario agli amici
           </button>
         </div>
 
         <!-- Recovery Code Box -->
         <div id="profileRecoveryCodeBox" style="display:none; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.3); border-radius:10px; padding:10px 12px; margin-top:12px;">
-          <span style="font-size:0.75rem; color:var(--text-secondary); display:block;">🔑 Codice di Recupero (conservalo per reimpostare il PIN):</span>
+          <span style="font-size:0.75rem; color:var(--text-secondary); display:block;">Codice di Recupero (conservalo per reimpostare il PIN):</span>
           <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
             <strong id="profileRecoveryCodeDisplay" style="font-family:monospace; color:#34D399; font-size:0.95rem; letter-spacing:0.06em;"></strong>
-            <button id="btnCopyRecoveryCode" class="btn-secondary" style="width:auto; padding:3px 8px; font-size:0.75rem;" title="Copia codice di recupero">📋 Copia</button>
+            <button id="btnCopyRecoveryCode" class="btn-secondary" style="width:auto; padding:3px 8px; font-size:0.75rem;" title="Copia codice di recupero">Copia</button>
           </div>
         </div>
 
         <p style="font-size:0.78rem; color:var(--text-muted); margin:12px 0 16px; line-height:1.45;">
-          🔒 <strong>Le tue credenziali restano private:</strong> per accedere sui tuoi dispositivi usa solo il tuo Soprannome e PIN.<br>
-          👥 <strong>Per gli amici:</strong> condividi il tuo <strong>Codice Calendario</strong> o il <strong>Link</strong>. Possono solo visualizzare l'orario senza mai vedere il tuo PIN.
+          <strong>Le tue credenziali restano private:</strong> per accedere sui tuoi dispositivi usa solo il tuo Soprannome e PIN.<br>
+          <strong>Per gli amici:</strong> condividi il tuo <strong>Codice Calendario</strong> o il <strong>Link</strong>. Possono solo visualizzare l'orario senza mai vedere il tuo PIN.
         </p>
 
         <!-- Sync status -->
         <div id="profileSyncStatus" class="profile-sync-row" style="margin-bottom:12px;">
-          <span id="profileSyncIcon">✅</span>
+          <span id="profileSyncIcon" style="display:inline-flex; align-items:center;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#10B981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
           <span id="profileSyncText" style="font-size:0.82rem; color:var(--text-secondary);">Profilo sincronizzato</span>
-          <button id="btnSyncNow" class="btn-secondary" style="width:auto; padding:4px 10px; font-size:0.75rem; margin-left:auto;">🔄 Sincronizza</button>
+          <button id="btnSyncNow" class="btn-secondary" style="width:auto; padding:4px 10px; font-size:0.75rem; margin-left:auto;"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-1px; margin-right:3px;"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>Sincronizza</button>
         </div>
 
         <hr style="border-color:rgba(255,255,255,0.08); margin-bottom:12px;">
 
-        <button id="btnLogoutProfile" class="btn-secondary" style="width:100%; font-size:0.85rem;">🚪 Esci dal profilo</button>
+        <button id="btnLogoutProfile" class="btn-secondary" style="width:100%; font-size:0.85rem;"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Esci dal profilo</button>
         <p style="font-size:0.72rem; color:var(--text-muted); margin-top:8px; text-align:center;">Le tue impostazioni rimangono salvate localmente sul dispositivo.</p>
       </div>
 
@@ -1032,10 +1051,10 @@
 
   <!-- Create Group Modal -->
   <div id="createGroupModal" class="modal-overlay">
-    <div class="modal-content setup-content" style="max-width:380px;">
+    <div class="modal-content setup-content" style="max-width:406px;">
       <div class="modal-header">
-        <h3>✨ Nuovo Gruppo Condiviso</h3>
-        <button id="btnCloseCreateGroup" class="btn-icon" style="width:30px; height:30px;">✕</button>
+        <h3>Nuovo Gruppo Condiviso</h3>
+        <button id="btnCloseCreateGroup" class="btn-icon" style="width:30px; height:30px;" title="Chiudi"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
       <p style="font-size:0.82rem; color:var(--text-secondary); margin-bottom:14px; line-height:1.45;">
         Crea un calendario condiviso con compagni di studio (es. <em>Gruppo Analisi 1</em> o <em>Progetto Informatica</em>).
@@ -1052,10 +1071,10 @@
 
   <!-- Rename Group Modal -->
   <div id="renameGroupModal" class="modal-overlay">
-    <div class="modal-content setup-content" style="max-width:380px;">
+    <div class="modal-content setup-content" style="max-width:406px;">
       <div class="modal-header">
-        <h3>✏️ Rinomina Gruppo</h3>
-        <button id="btnCloseRenameGroup" class="btn-icon" style="width:30px; height:30px;">✕</button>
+        <h3>Rinomina Gruppo</h3>
+        <button id="btnCloseRenameGroup" class="btn-icon" style="width:30px; height:30px;" title="Chiudi"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
       <div class="form-field">
         <label for="renameGroupNameInput">Nuovo Nome del Gruppo</label>
@@ -1069,10 +1088,10 @@
 
   <!-- Join Group Modal -->
   <div id="joinGroupModal" class="modal-overlay">
-    <div class="modal-content setup-content" style="max-width:380px;">
+    <div class="modal-content setup-content" style="max-width:406px;">
       <div class="modal-header">
-        <h3>🤝 Unisciti a un Gruppo</h3>
-        <button id="btnCloseJoinGroup" class="btn-icon" style="width:30px; height:30px;">✕</button>
+        <h3>Unisciti a un Gruppo</h3>
+        <button id="btnCloseJoinGroup" class="btn-icon" style="width:30px; height:30px;" title="Chiudi"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
       <p style="font-size:0.82rem; color:var(--text-secondary); margin-bottom:14px; line-height:1.45;">
         Inserisci il <strong>Codice Gruppo</strong> (es. <code>G7K2P9</code>) fornito dal tuo compagno di corso.
@@ -1089,10 +1108,10 @@
 
   <!-- Add Friend Modal -->
   <div id="addFriendModal" class="modal-overlay">
-    <div class="modal-content setup-content" style="max-width:400px;">
+    <div class="modal-content setup-content" style="max-width:428px;">
       <div class="modal-header">
-        <h3>➕ Aggiungi Membro al Gruppo</h3>
-        <button id="btnCloseAddFriend" class="btn-icon" style="width:30px; height:30px;">✕</button>
+        <h3>Aggiungi Membro al Gruppo</h3>
+        <button id="btnCloseAddFriend" class="btn-icon" style="width:30px; height:30px;" title="Chiudi"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
 
       <div id="friendByCode">
@@ -1109,7 +1128,7 @@
           <span id="friendCodePreviewNick" style="font-weight:700; color:var(--text-primary); font-size:1rem; margin-left:6px;"></span>
         </div>
         <p id="friendCodeError" style="color:#EF4444; font-size:0.8rem; display:none; margin-bottom:8px;"></p>
-        <button id="btnLookupFriendCode" class="btn-secondary" style="width:100%; margin-bottom:8px;">🔍 Verifica codice</button>
+        <button id="btnLookupFriendCode" class="btn-secondary" style="width:100%; margin-bottom:8px;">Verifica codice</button>
         <button id="btnConfirmAddFriendCode" class="btn-primary" style="width:100%;" disabled>+ Aggiungi al gruppo</button>
       </div>
     </div>
@@ -1117,23 +1136,23 @@
 
   <!-- Schedule Changes Modal (Shown when timetable changes are detected) -->
   <div id="scheduleChangesModal" class="modal-overlay">
-    <div class="modal-content setup-content" style="max-width: 480px; text-align: left;">
+    <div class="modal-content setup-content" style="max-width: 514px; text-align: left;">
       <div class="modal-header">
         <div>
           <h3 style="font-size: 1.15rem; color: var(--text-primary); margin: 0 0 2px; display: flex; align-items: center; gap: 8px;">
-            <span>⚠️</span> Variazioni nel calendario
+            <span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span> Variazioni nel calendario
           </h3>
           <p id="scheduleChangesModalSubtitle" style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">
             Aggiornamenti rilevati rispetto all'ultimo accesso
           </p>
         </div>
-        <button id="btnCloseScheduleChangesModal" class="btn-icon" style="width: 30px; height: 30px;" type="button">✕</button>
+        <button id="btnCloseScheduleChangesModal" class="btn-icon" style="width: 30px; height: 30px;" type="button" title="Chiudi"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
 
       <div id="scheduleChangesFilterBar" style="display: none; margin-top: 12px;">
         <div class="toggle-group" style="margin-bottom: 0;">
-          <button id="btnModalChangesFilterFav" class="toggle-btn active" style="font-size: 0.78rem; padding: 6px 10px;" type="button">⭐ Corsi seguiti</button>
-          <button id="btnModalChangesFilterAll" class="toggle-btn" style="font-size: 0.78rem; padding: 6px 10px;" type="button">📚 Tutte le variazioni</button>
+          <button id="btnModalChangesFilterFav" class="toggle-btn active" style="font-size: 0.78rem; padding: 6px 10px;" type="button">Corsi seguiti</button>
+          <button id="btnModalChangesFilterAll" class="toggle-btn" style="font-size: 0.78rem; padding: 6px 10px;" type="button">Tutte le variazioni</button>
         </div>
       </div>
 

@@ -43,6 +43,8 @@ import hashlib
 import hmac
 import secrets
 import time
+import tempfile
+import threading
 from http.server import BaseHTTPRequestHandler
 import urllib.request
 import urllib.parse
@@ -73,21 +75,91 @@ SESSION_TTL_SECONDS = 90 * 86400  # 90 days sliding TTL
 RATE_LIMIT_MAX_ATTEMPTS = 5
 RATE_LIMIT_WINDOW_SECONDS = 600   # 10 minutes
 
+# ── Local File/In-Memory Key-Value Fallback (when Upstash Redis is not configured) ────
+_LOCAL_STORE_PATH = os.path.join(tempfile.gettempdir(), "unimib_kv_store.json")
+_LOCAL_LOCK = threading.Lock()
+
+def _local_kv_load() -> dict:
+    if os.path.exists(_LOCAL_STORE_PATH):
+        try:
+            with open(_LOCAL_STORE_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, dict):
+                    return data
+        except Exception:
+            pass
+    return {}
+
+def _local_kv_save(store: dict):
+    tmp_path = _LOCAL_STORE_PATH + f".{secrets.token_hex(4)}.tmp"
+    try:
+        with open(tmp_path, "w", encoding="utf-8") as f:
+            json.dump(store, f, ensure_ascii=False)
+        os.replace(tmp_path, _LOCAL_STORE_PATH)
+    except Exception:
+        pass
+
+def _local_redis(method: str, *args):
+    with _LOCAL_LOCK:
+        store = _local_kv_load()
+        now = time.time()
+        m = method.upper()
+
+        if m == "GET":
+            key = str(args[0])
+            item = store.get(key)
+            if item is None:
+                return None
+            if isinstance(item, dict) and "v" in item:
+                exp = item.get("e")
+                if exp and now > exp:
+                    store.pop(key, None)
+                    _local_kv_save(store)
+                    return None
+                return item["v"]
+            return item
+
+        elif m == "SET":
+            key = str(args[0])
+            val = str(args[1])
+            exp = None
+            if len(args) >= 4 and str(args[2]).upper() == "EX":
+                try:
+                    exp = now + float(args[3])
+                except Exception:
+                    exp = None
+            store[key] = {"v": val, "e": exp}
+            _local_kv_save(store)
+            return "OK"
+
+        elif m == "DEL":
+            key = str(args[0])
+            if key in store:
+                store.pop(key, None)
+                _local_kv_save(store)
+                return 1
+            return 0
+
+        return None
+
 
 # ── Redis helpers ──────────────────────────────────────────────────────────────
 
 def _redis(method: str, *args):
     url, token = _get_redis_creds()
     if not url or not token:
-        raise RuntimeError(f"Upstash Redis env vars not configured: URL={'OK' if url else 'MISSING'}, TOKEN={'OK' if token else 'MISSING'}")
+        return _local_redis(method, *args)
 
     path = "/" + "/".join(urllib.parse.quote(str(a), safe="") for a in (method, *args))
     req  = urllib.request.Request(url + path, headers={"Authorization": f"Bearer {token}"})
-    with urllib.request.urlopen(req, timeout=5) as resp:
-        body = json.loads(resp.read())
-    if "error" in body:
-        raise RuntimeError(f"Redis error: {body['error']}")
-    return body.get("result")
+    try:
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            body = json.loads(resp.read())
+        if "error" in body:
+            raise RuntimeError(f"Redis error: {body['error']}")
+        return body.get("result")
+    except Exception:
+        return _local_redis(method, *args)
 
 
 def redis_get(key: str):
@@ -180,8 +252,59 @@ def _verify_pin_hash(pin: str, clean_nick: str, stored_hash: str) -> Tuple[bool,
     return False, False
 
 
+def _sanitize_text(s: Any, max_len: int = 100) -> str:
+    if not isinstance(s, str):
+        return ""
+    # Strip script and style blocks entirely
+    clean = re.sub(r'<\s*script[^>]*>.*?<\s*/\s*script\s*>', '', s, flags=re.IGNORECASE | re.DOTALL)
+    clean = re.sub(r'<\s*style[^>]*>.*?<\s*/\s*style\s*>', '', clean, flags=re.IGNORECASE | re.DOTALL)
+    # Strip any other HTML / XML tags
+    clean = re.sub(r'<[^>]*>', '', clean)
+    # Strip dangerous HTML and script characters
+    for ch in ('<', '>', '"', "'", '`', '\x00'):
+        clean = clean.replace(ch, '')
+    # Strip non-printable control chars
+    clean = ''.join(ch for ch in clean if ch.isprintable())
+    return clean.strip()[:max_len]
+
+
+def _sanitize_nickname(n: Any) -> str:
+    return _sanitize_text(n, 30)
+
+
+def _sanitize_config(cfg: Any) -> Any:
+    if not isinstance(cfg, dict):
+        return cfg
+    clean_cfg = {}
+    for k, v in cfg.items():
+        if isinstance(v, str):
+            clean_cfg[k] = _sanitize_text(v, 150)
+        elif isinstance(v, list):
+            clean_list = []
+            for item in v:
+                if isinstance(item, str):
+                    clean_list.append(_sanitize_text(item, 150))
+                elif isinstance(item, dict):
+                    clean_list.append({
+                        sub_k: _sanitize_text(sub_v, 150) if isinstance(sub_v, str) else sub_v
+                        for sub_k, sub_v in item.items()
+                    })
+                else:
+                    clean_list.append(item)
+            clean_cfg[k] = clean_list
+        else:
+            clean_cfg[k] = v
+    return clean_cfg
+
+
 def _valid_nickname(n) -> bool:
-    return isinstance(n, str) and 1 <= len(n.strip()) <= 30
+    if not isinstance(n, str):
+        return False
+    stripped = n.strip()
+    if not (1 <= len(stripped) <= 30):
+        return False
+    sanitized = _sanitize_nickname(stripped)
+    return bool(sanitized) and bool(_clean_nickname(sanitized))
 
 
 def _valid_pin(p) -> bool:
@@ -414,13 +537,15 @@ class handler(BaseHTTPRequestHandler):
                 })
 
             # ── Standard Account Creation ─────────────────────────────────────
-            nickname     = str(body.get("nickname", "")).strip()
+            raw_nick     = str(body.get("nickname", "")).strip()
+            nickname     = _sanitize_nickname(raw_nick)
             pin          = str(body.get("pin", "")).strip()
-            config       = body.get("config")
-            exam_courses = body.get("exam_courses", [])
+            config       = _sanitize_config(body.get("config"))
+            raw_exams    = body.get("exam_courses", [])
+            exam_courses = [_sanitize_text(c, 120) for c in raw_exams if isinstance(c, str)]
 
-            if not _valid_nickname(nickname):
-                return self._send_json(400, {"error": "Soprannome non valido (1-30 caratteri)"})
+            if not _valid_nickname(raw_nick):
+                return self._send_json(400, {"error": "Soprannome non valido (1-30 caratteri, tag o script non consentiti)"})
             if not _valid_pin(pin):
                 return self._send_json(400, {"error": "Il PIN deve essere di 4-8 cifre numeriche"})
 
@@ -510,9 +635,10 @@ class handler(BaseHTTPRequestHandler):
 
                 # Update config / exam_courses if present
                 if "config" in body and body["config"] is not None:
-                    account["config"] = body["config"]
+                    account["config"] = _sanitize_config(body["config"])
                 if "exam_courses" in body and body["exam_courses"] is not None:
-                    account["exam_courses"] = body["exam_courses"]
+                    raw_exams = body["exam_courses"]
+                    account["exam_courses"] = [_sanitize_text(c, 120) for c in raw_exams if isinstance(c, str)]
 
                 account["updated_at"] = int(time.time())
                 share_code = account.get("share_code") or session.get("share_code")

@@ -4,12 +4,12 @@
   --bg-primary: #0F172A;
   --bg-surface: #1E293B;
   --bg-surface-glass: rgba(30, 41, 59, 0.85);
-  --bg-card: #334155;
-  --bg-card-hover: #475569;
-  --border-color: rgba(255, 255, 255, 0.1);
+  --bg-card: #1E293B;
+  --bg-card-hover: #334155;
+  --border-color: rgba(255, 255, 255, 0.12);
   --text-primary: #F8FAFC;
-  --text-secondary: #94A3B8;
-  --text-muted: #64748B;
+  --text-secondary: #CBD5E1;
+  --text-muted: #94A3B8;
 
   /* UNIMIB Brand Identity Colors */
   --bicocca-red: #A71E3B;
@@ -76,42 +76,42 @@
 /* Light Theme Tokens */
 :root[data-theme="light"],
 [data-theme="light"] {
-  --bg-primary: #F8FAFC;
+  --bg-primary: #F1F5F9;
   --bg-surface: #FFFFFF;
-  --bg-surface-glass: rgba(255, 255, 255, 0.92);
+  --bg-surface-glass: rgba(255, 255, 255, 0.95);
   --bg-card: #FFFFFF;
-  --bg-card-hover: #F1F5F9;
-  --border-color: #E2E8F0;
-  --text-primary: #1D1D1B;
-  --text-secondary: #475569;
-  --text-muted: #64748B;
+  --bg-card-hover: #F8FAFC;
+  --border-color: #CBD5E1;
+  --text-primary: #0F172A;
+  --text-secondary: #334155;
+  --text-muted: #475569;
   --bicocca-red-bg: rgba(167, 30, 59, 0.08);
   --accent-purple-bg: rgba(167, 30, 59, 0.08);
   --accent-cyan: #0284C7;
   --accent-cyan-bg: rgba(2, 132, 199, 0.1);
   --accent-green: #059669;
   --accent-green-bg: rgba(5, 150, 105, 0.1);
-  --shadow-main: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+  --shadow-main: 0 4px 20px -2px rgba(15, 23, 42, 0.08), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
 }
 
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
-    --bg-primary: #F8FAFC;
+    --bg-primary: #F1F5F9;
     --bg-surface: #FFFFFF;
-    --bg-surface-glass: rgba(255, 255, 255, 0.92);
+    --bg-surface-glass: rgba(255, 255, 255, 0.95);
     --bg-card: #FFFFFF;
-    --bg-card-hover: #F1F5F9;
-    --border-color: #E2E8F0;
-    --text-primary: #1D1D1B;
-    --text-secondary: #475569;
-    --text-muted: #64748B;
+    --bg-card-hover: #F8FAFC;
+    --border-color: #CBD5E1;
+    --text-primary: #0F172A;
+    --text-secondary: #334155;
+    --text-muted: #475569;
     --bicocca-red-bg: rgba(167, 30, 59, 0.08);
     --accent-purple-bg: rgba(167, 30, 59, 0.08);
     --accent-cyan: #0284C7;
     --accent-cyan-bg: rgba(2, 132, 199, 0.1);
     --accent-green: #059669;
     --accent-green-bg: rgba(5, 150, 105, 0.1);
-    --shadow-main: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+    --shadow-main: 0 4px 20px -2px rgba(15, 23, 42, 0.08), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
   }
 }
 
@@ -200,37 +200,37 @@
 }
 
 [data-theme="light"] .btn-secondary {
-  background: #F1F5F9;
-  color: #1D1D1B;
+  background: #FFFFFF;
+  color: #0F172A;
   border-color: #CBD5E1;
 }
 
 [data-theme="light"] .btn-secondary:hover {
-  background: #E2E8F0;
-  color: #1D1D1B;
+  background: #F1F5F9;
+  color: #0F172A;
 }
 
 [data-theme="light"] .btn-icon {
-  background: #F1F5F9;
+  background: #FFFFFF;
   border-color: #CBD5E1;
-  color: #1D1D1B;
+  color: #0F172A;
 }
 
 [data-theme="light"] .btn-icon:hover {
-  background: #E2E8F0;
-  color: #1D1D1B;
+  background: #F1F5F9;
+  color: #0F172A;
 }
 
 [data-theme="light"] .btn-add-cal {
-  background: #F1F5F9;
+  background: #FFFFFF;
   border-color: #CBD5E1;
-  color: #1D1D1B;
+  color: #0F172A;
 }
 
 [data-theme="light"] .btn-add-cal:hover {
-  background: rgba(167, 30, 59, 0.08);
+  background: var(--bicocca-red);
   border-color: var(--bicocca-red);
-  color: var(--bicocca-red);
+  color: #FFFFFF !important;
 }
 
 [data-theme="light"] .nav-tab {
@@ -1022,7 +1022,7 @@ body {
 }
 
 .app-shell {
-  max-width: 720px;
+  max-width: 770px;
   margin-inline: auto;
   width: 100%;
 }
@@ -1031,7 +1031,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  max-width: 720px;
+  max-width: 770px;
   margin-inline: auto;
 }
 
@@ -1557,7 +1557,7 @@ body {
   border-radius: var(--radius-lg);
   padding: 24px;
   width: 100%;
-  max-width: 440px;
+  max-width: 470px;
   max-height: calc(100vh - 40px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
   overflow-y: auto;
   box-shadow: var(--shadow-main);
@@ -1702,7 +1702,7 @@ body {
   flex-direction: column;
   gap: 12px;
   width: 100%;
-  max-width: 500px;
+  max-width: 535px;
   margin-top: 8px;
 }
 
@@ -2007,7 +2007,7 @@ body {
   bottom: 0;
   left: 0;
   right: 0;
-  max-width: 720px;
+  max-width: 770px;
   margin-inline: auto;
   height: calc(62px + env(safe-area-inset-bottom, 0px));
   padding-bottom: env(safe-area-inset-bottom, 0px);
@@ -2715,7 +2715,7 @@ body {
 }
 
 .btn-add-cal:hover {
-  background: var(--accent-purple-bg);
+  background: var(--accent-purple);
   border-color: var(--accent-purple);
   color: #FFF;
 }
@@ -3332,7 +3332,7 @@ body {
 }
 
 .teacher-suggestion-chip:hover {
-  background: var(--accent-cyan-bg);
+  background: var(--accent-cyan);
   border-color: var(--accent-cyan);
   color: #FFF;
 }
@@ -3371,7 +3371,7 @@ body {
 }
 
 .btn-ics-action:hover {
-  background: var(--accent-cyan-bg);
+  background: var(--accent-cyan);
   color: #FFF;
   border-color: var(--accent-cyan);
 }

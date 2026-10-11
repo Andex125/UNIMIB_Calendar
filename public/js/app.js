@@ -18,16 +18,21 @@ const UNIMIB_AREA_COLORS = {
 };
 
 const FAVORITE_COLORS = [
-  '#A71E3B', // Rosso Bicocca Primario
-  '#00753B', // Scientifica
-  '#005096', // Giuridica
-  '#E5C200', // Economico-Statistica
-  '#D83424', // Medica
-  '#F29400', // Sociologica
-  '#A4224B', // Psicologica
-  '#B82585', // Scienze della Formazione
-  '#C42649', // Rosso Accento
-  '#06B6D4'  // Ciano
+  '#DC2626', // 1. Rosso vivido (Crimson)
+  '#2563EB', // 2. Blu reale (Royal Blue)
+  '#16A34A', // 3. Verde smeraldo (Emerald)
+  '#D97706', // 4. Ambra calda (Amber Gold)
+  '#9333EA', // 5. Viola intenso (Purple)
+  '#0D9488', // 6. Teal scuro (Teal)
+  '#E11D48', // 7. Rosa rubino (Rose)
+  '#4F46E5', // 8. Indaco profondo (Indigo)
+  '#65A30D', // 9. Verde oliva-lime (Olive Lime)
+  '#EA580C', // 10. Arancio ruggine (Rust Orange)
+  '#0891B2', // 11. Ciano oceano (Ocean Cyan)
+  '#C026D3', // 12. Fucsia magenta (Fuchsia)
+  '#B45309', // 13. Bronzo dorato (Bronze)
+  '#475569', // 14. Ardesia blu (Slate)
+  '#059669'  // 15. Menta profonda (Deep Mint)
 ];
 
 function detectAreaColor(name) {
@@ -312,9 +317,9 @@ function applyTheme(theme, notify = true) {
   }
   updateThemeButtonUI(theme);
   if (notify) {
-    if (theme === 'light') showToast('☀️ Tema chiaro attivato');
-    else if (theme === 'dark') showToast('🌙 Tema scuro attivato');
-    else showToast('🌓 Tema automatico di sistema attivato');
+    if (theme === 'light') showToast('Tema chiaro attivato');
+    else if (theme === 'dark') showToast('Tema scuro attivato');
+    else showToast('Tema automatico di sistema attivato');
   }
 }
 
@@ -322,13 +327,13 @@ function updateThemeButtonUI(theme) {
   const btn = document.getElementById('btnThemeToggle');
   if (!btn) return;
   if (theme === 'light') {
-    btn.textContent = '☀️';
+    btn.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
     btn.title = 'Tema: Chiaro (clicca per automatico)';
   } else if (theme === 'dark') {
-    btn.textContent = '🌙';
+    btn.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
     btn.title = 'Tema: Scuro (clicca per chiaro)';
   } else {
-    btn.textContent = '🌓';
+    btn.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 0 0 20z" fill="currentColor"/></svg>';
     btn.title = 'Tema: Automatico (clicca per scuro)';
   }
 }
@@ -421,7 +426,7 @@ function setupNetworkStatus() {
   function updateStatus(online) {
     if (online) {
       banner.classList.add('online-recovered');
-      if (textEl) textEl.textContent = '✓ Connessione ripristinata';
+      if (textEl) textEl.textContent = 'Connessione ripristinata';
       setTimeout(() => {
         banner.style.display = 'none';
         banner.classList.remove('online-recovered');
@@ -595,7 +600,7 @@ function setupEventListeners() {
   if (btnCopyRec) btnCopyRec.addEventListener('click', () => {
     if (profileState.recoveryCode) {
       copyGroupUrlToClipboard(profileState.recoveryCode);
-      showToast('Codice di recupero copiato! 📋');
+      showToast('Codice di recupero copiato!');
     }
   });
 
@@ -681,7 +686,9 @@ function setupEventListeners() {
     btnToggleMyself.addEventListener('click', () => {
       friendsState.showMyself = !friendsState.showMyself;
       btnToggleMyself.classList.toggle('active', friendsState.showMyself);
-      btnToggleMyself.textContent = friendsState.showMyself ? '👤 Includi me' : '👤 Escludi me';
+      btnToggleMyself.innerHTML = friendsState.showMyself
+        ? '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:4px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Includi me'
+        : '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:4px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Escludi me';
       renderFriendsView();
     });
   }
@@ -872,7 +879,7 @@ function setupEventListeners() {
         items.push({
           type: isFav ? 'fav' : 'course',
           label: name,
-          badge: isFav ? '⭐ Mio Corso' : '📚 Materia'
+          badge: isFav ? 'Mio Corso' : 'Materia'
         });
       }
     });
@@ -881,7 +888,7 @@ function setupEventListeners() {
         items.push({
           type: 'prof',
           label: name,
-          badge: '👨‍🏫 Docente'
+          badge: 'Docente'
         });
       }
     });
@@ -890,7 +897,7 @@ function setupEventListeners() {
         items.push({
           type: 'room',
           label: name,
-          badge: '📍 Aula'
+          badge: 'Aula'
         });
       }
     });
@@ -1055,12 +1062,12 @@ function setupEventListeners() {
 
     roomsAutocompleteList.innerHTML = matches.map(r => {
       const statusClass = r.is_free ? 'room-free' : 'room-occ';
-      const statusLabel = r.is_free ? '🟢 Libera' : '🔴 Occupata';
+      const statusLabel = r.is_free ? 'Libera' : 'Occupata';
       const capLabel = r.capacity > 0 ? ` · ${r.capacity} posti` : '';
       return `
         <div class="autocomplete-item" data-name="${escapeHtml(r.name)}">
           <div class="autocomplete-item-text">
-            <strong>🏛️ ${escapeHtml(r.name)}</strong>
+            <strong>${escapeHtml(r.name)}</strong>
             <span style="font-size:0.75rem; color:var(--text-secondary); margin-left:6px;">${escapeHtml(r.code)}${capLabel}</span>
           </div>
           <span class="autocomplete-badge ${statusClass}">${statusLabel}</span>
@@ -1261,12 +1268,12 @@ function setupEventListeners() {
     const items = [];
     examNames.forEach((name, lower) => {
       if (!q || lower.includes(q)) {
-        items.push({ type: 'exam', label: name, badge: '📖 Esame' });
+        items.push({ type: 'exam', label: name, badge: 'Esame' });
       }
     });
     docentiNames.forEach((name, lower) => {
       if (!q || lower.includes(q)) {
-        items.push({ type: 'prof', label: name, badge: '👨‍🏫 Docente' });
+        items.push({ type: 'prof', label: name, badge: 'Docente' });
       }
     });
 
@@ -1559,7 +1566,7 @@ function applyConfig() {
     ...(cfg.externalCourses || []).map(ext => ({ code: ext.code, label: ext.label }))
   ];
   allFavorites.forEach((f, i) => {
-    state.favoriteColors[f.code] = detectAreaColor(f.label) || FAVORITE_COLORS[i % FAVORITE_COLORS.length];
+    state.favoriteColors[f.code] = FAVORITE_COLORS[i % FAVORITE_COLORS.length];
   });
 
   if (state.activeTab === 'timetable') {
@@ -1833,7 +1840,7 @@ async function copyWebCalUrl() {
     } else if (!legacyCopy(url)) {
       throw new Error('Copy command failed');
     }
-    showToast('Link sottoscrizione copiato! 📋 Aggiungilo a Calendar');
+    showToast('Link sottoscrizione copiato! Aggiungilo a Calendar');
   } catch (e) {
     input.select();
     showToast('Premi Ctrl+C per copiare il link.');
@@ -1880,7 +1887,7 @@ async function handleExportDownload(format = 'ics') {
       } else if (format === 'json') {
         downloadFile(JSON.stringify(events, null, 2), 'application/json;charset=utf-8', filename);
       }
-      showToast(`Esportati ${events.length} appelli in .${format}! 📝`);
+      showToast(`Esportati ${events.length} appelli in .${format}!`);
       closeExportModal();
       return;
     }
@@ -1908,7 +1915,7 @@ async function handleExportDownload(format = 'ics') {
       } else if (format === 'json') {
         downloadFile(JSON.stringify(events, null, 2), 'application/json;charset=utf-8', filename);
       }
-      showToast(`Esportate ${events.length} lezioni in .${format}! 👥`);
+      showToast(`Esportate ${events.length} lezioni in .${format}!`);
       closeExportModal();
       return;
     }
@@ -1949,7 +1956,7 @@ async function handleExportDownload(format = 'ics') {
       const mime = format === 'ics' ? 'text/calendar;charset=utf-8' : (format === 'csv' ? 'text/csv;charset=utf-8' : 'application/json');
       const filename = `orario_unimib_4settimane.${format}`;
       downloadFile(blob, mime, filename);
-      showToast(`Calendario (4 settimane) esportato in .${format}! 📅`);
+      showToast(`Calendario (4 settimane) esportato in .${format}!`);
       closeExportModal();
       return;
     }
@@ -1976,7 +1983,7 @@ async function handleExportDownload(format = 'ics') {
     } else if (format === 'json') {
       downloadFile(JSON.stringify(evs, null, 2), 'application/json;charset=utf-8', filename);
     }
-    showToast(`Settimana esportata in .${format}! 📅`);
+    showToast(`Settimana esportata in .${format}!`);
     closeExportModal();
   } catch (err) {
     console.error('Export error:', err);
@@ -2106,13 +2113,13 @@ async function openSetup(presetOverride, pendingProfile) {
       banner.style.display = '';
       if (bannerNick) bannerNick.textContent = pending.nickname;
     }
-    if (modalTitle) modalTitle.textContent = '🎓 Scegli il tuo corso e le materie';
+    if (modalTitle) modalTitle.textContent = 'Scegli il tuo corso e le materie';
     if (btnBack) btnBack.style.display = '';
     if (btnClose) btnClose.style.display = 'none';
-    if (btnSave) btnSave.textContent = '🎉 Completa creazione profilo';
+    if (btnSave) btnSave.textContent = 'Completa creazione profilo';
   } else {
     if (banner) banner.style.display = 'none';
-    if (modalTitle) modalTitle.textContent = '🎓 Il tuo corso di studio';
+    if (modalTitle) modalTitle.textContent = 'Il tuo corso di studio';
     if (btnBack) btnBack.style.display = 'none';
     if (btnClose) btnClose.style.display = state.config ? '' : 'none';
     if (btnSave) btnSave.textContent = 'Salva';
@@ -2339,7 +2346,7 @@ async function saveSetup() {
       }
 
       loadCalendar(state.currentMonday);
-      showToast(`🎉 Profilo creato con successo! Codice calendario: ${data.share_code}`, 5000);
+      showToast(`Profilo creato con successo! Codice calendario: ${data.share_code}`, 5000);
       return;
     } catch (err) {
       console.error('Profile creation error:', err);
@@ -2406,9 +2413,9 @@ function renderExternalCoursesUI() {
       chipsBar.style.display = 'flex';
       chipsBar.innerHTML = extCourses.map(ext => `
         <span class="course-chip external" title="${escapeHtml(ext.corsoLabel || ext.corso)} · ${escapeHtml(ext.anno2Label || '')}">
-          <span>🌐</span>
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:3px; vertical-align:-1px;"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
           <span>${escapeHtml(ext.label)}</span>
-          <button class="course-chip-remove" data-code="${escapeHtml(ext.code)}" type="button" title="Rimuovi corso esterno">✕</button>
+          <button class="course-chip-remove" data-code="${escapeHtml(ext.code)}" type="button" title="Rimuovi corso esterno"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </span>
       `).join('');
       chipsBar.querySelectorAll('.course-chip-remove').forEach(btn => {
@@ -2435,7 +2442,7 @@ function renderExternalCoursesUI() {
               ${escapeHtml(ext.corsoLabel || ext.corso)} · ${escapeHtml(ext.anno2Label || ext.anno2)}${ext.docente ? ` · ${escapeHtml(ext.docente)}` : ''}
             </span>
           </div>
-          <button class="btn-icon btn-remove-ext-setup" data-code="${escapeHtml(ext.code)}" type="button" style="width:28px; height:28px; color:#EF4444; flex-shrink:0;" title="Rimuovi">✕</button>
+          <button class="btn-icon btn-remove-ext-setup" data-code="${escapeHtml(ext.code)}" type="button" style="width:28px; height:28px; color:#EF4444; flex-shrink:0;" title="Rimuovi"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
       `).join('');
       extList.querySelectorAll('.btn-remove-ext-setup').forEach(btn => {
@@ -2722,7 +2729,7 @@ function confirmAddExternalCourse() {
   closeAddExternalCourseModal();
   applyConfig();
   loadCalendar(state.currentMonday);
-  showToast(`🎉 Aggiunto: ${label} (${corsoLabel})!`);
+  showToast(`Aggiunto: ${label} (${corsoLabel})!`);
 }
 
 // ---------- Calendar ----------
@@ -3105,7 +3112,7 @@ function updateChangesUI(mondayDateStr) {
       if (otherCount > 0) parts.push(`${otherCount} ${otherCount === 1 ? 'altra modifica' : 'altre modifiche'}`);
 
       const scopeText = state.activeFilter === 'target' ? 'nei tuoi corsi' : 'in tutti i corsi';
-      if (bannerTitle) bannerTitle.textContent = `⚠️ Variazioni ${scopeText} (${relevantChanges.length})`;
+      if (bannerTitle) bannerTitle.textContent = `Variazioni ${scopeText} (${relevantChanges.length})`;
       if (bannerSubtitle) bannerSubtitle.textContent = parts.join(', ') || 'Rilevate modifiche per questa settimana';
     }
   }
@@ -3158,29 +3165,29 @@ function renderScheduleChangesModalList() {
   sorted.forEach(c => {
     const card = document.createElement('div');
     let typeClass = 'type-room';
-    let badgeText = '📍 Aula cambiata';
+    let badgeText = 'Aula cambiata';
     let badgeClass = 'badge-room';
     let detailHtml = '';
 
     if (c.type === 'CANCELED') {
       typeClass = 'type-canceled';
-      badgeText = '❌ Lezione annullata';
+      badgeText = 'Lezione annullata';
       badgeClass = 'badge-canceled';
       detailHtml = `
         <div style="color:#EF4444; font-weight:600; margin-top:2px;">
-          ⚠️ Questa lezione è stata annullata e non si terrà.
+          Questa lezione è stata annullata e non si terrà.
         </div>`;
     } else if (c.type === 'REMOVED') {
       typeClass = 'type-removed';
-      badgeText = '⚠️ Lezione rimossa';
+      badgeText = 'Lezione rimossa';
       badgeClass = 'badge-removed';
       detailHtml = `
         <div style="color:#EF4444; font-weight:600; margin-top:2px;">
-          ❌ La lezione non compare più nell'orario ufficiale UNIMIB.
+          La lezione non compare più nell'orario ufficiale UNIMIB.
         </div>`;
     } else if (c.type === 'REINSTATED') {
       typeClass = 'type-reinstated';
-      badgeText = '✅ Lezione ripristinata';
+      badgeText = 'Lezione ripristinata';
       badgeClass = 'badge-reinstated';
       detailHtml = `
         <div style="color:#10B981; font-weight:600; margin-top:2px;">
@@ -3188,7 +3195,7 @@ function renderScheduleChangesModalList() {
         </div>`;
     } else if (c.type === 'TIME_CHANGED') {
       typeClass = 'type-time';
-      badgeText = '⏰ Orario modificato';
+      badgeText = 'Orario modificato';
       badgeClass = 'badge-time';
       detailHtml = `
         <div class="change-card-detail">
@@ -3200,7 +3207,7 @@ function renderScheduleChangesModalList() {
         </div>`;
     } else if (c.type === 'ROOM_AND_TIME_CHANGED') {
       typeClass = 'type-room-and-time';
-      badgeText = '⚠️ Aula e Orario modificati';
+      badgeText = 'Aula e Orario modificati';
       badgeClass = 'badge-room';
       detailHtml = `
         <div class="change-card-detail">
@@ -3215,7 +3222,7 @@ function renderScheduleChangesModalList() {
         </div>`;
     } else if (c.type === 'ADDED') {
       typeClass = 'type-added';
-      badgeText = '➕ Nuova lezione';
+      badgeText = 'Nuova lezione';
       badgeClass = 'badge-added';
       detailHtml = `
         <div style="color:var(--text-primary); font-weight:600; margin-top:2px;">
@@ -3223,7 +3230,7 @@ function renderScheduleChangesModalList() {
         </div>`;
     } else {
       typeClass = 'type-room';
-      badgeText = '📍 Aula cambiata';
+      badgeText = 'Aula cambiata';
       badgeClass = 'badge-room';
       detailHtml = `
         <div class="change-card-detail">
@@ -3241,22 +3248,22 @@ function renderScheduleChangesModalList() {
     card.innerHTML = `
       <div class="change-card-header">
         <span class="change-badge ${badgeClass}">${badgeText}</span>
-        <span class="change-card-time">⏰ ${escapeHtml(c.startTime)} - ${escapeHtml(c.endTime)}</span>
+        <span class="change-card-time"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:3px; vertical-align:-1px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${escapeHtml(c.startTime)} - ${escapeHtml(c.endTime)}</span>
       </div>
       <div class="change-card-title">
         ${escapeHtml(c.course)}
-        ${c.isFavorite ? '<span class="course-badge" style="margin-left:6px; background:var(--bicocca-red-bg); color:var(--bicocca-red); border:1px solid rgba(167,30,59,0.3); font-size:0.68rem; padding:2px 6px; border-radius:4px;">⭐ Tuo corso</span>' : ''}
+        ${c.isFavorite ? '<span class="course-badge" style="margin-left:6px; background:var(--bicocca-red-bg); color:var(--bicocca-red); border:1px solid rgba(167,30,59,0.3); font-size:0.68rem; padding:2px 6px; border-radius:4px;">Tuo corso</span>' : ''}
       </div>
       <div class="change-card-body">
         <div style="color:var(--text-secondary); font-size:0.78rem; margin-bottom:2px;">
-          📌 <strong>${escapeHtml(dayLong)}</strong>
-          ${c.docente ? ` · 👨‍🏫 ${escapeHtml(c.docente)}` : ''}
+          <strong>${escapeHtml(dayLong)}</strong>
+          ${c.docente ? ` · ${escapeHtml(c.docente)}` : ''}
         </div>
         ${detailHtml}
       </div>
       <div style="display:flex; justify-content:flex-end; margin-top:6px;">
         <button class="btn-changes-view btn-goto-change" data-date="${escapeHtml(c.date)}" type="button" style="padding:4px 10px; font-size:0.75rem;">
-          Vai al giorno ➔
+          Vai al giorno &rarr;
         </button>
       </div>
     `;
@@ -3434,9 +3441,9 @@ function updateNowNextWidget() {
       </div>
       <div class="now-next-title">${escapeHtml(currentEvent.course)}</div>
       <div class="now-next-info">
-        <span>⏰ ${escapeHtml(currentEvent.start_time)} - ${escapeHtml(currentEvent.end_time)}</span>
-        <span>📍 Aula: <strong class="room-pill">${escapeHtml(currentEvent.aula || 'Non specificata')}</strong>${renderBuildingBadgeHtml(currentEvent.aula)}</span>
-        ${currentEvent.docente ? `<span>👨‍🏫 ${escapeHtml(currentEvent.docente)}</span>` : ''}
+        <span><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:3px; vertical-align:-1px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${escapeHtml(currentEvent.start_time)} - ${escapeHtml(currentEvent.end_time)}</span>
+        <span><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:3px; vertical-align:-1px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Aula: <strong class="room-pill">${escapeHtml(currentEvent.aula || 'Non specificata')}</strong>${renderBuildingBadgeHtml(currentEvent.aula)}</span>
+        ${currentEvent.docente ? `<span><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:3px; vertical-align:-1px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>${escapeHtml(currentEvent.docente)}</span>` : ''}
       </div>
     `;
   } else if (nextEvent) {
@@ -3451,9 +3458,9 @@ function updateNowNextWidget() {
       </div>
       <div class="now-next-title">${escapeHtml(nextEvent.course)}</div>
       <div class="now-next-info">
-        <span>⏰ Inizio: <strong>${escapeHtml(nextEvent.start_time)}</strong> (fino alle ${escapeHtml(nextEvent.end_time)})</span>
-        <span>📍 Aula: <strong class="room-pill">${escapeHtml(nextEvent.aula || 'Non specificata')}</strong>${renderBuildingBadgeHtml(nextEvent.aula)}</span>
-        ${nextEvent.docente ? `<span>👨‍🏫 ${escapeHtml(nextEvent.docente)}</span>` : ''}
+        <span><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:3px; vertical-align:-1px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Inizio: <strong>${escapeHtml(nextEvent.start_time)}</strong> (fino alle ${escapeHtml(nextEvent.end_time)})</span>
+        <span><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:3px; vertical-align:-1px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Aula: <strong class="room-pill">${escapeHtml(nextEvent.aula || 'Non specificata')}</strong>${renderBuildingBadgeHtml(nextEvent.aula)}</span>
+        ${nextEvent.docente ? `<span><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:3px; vertical-align:-1px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>${escapeHtml(nextEvent.docente)}</span>` : ''}
       </div>
     `;
   } else {
@@ -3462,7 +3469,7 @@ function updateNowNextWidget() {
       widget.style.display = 'block';
       widget.innerHTML = `
         <div class="now-next-badge none">
-          ✨ Lezioni terminate
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:3px; vertical-align:-1px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>Lezioni terminate
         </div>
         <div class="now-next-title" style="font-size:0.88rem; color:var(--text-secondary); font-weight:500;">
           Hai completato tutte le lezioni previste per oggi (${pastEvents.length} svolte).
@@ -3619,7 +3626,7 @@ function renderEvents() {
   if (state.activeFilter === 'target' && !hasFavorites) {
     container.innerHTML = `
       <div class="empty-state">
-        <div class="empty-icon">⭐</div>
+        <div class="empty-icon"><svg viewBox="0 0 24 24" width="36" height="36" fill="currentColor" stroke="none" style="color:var(--accent);"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
         <h3>Nessun corso preferito</h3>
         <p>Scegli i tuoi corsi o aggiungi un corso esterno per vederli evidenziati e filtrati qui.</p>
         <button class="btn-primary" style="margin-top:15px; width:auto;" onclick="openSetup()">Scegli i miei corsi</button>
@@ -3673,7 +3680,7 @@ function renderEvents() {
   if (events.length === 0 && filteredRemoved.length === 0) {
     container.innerHTML = `
       <div class="empty-state">
-        <div class="empty-icon">📅</div>
+        <div class="empty-icon"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
         <h3>Nessuna lezione trovata</h3>
         <p>${state.activeFilter === 'target' ? 'Nessuna lezione dei tuoi corsi in questo periodo.' : 'Nessuna lezione in programma per i filtri selezionati.'}</p>
       </div>
@@ -3719,7 +3726,7 @@ function renderEvents() {
     section.className = 'day-section';
 
     const itDateTitle = formatDateItalianLong(group.date);
-    section.innerHTML = `<div class="day-header-title">📌 ${escapeHtml(itDateTitle)}</div>`;
+    section.innerHTML = `<div class="day-header-title"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:6px; vertical-align:-2px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>${escapeHtml(itDateTitle)}</div>`;
 
     group.items.forEach(e => {
       const card = document.createElement('div');
@@ -3739,42 +3746,47 @@ function renderEvents() {
         if (change.type === 'ROOM_CHANGED' || change.type === 'ROOM_AND_TIME_CHANGED') {
           changeBadgeHtml += `
             <div class="event-card-change-badge badge-room-change">
-              <span>📍</span> <span>Aula variata: <strong>${escapeHtml(e.aula || 'Non specificata')}</strong> <del style="opacity:0.75; font-size:0.72rem;">(${escapeHtml(change.oldRoom || 'Precedente')})</del></span>
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:4px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              <span>Aula variata: <strong>${escapeHtml(e.aula || 'Non specificata')}</strong> <del style="opacity:0.75; font-size:0.72rem;">(${escapeHtml(change.oldRoom || 'Precedente')})</del></span>
             </div>`;
         }
         if (change.type === 'TIME_CHANGED' || change.type === 'ROOM_AND_TIME_CHANGED') {
           changeBadgeHtml += `
             <div class="event-card-change-badge badge-time-change">
-              <span>⏰</span> <span>Orario variato: <strong>${escapeHtml(e.start_time)} - ${escapeHtml(e.end_time)}</strong> <del style="opacity:0.75; font-size:0.72rem;">(${escapeHtml(change.oldStartTime)} - ${escapeHtml(change.oldEndTime)})</del></span>
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:4px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <span>Orario variato: <strong>${escapeHtml(e.start_time)} - ${escapeHtml(e.end_time)}</strong> <del style="opacity:0.75; font-size:0.72rem;">(${escapeHtml(change.oldStartTime)} - ${escapeHtml(change.oldEndTime)})</del></span>
             </div>`;
         }
       }
 
       const externalBadgeHtml = e.is_external
-        ? `<span class="badge-external" title="Corso di studio esterno: ${escapeHtml(e.external_corso || '')}">🌐 ${escapeHtml(e.external_corso || 'Corso esterno')}</span>`
+        ? `<span class="badge-external" title="Corso di studio esterno: ${escapeHtml(e.external_corso || '')}"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:3px; vertical-align:-1px;"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>${escapeHtml(e.external_corso || 'Corso esterno')}</span>`
         : '';
 
       card.innerHTML = `
         <div class="card-top">
-          <span class="time-badge">⏰ ${escapeHtml(e.start_time)} - ${escapeHtml(e.end_time)}</span>
+          <span class="time-badge"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:4px; vertical-align:-1px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${escapeHtml(e.start_time)} - ${escapeHtml(e.end_time)}</span>
           <div style="display:flex; align-items:center; gap:6px;">
             ${externalBadgeHtml}
-            ${color ? '<span class="course-badge">⭐ Mio corso</span>' : ''}
+            ${color ? '<span class="course-badge">Mio corso</span>' : ''}
           </div>
         </div>
-        ${isCanceled ? '<div class="canceled-banner">⚠️ LEZIONE ANNULLATA</div>' : ''}
+        ${isCanceled ? '<div class="canceled-banner">LEZIONE ANNULLATA</div>' : ''}
         <div class="course-title ${isCanceled ? 'canceled-text' : ''}">${highlightMatch(e.course, state.searchQuery)}</div>
         ${changeBadgeHtml}
         <div class="card-details">
           <div class="detail-item">
-            <span>📍</span> <span>Aula: <strong class="room-pill">${highlightMatch(e.aula || 'Non specificata', state.searchQuery)}</strong>${renderBuildingBadgeHtml(e.aula)}</span>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="flex-shrink:0;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            <span>Aula: <strong class="room-pill">${highlightMatch(e.aula || 'Non specificata', state.searchQuery)}</strong>${renderBuildingBadgeHtml(e.aula)}</span>
           </div>
           <div class="detail-item">
-            <span>👨‍🏫</span> <span>Docente: <strong>${highlightMatch(e.docente || 'Non specificato', state.searchQuery)}</strong></span>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="flex-shrink:0;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <span>Docente: <strong>${highlightMatch(e.docente || 'Non specificato', state.searchQuery)}</strong></span>
           </div>
           ${showCurriculum && curriculum ? `
           <div class="detail-item">
-            <span>🎓</span> <span>${escapeHtml(curriculum)}</span>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="flex-shrink:0;"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+            <span>${escapeHtml(curriculum)}</span>
           </div>` : ''}
         </div>
       `;
@@ -3790,20 +3802,23 @@ function renderEvents() {
       if (color) remCard.style.setProperty('--course-color', color);
       remCard.innerHTML = `
         <div class="card-top">
-          <span class="time-badge">⏰ ${escapeHtml(rem.startTime)} - ${escapeHtml(rem.endTime)}</span>
-          ${rem.isFavorite ? '<span class="course-badge">⭐ Mio corso</span>' : ''}
+          <span class="time-badge"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:4px; vertical-align:-1px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${escapeHtml(rem.startTime)} - ${escapeHtml(rem.endTime)}</span>
+          ${rem.isFavorite ? '<span class="course-badge">Mio corso</span>' : ''}
         </div>
-        <div class="canceled-banner">❌ LEZIONE RIMOSSA DALL'ORARIO</div>
+        <div class="canceled-banner">LEZIONE RIMOSSA DALL'ORARIO</div>
         <div class="course-title canceled-text">${escapeHtml(rem.course)}</div>
         <div class="card-details">
           <div class="detail-item">
-            <span>📍</span> <span>Aula precedente: <del>${escapeHtml(rem.oldRoom || 'Non specificata')}</del></span>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="flex-shrink:0;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            <span>Aula precedente: <del>${escapeHtml(rem.oldRoom || 'Non specificata')}</del></span>
           </div>
           <div class="detail-item">
-            <span>👨‍🏫</span> <span>Docente: <strong>${escapeHtml(rem.docente || 'Non specificato')}</strong></span>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="flex-shrink:0;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <span>Docente: <strong>${escapeHtml(rem.docente || 'Non specificato')}</strong></span>
           </div>
           <div class="detail-item" style="color:#EF4444; font-size:0.78rem;">
-            <span>ℹ️</span> <span>Questa lezione è stata rimossa dall'ultimo aggiornamento del calendario.</span>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span>Questa lezione è stata rimossa dall'ultimo aggiornamento del calendario.</span>
           </div>
         </div>
       `;
@@ -3831,7 +3846,7 @@ function showWelcome() {
   document.getElementById('weekLabelText').textContent = '—';
   document.getElementById('eventsContainer').innerHTML = `
     <div class="empty-state">
-      <div class="empty-icon">🎓</div>
+      <div class="empty-icon"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></div>
       <h3>Benvenuto!</h3>
       <p>Scegli anno accademico, area didattica, corso e anno di studio per vedere il tuo orario.</p>
       <button class="btn-primary" style="margin-top:15px; width:auto;" onclick="openSetup()">Scegli il corso</button>
@@ -3843,7 +3858,7 @@ function showError(msg) {
   const container = document.getElementById('eventsContainer');
   container.innerHTML = `
     <div class="empty-state">
-      <div class="empty-icon">⚠️</div>
+      <div class="empty-icon"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
       <h3>Errore</h3>
       <p>${msg}</p>
       <button class="btn-primary" style="margin-top:15px; width:auto;" onclick="loadCalendar(state.currentMonday, true)">Riprova</button>
@@ -4111,7 +4126,7 @@ async function loadTeachersList(force = false) {
     showToast('Errore nel caricamento dei docenti UNIMIB');
   } finally {
     if (input) {
-      input.placeholder = '🔍 Cerca docente (es. Abbotto, Arcelli, Antoniotti)...';
+      input.placeholder = 'Cerca docente (es. Abbotto, Arcelli, Antoniotti)...';
     }
   }
 }
@@ -4166,7 +4181,7 @@ function renderTeacherAutocomplete(query = '') {
       const full = teachersState.allTeachers.find(t => t.code === fav.code) || { code: fav.code, name: fav.name, courses: [] };
       if (!seen.has(full.code)) {
         seen.add(full.code);
-        matches.push({ teacher: full, type: 'fav', badge: '⭐ Preferito' });
+        matches.push({ teacher: full, type: 'fav', badge: 'Preferito' });
       }
     });
 
@@ -4176,7 +4191,7 @@ function renderTeacherAutocomplete(query = '') {
       if (Array.from(studentDocenti).some(sd => sd && (norm.includes(sd) || sd.includes(norm)))) {
         if (!seen.has(t.code)) {
           seen.add(t.code);
-          matches.push({ teacher: t, type: 'course', badge: '🎓 Tuo Docente' });
+          matches.push({ teacher: t, type: 'course', badge: 'Tuo Docente' });
         }
       }
     });
@@ -4186,7 +4201,7 @@ function renderTeacherAutocomplete(query = '') {
       if (matches.length >= 15) break;
       if (!seen.has(t.code)) {
         seen.add(t.code);
-        matches.push({ teacher: t, type: 'prof', badge: '👨‍🏫 Docente' });
+        matches.push({ teacher: t, type: 'prof', badge: 'Docente' });
       }
     }
   } else {
@@ -4200,13 +4215,13 @@ function renderTeacherAutocomplete(query = '') {
 
       if (matchName || matchCourse) {
         let badgeType = 'prof';
-        let badgeText = '👨‍🏫 Docente';
+        let badgeText = 'Docente';
         if (favCodes.has(t.code)) {
           badgeType = 'fav';
-          badgeText = '⭐ Preferito';
+          badgeText = 'Preferito';
         } else if (Array.from(studentDocenti).some(sd => sd && (nameNorm.includes(sd) || sd.includes(nameNorm)))) {
           badgeType = 'course';
-          badgeText = '🎓 Tuo Docente';
+          badgeText = 'Tuo Docente';
         }
         matches.push({ teacher: t, type: badgeType, badge: badgeText });
       }
@@ -4230,7 +4245,7 @@ function renderTeacherAutocomplete(query = '') {
     return `
       <div class="autocomplete-item ${idx === 0 ? 'active' : ''}" data-code="${escapeHtml(t.code)}">
         <div class="autocomplete-item-text" style="display:flex; flex-direction:column; gap:2px; min-width:0;">
-          <strong>👨‍🏫 ${escapeHtml(t.name)}</strong>
+          <strong>${escapeHtml(t.name)}</strong>
           ${coursesSummary ? `<span style="font-size:0.74rem; color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(coursesSummary)}</span>` : ''}
         </div>
         <span class="autocomplete-badge ${m.type}">${escapeHtml(m.badge)}</span>
@@ -4285,7 +4300,9 @@ function selectTeacher(teacher, autoFetch = true) {
     const isFav = teachersState.favoriteTeachers.some(f => f.code === teacher.code);
     const favBtn = document.getElementById('btnToggleTeacherFavorite');
     if (favBtn) {
-      favBtn.textContent = isFav ? '⭐' : '☆';
+      favBtn.innerHTML = isFav 
+        ? '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>'
+        : '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
       favBtn.title = isFav ? 'Rimuovi dai preferiti' : 'Salva tra i preferiti';
     }
 
@@ -4295,11 +4312,11 @@ function selectTeacher(teacher, autoFetch = true) {
     if (courseFilterContainer && courseSelect) {
       if (teacher.courses && teacher.courses.length > 1) {
         courseFilterContainer.style.display = 'block';
-        courseSelect.innerHTML = `<option value="">📚 Tutti i corsi del docente (${teacher.courses.length})</option>` +
+        courseSelect.innerHTML = `<option value="">Tutti i corsi del docente (${teacher.courses.length})</option>` +
           teacher.courses.map(c => `<option value="${escapeHtml(c.code)}">${escapeHtml(c.name)}</option>`).join('');
       } else {
         courseFilterContainer.style.display = 'none';
-        courseSelect.innerHTML = '<option value="">📚 Tutti i corsi del docente</option>';
+        courseSelect.innerHTML = '<option value="">Tutti i corsi del docente</option>';
       }
     }
   }
@@ -4347,7 +4364,7 @@ function toggleTeacherFavorite(teacher) {
     showToast('Docente rimosso dai preferiti');
   } else {
     teachersState.favoriteTeachers.push({ code: teacher.code, name: teacher.name });
-    showToast('Docente salvato nei preferiti ⭐');
+    showToast('Docente salvato nei preferiti');
   }
   saveFavoriteTeachers(teachersState.favoriteTeachers);
 
@@ -4355,7 +4372,9 @@ function toggleTeacherFavorite(teacher) {
   const favBtn = document.getElementById('btnToggleTeacherFavorite');
   if (favBtn) {
     const isNowFav = !exists;
-    favBtn.textContent = isNowFav ? '⭐' : '☆';
+    favBtn.innerHTML = isNowFav 
+      ? '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>'
+      : '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
     favBtn.title = isNowFav ? 'Rimuovi dai preferiti' : 'Salva tra i preferiti';
   }
 
@@ -4385,7 +4404,7 @@ function renderFavoriteTeachersBar() {
     const parts = fav.name.split(' ');
     const shortName = parts.length > 1 ? `${parts[0]} ${parts[1][0]}.` : fav.name;
 
-    chip.innerHTML = `<span>⭐ ${escapeHtml(shortName)}</span>`;
+    chip.innerHTML = `<span style="display:inline-flex; align-items:center; gap:4px;"><svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>${escapeHtml(shortName)}</span>`;
     chip.title = fav.name;
     chip.addEventListener('click', () => {
       // Find full teacher object if available
@@ -4410,7 +4429,7 @@ function renderTeacherQuickSuggestions() {
 
   container.innerHTML = suggestions.map(s => `
     <button class="teacher-suggestion-chip" data-code="${escapeHtml(s.code)}" data-name="${escapeHtml(s.name)}">
-      🔍 ${escapeHtml(s.name)}
+      ${escapeHtml(s.name)}
     </button>
   `).join('');
 
@@ -4442,7 +4461,7 @@ async function shareTeacherCalendar(teacher) {
   // Fallback to clipboard
   try {
     await navigator.clipboard.writeText(url);
-    showToast('Link orario docente copiato! 📋');
+    showToast('Link orario docente copiato!');
   } catch (e) {
     showToast('Copia il link: ' + url);
   }
@@ -4503,7 +4522,7 @@ async function loadTeacherCalendar(forceRefresh = false) {
       });
       if (allEmails.length > 0 && emailContainer) {
         emailContainer.innerHTML = allEmails.map(em =>
-          `<a href="mailto:${escapeHtml(em)}" class="teacher-email-link" title="Scrivi email">✉️ ${escapeHtml(em)}</a>`
+          `<a href="mailto:${escapeHtml(em)}" class="teacher-email-link" title="Scrivi email"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>${escapeHtml(em)}</a>`
         ).join(' ');
       }
     }
@@ -4665,11 +4684,12 @@ function renderTeacherEvents() {
   topBar.style.padding = '8px 16px';
   topBar.style.marginBottom = '8px';
   topBar.innerHTML = `
-    <span style="font-size:0.82rem; color:var(--text-secondary); font-weight:600;">
-      📚 ${events.length} ${events.length === 1 ? 'lezione' : 'lezioni'}
+    <span style="font-size:0.82rem; color:var(--text-secondary); font-weight:600; display:inline-flex; align-items:center; gap:5px;">
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/><path d="M6 6h10"/><path d="M6 10h10"/></svg>
+      ${events.length} ${events.length === 1 ? 'lezione' : 'lezioni'}
     </span>
     <button id="btnExportTeacherWeekIcs" class="btn-ics-action" style="padding: 6px 12px; font-size: 0.78rem;">
-      📥 Esporta tutte (.ics)
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Esporta tutte (.ics)
     </button>
   `;
   container.appendChild(topBar);
@@ -4697,7 +4717,7 @@ function renderTeacherEvents() {
     section.className = 'day-section';
 
     const itDateTitle = formatDateItalianLong(group.date);
-    section.innerHTML = `<div class="day-header-title">📌 ${escapeHtml(itDateTitle)}</div>`;
+    section.innerHTML = `<div class="day-header-title"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:6px; vertical-align:-2px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>${escapeHtml(itDateTitle)}</div>`;
 
     group.items.forEach(e => {
       const card = document.createElement('div');
@@ -4706,39 +4726,39 @@ function renderTeacherEvents() {
 
       card.innerHTML = `
         <div class="card-top">
-          <span class="time-badge">⏰ ${escapeHtml(e.start_time)} - ${escapeHtml(e.end_time)}</span>
+          <span class="time-badge"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:4px; vertical-align:-1px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${escapeHtml(e.start_time)} - ${escapeHtml(e.end_time)}</span>
           <span class="badge-status" style="font-size: 0.72rem; padding: 2px 8px;">${escapeHtml(e.type || 'Lezione')}</span>
         </div>
-        ${isCanceled ? '<div class="canceled-banner">⚠️ LEZIONE ANNULLATA</div>' : ''}
+        ${isCanceled ? '<div class="canceled-banner">LEZIONE ANNULLATA</div>' : ''}
         <div class="course-title ${isCanceled ? 'canceled-text' : ''}">${escapeHtml(e.course)}</div>
         <div class="card-details">
           <div class="detail-item">
-            <span>📍</span>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="flex-shrink:0;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
             <span>Aula: <strong class="room-pill">${escapeHtml(e.aula || 'Non specificata')}</strong>${renderBuildingBadgeHtml(e.aula)}</span>
           </div>
           ${(e.curricula && e.curricula.length > 0) ? `
           <div class="detail-item">
-            <span>🎓</span>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="flex-shrink:0;"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
             <span>${escapeHtml(e.curricula.join(' · '))}</span>
           </div>` : ''}
           ${e.docente ? `
           <div class="detail-item">
-            <span>👨‍🏫</span>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="flex-shrink:0;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
             <span>${escapeHtml(e.docente)}</span>
           </div>` : ''}
           ${e.primary_email ? `
           <div class="detail-item">
-            <span>✉️</span>
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="flex-shrink:0;"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
             <a href="mailto:${escapeHtml(e.primary_email)}" class="teacher-email-link" title="Invia email">${escapeHtml(e.primary_email)}</a>
           </div>` : ''}
           ${e.notes ? `
           <div class="detail-item" style="grid-column: 1 / -1; background: rgba(255,255,255,0.03); border-radius: 8px; padding: 6px 10px; margin-top: 4px;">
-            <span style="font-size: 0.8rem;">📝</span>
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="flex-shrink:0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
             <span style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.4;">${escapeHtml(e.notes)}</span>
           </div>` : ''}
         </div>
         <div style="display: flex; justify-content: flex-end; margin-top: 10px; gap: 8px;">
-          <button class="btn-ics-action btn-single-ics">📅 Salva .ics</button>
+          <button class="btn-ics-action btn-single-ics"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:3px; vertical-align:-1px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Salva .ics</button>
         </div>
       `;
 
@@ -4791,7 +4811,7 @@ function downloadTeacherEventIcs(ev) {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  showToast('Lezione salvata in .ics! 📅');
+  showToast('Lezione salvata in .ics!');
 }
 
 function downloadTeacherWeekIcs(events, teacher) {
@@ -4840,7 +4860,7 @@ function downloadTeacherWeekIcs(events, teacher) {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  showToast('Tutte le lezioni esportate in .ics! 📅');
+  showToast('Tutte le lezioni esportate in .ics!');
 }
 
 function setupTeachersEventListeners() {
@@ -5000,7 +5020,7 @@ function setupTeachersEventListeners() {
         items.push({
           type: 'course',
           label: name,
-          badge: '📚 Materia'
+          badge: 'Materia'
         });
       }
     });
@@ -5009,7 +5029,7 @@ function setupTeachersEventListeners() {
         items.push({
           type: 'room',
           label: name,
-          badge: '📍 Aula'
+          badge: 'Aula'
         });
       }
     });
@@ -5153,8 +5173,8 @@ async function loadRoomsOccupancy(forceRefresh = false) {
     document.getElementById('roomsFilterBar').style.display = 'flex';
 
     document.getElementById('badgeRoomsTotal').textContent = `${data.total_rooms} aule`;
-    document.getElementById('badgeRoomsFree').textContent = `🟢 ${data.free_rooms} libere`;
-    document.getElementById('badgeRoomsOccupied').textContent = `🔴 ${data.occupied_rooms} occupate`;
+    document.getElementById('badgeRoomsFree').innerHTML = `<span class="status-indicator-dot" style="background:#10B981; display:inline-block; margin-right:4px;"></span>${data.free_rooms} libere`;
+    document.getElementById('badgeRoomsOccupied').innerHTML = `<span class="status-indicator-dot" style="background:#EF4444; display:inline-block; margin-right:4px;"></span>${data.occupied_rooms} occupate`;
 
     const dateDisplay = document.getElementById('roomsDateDisplay');
     if (dateDisplay) {
@@ -5200,7 +5220,7 @@ function renderRooms() {
   if (filtered.length === 0) {
     grid.innerHTML = `
       <div class="empty-state" style="grid-column: 1 / -1;">
-        <div class="empty-icon">🔍</div>
+        <div class="empty-icon"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
         <h3>Nessuna aula trovata</h3>
         <p>Nessun'aula corrisponde ai filtri selezionati.</p>
       </div>
@@ -5218,7 +5238,7 @@ function renderRooms() {
       if (r.free_until && r.free_until !== 'fine giornata') {
         freeHeading = `Libera adesso · Fino alle ${escapeHtml(r.free_until)}`;
         if (r.next_event) {
-          freeSub = `<div style="color:var(--text-secondary); font-size:0.8rem; margin-top:4px;">📖 Prossima: <strong>${escapeHtml(r.next_event.name)}</strong> (${escapeHtml(r.next_event.from)} - ${escapeHtml(r.next_event.to)})</div>`;
+          freeSub = `<div style="color:var(--text-secondary); font-size:0.8rem; margin-top:4px;"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:3px; vertical-align:-1px;"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/><path d="M6 6h10"/><path d="M6 10h10"/></svg>Prossima: <strong>${escapeHtml(r.next_event.name)}</strong> (${escapeHtml(r.next_event.from)} - ${escapeHtml(r.next_event.to)})</div>`;
         }
       } else if (r.events_count > 0) {
         freeHeading = `Libera per il resto della giornata`;
@@ -5245,13 +5265,13 @@ function renderRooms() {
 
       let currentSub = '';
       if (r.current_event) {
-        currentSub += `<div style="color:var(--text-primary); font-weight:600; margin-top:4px; font-size:0.85rem;">📖 In corso: ${escapeHtml(r.current_event.name)} <span style="color:var(--accent-purple); font-size:0.78rem;">(${escapeHtml(r.current_event.from)} - ${escapeHtml(r.current_event.to)})</span></div>`;
+        currentSub += `<div style="color:var(--text-primary); font-weight:600; margin-top:4px; font-size:0.85rem;"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:3px; vertical-align:-1px;"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/><path d="M6 6h10"/><path d="M6 10h10"/></svg>In corso: ${escapeHtml(r.current_event.name)} <span style="color:var(--accent-purple); font-size:0.78rem;">(${escapeHtml(r.current_event.from)} - ${escapeHtml(r.current_event.to)})</span></div>`;
         if (r.current_event.docenti && r.current_event.docenti.length) {
-          currentSub += `<div style="color:var(--text-secondary); font-size:0.78rem;">👤 ${escapeHtml(r.current_event.docenti.join(', '))}</div>`;
+          currentSub += `<div style="color:var(--text-secondary); font-size:0.78rem;"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:3px; vertical-align:-1px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>${escapeHtml(r.current_event.docenti.join(', '))}</div>`;
         }
       }
       if (r.chained_next_event) {
-        currentSub += `<div style="color:var(--accent-cyan); font-size:0.78rem; margin-top:3px;">⏭️ A seguire: ${escapeHtml(r.chained_next_event.name)} (${escapeHtml(r.chained_next_event.from)} - ${escapeHtml(r.chained_next_event.to)})</div>`;
+        currentSub += `<div style="color:var(--accent-cyan); font-size:0.78rem; margin-top:3px;"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:3px; vertical-align:-1px;"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg>A seguire: ${escapeHtml(r.chained_next_event.name)} (${escapeHtml(r.chained_next_event.from)} - ${escapeHtml(r.chained_next_event.to)})</div>`;
       }
       bodyHtml = `<strong style="color:var(--danger);">${occHeading}</strong>${currentSub}`;
     }
@@ -5261,7 +5281,7 @@ function renderRooms() {
         <div class="room-card-top">
           <div>
             <div class="room-card-title">${escapeHtml(r.name)} ${renderBuildingBadgeHtml(r.name || r.code || roomsState.selectedBuilding)}</div>
-            <div class="room-card-capacity">👥 ${r.capacity > 0 ? r.capacity + ' posti' : 'Capienza n/d'} · ${escapeHtml(r.code)}</div>
+            <div class="room-card-capacity"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:3px; vertical-align:-1px;"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>${r.capacity > 0 ? r.capacity + ' posti' : 'Capienza n/d'} · ${escapeHtml(r.code)}</div>
           </div>
           <div class="status-badge ${r.is_free ? 'free' : 'occupied'}">
             <span class="status-indicator-dot"></span>
@@ -5273,7 +5293,7 @@ function renderRooms() {
         </div>
         <div class="room-card-footer">
           <span>${r.events_count} ${r.events_count === 1 ? 'lezione/evento oggi' : 'lezioni/eventi oggi'}</span>
-          <span>Tutte le lezioni ➔</span>
+          <span>Tutte le lezioni &rarr;</span>
         </div>
       </div>
     `;
@@ -5334,7 +5354,7 @@ function renderModalRoomEvents(events) {
   if (!events || events.length === 0) {
     container.innerHTML = `
       <div class="empty-state" style="padding: 24px 10px;">
-        <div class="empty-icon">🟢</div>
+        <div class="empty-icon"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="#10B981" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
         <h3>Aula Libera</h3>
         <p>Nessuna lezione o evento programmato in quest'aula per questa giornata.</p>
       </div>
@@ -5349,7 +5369,7 @@ function renderModalRoomEvents(events) {
         <span class="badge-status" style="font-size:0.7rem;">${escapeHtml(e.type)}</span>
       </div>
       <div class="timeline-name">${escapeHtml(e.name)}</div>
-      ${e.docenti && e.docenti.length ? `<div class="timeline-docente">👤 ${escapeHtml(e.docenti.join(', '))}</div>` : ''}
+      ${e.docenti && e.docenti.length ? `<div class="timeline-docente"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:3px; vertical-align:-1px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>${escapeHtml(e.docenti.join(', '))}</div>` : ''}
       ${e.description ? `<div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">${escapeHtml(e.description)}</div>` : ''}
     </div>
   `).join('');
@@ -5426,7 +5446,7 @@ function renderExamCourseChips() {
   if (courses.length === 0) {
     container.innerHTML = `
       <span style="font-size:0.8rem; color:var(--text-muted);">Nessun corso selezionato.</span>
-      <button id="btnChipAdd" class="course-chip course-chip-add">➕ Aggiungi corso</button>
+      <button id="btnChipAdd" class="course-chip course-chip-add"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:4px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Aggiungi corso</button>
     `;
     const btn = document.getElementById('btnChipAdd');
     if (btn) btn.addEventListener('click', openAddExamCourseModal);
@@ -5435,10 +5455,10 @@ function renderExamCourseChips() {
 
   container.innerHTML = courses.map(c => `
     <div class="course-chip ${c.isPrimary ? 'primary' : 'extra'}">
-      <span>${c.isPrimary ? '⭐ ' : '🎓 '}${escapeHtml(c.label)} [${escapeHtml(c.code)}]</span>
-      ${!c.isPrimary ? `<button class="btn-remove-chip" data-code="${escapeHtml(c.code)}" title="Rimuovi">✕</button>` : ''}
+      <span>${c.isPrimary ? '<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" stroke="none" style="margin-right:4px; vertical-align:-1px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>' : '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px; vertical-align:-1px;"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>'}${escapeHtml(c.label)} [${escapeHtml(c.code)}]</span>
+      ${!c.isPrimary ? `<button class="btn-remove-chip" data-code="${escapeHtml(c.code)}" title="Rimuovi"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none; display:inline-block; vertical-align:middle;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>` : ''}
     </div>
-  `).join('') + '<button id="btnChipAdd" class="course-chip course-chip-add">➕ Aggiungi corso</button>';
+  `).join('') + '<button id="btnChipAdd" class="course-chip course-chip-add"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:4px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Aggiungi corso</button>';
 
   const btnAdd = document.getElementById('btnChipAdd');
   if (btnAdd) btnAdd.addEventListener('click', openAddExamCourseModal);
@@ -5591,10 +5611,10 @@ async function loadExams(forceRefresh = false) {
     document.getElementById('examsSummaryBanner').style.display = 'none';
     document.getElementById('examsContainer').innerHTML = `
       <div class="empty-state">
-        <div class="empty-icon">📝</div>
+        <div class="empty-icon"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
         <h3>Nessun corso per gli esami</h3>
         <p>Configura il tuo corso di studi o aggiungi corsi con il pulsante <strong>+ Aggiungi corso</strong>.</p>
-        <button class="btn-primary" style="margin-top:15px; width:auto;" onclick="openAddExamCourseModal()">➕ Aggiungi corso</button>
+        <button class="btn-primary" style="margin-top:15px; width:auto;" onclick="openAddExamCourseModal()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:4px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Aggiungi corso</button>
       </div>
     `;
     return;
@@ -5658,10 +5678,10 @@ function renderExams() {
     if (!favorites.length) {
       container.innerHTML = `
         <div class="empty-state">
-          <div class="empty-icon">⭐</div>
+          <div class="empty-icon"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
           <h3>Nessun corso seguito selezionato</h3>
-          <p>Non hai ancora scelto i tuoi insegnamenti seguiti nelle impostazioni del corso di studio. Vai su ⚙️ per selezionarli, oppure visualizza tutti gli appelli del corso.</p>
-          <button class="btn-primary" style="margin-top:15px; width:auto;" onclick="openSetup()">⚙️ Seleziona i tuoi corsi</button>
+          <p>Non hai ancora scelto i tuoi insegnamenti seguiti nelle impostazioni del corso di studio. Vai nelle impostazioni per selezionarli, oppure visualizza tutti gli appelli del corso.</p>
+          <button class="btn-primary" style="margin-top:15px; width:auto;" onclick="openSetup()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:4px;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Seleziona i tuoi corsi</button>
         </div>
       `;
       const countEl = document.getElementById('examsCountText');
@@ -5710,7 +5730,7 @@ function renderExams() {
   if (list.length === 0) {
     container.innerHTML = `
       <div class="empty-state">
-        <div class="empty-icon">🔍</div>
+        <div class="empty-icon"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
         <h3>Nessun appello trovato</h3>
         <p>${examsState.searchQuery 
           ? `Nessun esame o docente corrisponde alla ricerca "<strong>${escapeHtml(examsState.searchQuery)}</strong>". Prova a cancellare il filtro di ricerca o cambiare sessione.`
@@ -5733,11 +5753,11 @@ function renderExams() {
   container.innerHTML = Object.keys(groups).sort().map(dateKey => {
     const list = groups[dateKey];
     const first = list[0];
-    const dateHeader = `📅 ${first.date_long || formatDateItalianLong(first.date)} (${first.date_formatted || formatDateItalianShort(first.date)})`;
+    const dateHeader = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:6px; vertical-align:-2px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>${first.date_long || formatDateItalianLong(first.date)} (${first.date_formatted || formatDateItalianShort(first.date)})`;
 
     const cardsHtml = list.map(ex => {
       const courseInfo = ex.courses && ex.courses.length ? ex.courses[0] : null;
-      const courseBadge = courseInfo ? `🎓 ${escapeHtml(courseInfo.title || courseInfo.code)}${courseInfo.year ? ' · ' + courseInfo.year + '° anno' : ''}` : '';
+      const courseBadge = courseInfo ? `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:4px;"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>${escapeHtml(courseInfo.title || courseInfo.code)}${courseInfo.year ? ' · ' + courseInfo.year + '° anno' : ''}` : '';
 
       return `
         <div class="exam-card">
@@ -5748,14 +5768,14 @@ function renderExams() {
 
           <div class="exam-meta-grid">
             ${courseBadge ? `<span class="exam-meta-item course">${courseBadge}</span>` : ''}
-            <span class="exam-meta-item">📍 ${escapeHtml(ex.aula || 'Aula da definire')} ${ex.sede ? '· ' + escapeHtml(ex.sede) : ''}</span>
-            ${ex.docenti && ex.docenti.length ? `<span class="exam-meta-item">👤 Prof. ${escapeHtml(ex.docenti.join(', '))}</span>` : ''}
+            <span class="exam-meta-item"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:4px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${escapeHtml(ex.aula || 'Aula da definire')} ${ex.sede ? '· ' + escapeHtml(ex.sede) : ''}</span>
+            ${ex.docenti && ex.docenti.length ? `<span class="exam-meta-item"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:4px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Prof. ${escapeHtml(ex.docenti.join(', '))}</span>` : ''}
             ${ex.appello ? `<span class="badge-status" style="font-size:0.7rem;">Appello ${escapeHtml(ex.appello)}</span>` : ''}
           </div>
 
           <div class="exam-actions">
             <button class="btn-add-cal" data-id="${escapeHtml(ex.id)}">
-              📅 Salva nel calendario
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:4px; vertical-align:-1px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Salva nel calendario
             </button>
           </div>
         </div>
@@ -6090,18 +6110,18 @@ function renderProfileModal() {
       if (configFavs) {
         const favCount = (state.config.favorites || []).length;
         configFavs.textContent = favCount > 0
-          ? `⭐ ${favCount} ${favCount === 1 ? 'materia seguita' : 'materie seguite'}`
+          ? `${favCount} ${favCount === 1 ? 'materia seguita' : 'materie seguite'}`
           : 'Nessuna materia selezionata con la stella';
       }
       if (btnWithExisting) {
         btnWithExisting.style.display = '';
-        btnWithExisting.textContent = '✨ Salva profilo con questo corso';
+        btnWithExisting.textContent = 'Salva profilo con questo corso';
       }
-      if (btnCreate) btnCreate.textContent = '📚 Scegli un altro corso ➡️';
+      if (btnCreate) btnCreate.textContent = 'Scegli un altro corso \u2192';
     } else {
       if (configBox) configBox.style.display = 'none';
       if (btnWithExisting) btnWithExisting.style.display = 'none';
-      if (btnCreate) btnCreate.textContent = 'Continua: Scegli i tuoi corsi ➡️';
+      if (btnCreate) btnCreate.textContent = 'Continua: Scegli i tuoi corsi \u2192';
     }
   }
 }
@@ -6200,7 +6220,7 @@ async function handleCreateWithExistingConfig() {
     saveProfileLocally();
     syncGroupCloud();
     renderProfileModal();
-    showToast(`🎉 Profilo creato! Il tuo codice calendario è: ${data.share_code}`, 5000);
+    showToast(`Profilo creato! Il tuo codice calendario è: ${data.share_code}`, 5000);
     setTimeout(() => {
       closeModal('profileModal');
     }, 1200);
@@ -6314,7 +6334,7 @@ async function handleLoginProfile() {
     saveProfileLocally();
     syncGroupCloud();
     renderProfileModal();
-    showToast(`Bentornato, ${data.nickname}! 👋`);
+    showToast(`Bentornato, ${data.nickname}!`);
     setTimeout(() => {
       closeModal('profileModal');
       if (!state.config) openSetup();
@@ -6408,7 +6428,7 @@ async function handleRecoverPin() {
     saveProfileLocally();
     syncGroupCloud();
     renderProfileModal();
-    showToast(`PIN reimpostato con successo! 🎉 Nuovo codice: ${data.recovery_code}`, 6000);
+    showToast(`PIN reimpostato con successo! Nuovo codice: ${data.recovery_code}`, 6000);
     setTimeout(() => {
       closeModal('profileModal');
     }, 1200);
@@ -6451,7 +6471,7 @@ async function copyProfileId() {
   const code = profileState.shareCode;
   if (!code) return;
   copyGroupUrlToClipboard(code);
-  showToast(`Codice calendario ${code} copiato! 📋`);
+  showToast(`Codice calendario ${code} copiato!`);
 }
 
 function shareMyCalendarLink() {
@@ -6486,12 +6506,12 @@ async function syncProfileNow() {
     if (profileState.sessionToken || profileState._pin) {
       await _syncConfigToProfile();
       text.textContent = `Sincronizzato alle ${new Date().toLocaleTimeString('it-IT')}`;
-      showToast('Profilo sincronizzato ✅');
+      showToast('Profilo sincronizzato');
     } else {
       const resp = await fetch(`/api/profile?code=${encodeURIComponent(profileState.shareCode)}`);
       if (resp.ok) {
         text.textContent = 'Raggiungibile (riaccedi col PIN per sincronizzare)';
-        showToast('Profilo raggiungibile ✅');
+        showToast('Profilo raggiungibile');
       } else {
         text.textContent = 'Profilo non trovato sul server';
       }
@@ -6645,7 +6665,7 @@ function renderGroupSwitcher() {
   select.innerHTML = friendsState.groups.map(g => {
     const isSelected = g.id === friendsState.activeGroupId ? 'selected' : '';
     const memberLabel = g.members_count === 1 ? '1 membro' : `${g.members_count} membri`;
-    return `<option value="${escapeHtml(g.id)}" ${isSelected}>👥 ${escapeHtml(g.name)} (${memberLabel})</option>`;
+    return `<option value="${escapeHtml(g.id)}" ${isSelected}>${escapeHtml(g.name)} (${memberLabel})</option>`;
   }).join('');
 }
 
@@ -6725,7 +6745,7 @@ async function confirmCreateGroup() {
     renderFriendChips();
     updateFriendsGroupHeader();
     loadFriendsCalendar();
-    showToast(`🎉 Gruppo "${data.group.name}" creato! Codice: ${data.group.id}`, 5000);
+    showToast(`Gruppo "${data.group.name}" creato! Codice: ${data.group.id}`, 5000);
   } catch (e) {
     if (errEl) { errEl.textContent = 'Errore di connessione.'; errEl.style.display = ''; }
   } finally {
@@ -6806,7 +6826,7 @@ async function confirmJoinGroup() {
     renderFriendChips();
     updateFriendsGroupHeader();
     loadFriendsCalendar();
-    showToast(`Ti sei unito al gruppo "${data.group.name}"! 🎉`);
+    showToast(`Ti sei unito al gruppo "${data.group.name}"!`);
   } catch (e) {
     if (errEl) { errEl.textContent = 'Errore di connessione.'; errEl.style.display = ''; }
   } finally {
@@ -6878,7 +6898,7 @@ async function confirmRenameGroup() {
     }
     renderGroupSwitcher();
     updateFriendsGroupHeader();
-    showToast('Gruppo rinominato ✅');
+    showToast('Gruppo rinominato');
   } catch (e) {
     if (errEl) { errEl.textContent = 'Errore di connessione.'; errEl.style.display = ''; }
   } finally {
@@ -6944,13 +6964,13 @@ function updateFriendsGroupHeader() {
   const titleEl = document.getElementById('friendsGroupTitle');
   const subEl   = document.getElementById('friendsGroupSubtitle');
   if (friendsState.groupInfo) {
-    if (titleEl) titleEl.textContent = `👥 ${friendsState.groupInfo.name || 'Gruppo Studio'}`;
+    if (titleEl) titleEl.textContent = friendsState.groupInfo.name || 'Gruppo Studio';
     const totalCount = friendsState.friends.length + 1;
     if (subEl) {
       subEl.innerHTML = `Codice Gruppo: <strong style="color:var(--accent-purple); font-family:monospace; letter-spacing:0.05em;">${escapeHtml(friendsState.groupInfo.id)}</strong> • ${totalCount} ${totalCount === 1 ? 'membro' : 'membri'}`;
     }
   } else {
-    if (titleEl) titleEl.textContent = '👥 Calendario Gruppo';
+    if (titleEl) titleEl.textContent = 'Calendario Gruppo';
     if (subEl) subEl.textContent = 'Confronta i vostri orari e trovate i momenti liberi in comune';
   }
 }
@@ -7055,7 +7075,7 @@ async function lookupFriendByCode() {
       if (prev) prev.style.display = '';
       if (confBtn) {
         confBtn.disabled = false;
-        confBtn.textContent = '🤝 Unisciti al gruppo';
+        confBtn.textContent = 'Unisciti al gruppo';
         confBtn._foundProfile = { isGroup: true, group_id: g.id, group_name: g.name, members: groupData.members };
       }
       return;
@@ -7092,7 +7112,7 @@ async function lookupFriendByCode() {
   } finally {
     if (btn) {
       btn.disabled    = false;
-      btn.textContent = '🔍 Verifica codice';
+      btn.textContent = 'Verifica codice';
     }
   }
 }
@@ -7175,7 +7195,7 @@ async function handleJoinGroup(groupProfile) {
   updateFriendsGroupHeader();
   friendsState.events = [];
   loadFriendsCalendar();
-  showToast(`Ti sei unito al gruppo "${groupProfile.group_name}"! 🎉`);
+  showToast(`Ti sei unito al gruppo "${groupProfile.group_name}"!`);
 }
 
 async function searchFriendByName() {
@@ -7206,7 +7226,7 @@ async function _addFriend({ id, nickname }) {
       saveFriends(friendsState.friends);
       friendsState.events = [];
       renderFriendChips();
-      showToast(`${nickname} aggiunto! Crea o accedi a un profilo per salvare il gruppo nel cloud ☁️`);
+      showToast(`${nickname} aggiunto! Crea o accedi a un profilo per salvare il gruppo nel cloud`);
       loadFriendsCalendar();
       return;
     }
@@ -7243,7 +7263,7 @@ async function _addFriend({ id, nickname }) {
   saveFriends(friendsState.friends);
   friendsState.events = [];
   renderFriendChips();
-  showToast(`${nickname} aggiunto al gruppo! 🎉`);
+  showToast(`${nickname} aggiunto al gruppo!`);
 
   // Cloud sync to join friend to active group in Redis
   if (profileState.shareCode && friendsState.activeGroupId) {
@@ -7346,7 +7366,9 @@ function renderFriendChips() {
   const btnToggle = document.getElementById('btnToggleMyself');
   if (btnToggle) {
     btnToggle.classList.toggle('active', friendsState.showMyself);
-    btnToggle.textContent = friendsState.showMyself ? '👤 Includi me' : '👤 Escludi me';
+    btnToggle.innerHTML = friendsState.showMyself
+      ? '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:4px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Includi me'
+      : '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:4px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Escludi me';
   }
 
   // Sync view mode buttons
@@ -7359,7 +7381,7 @@ function renderFriendChips() {
 
   const notLoggedInBanner = !profileState.shareCode
     ? `<div style="background:rgba(139,92,246,0.12); border:1px solid rgba(139,92,246,0.3); border-radius:10px; padding:8px 12px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; gap:8px;">
-        <span style="font-size:0.78rem; color:var(--text-secondary);">👤 <strong style="color:var(--text-primary);">Non hai ancora effettuato l'accesso?</strong> Accedi col tuo profilo per salvare il gruppo nel cloud e sincronizzarti all'istante con gli amici.</span>
+        <span style="font-size:0.78rem; color:var(--text-secondary); display:inline-flex; align-items:center; gap:6px;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="flex-shrink:0;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span><strong style="color:var(--text-primary);">Non hai ancora effettuato l'accesso?</strong> Accedi col tuo profilo per salvare il gruppo nel cloud e sincronizzarti all'istante con gli amici.</span></span>
         <button onclick="openProfileModal()" class="btn-primary" style="width:auto; padding:5px 12px; font-size:0.75rem; white-space:nowrap;">Accedi</button>
       </div>`
     : '';
@@ -7372,7 +7394,7 @@ function renderFriendChips() {
     <span class="friend-chip" style="background: ${hexToRgba(f.color, 0.18)}; border-color: ${hexToRgba(f.color, 0.4)};">
       <span class="friend-chip-dot" style="background:${f.color};"></span>
       <span style="overflow:hidden; text-overflow:ellipsis;">${escapeHtml(f.nickname)}</span>
-      <button class="friend-chip-remove" onclick="removeFriend('${escapeHtml(f.id)}')" title="Rimuovi dal gruppo">✕</button>
+      <button class="friend-chip-remove" onclick="removeFriend('${escapeHtml(f.id)}')" title="Rimuovi dal gruppo"><svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none; display:inline-block; vertical-align:middle;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </span>
   `).join('');
 }
@@ -7592,7 +7614,7 @@ function renderFriendsView() {
   Object.keys(byDate).sort((a, b) => toSortable(a).localeCompare(toSortable(b))).forEach(date => {
     const events = byDate[date].slice().sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''));
     const dayLabel = events[0]?.day_name || formatDateItalianLong(dateFormattedToIso(date));
-    html += `<div class="shared-date-group">📅 ${escapeHtml(dayLabel)} — ${escapeHtml(date.split('-').join('/'))}</div>`;
+    html += `<div class="shared-date-group"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:6px; vertical-align:-2px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>${escapeHtml(dayLabel)} — ${escapeHtml(date.split('-').join('/'))}</div>`;
     events.forEach(ev => {
       const hasMe = ev.students.some(s => s.isMe);
       const primaryColor = hasMe ? MY_COLOR : (ev.students[0]?.color || '#8B5CF6');
@@ -7603,15 +7625,15 @@ function renderFriendsView() {
             <div class="shared-event-tags">
               ${ev.students.map(s => `
                 <span class="shared-event-owner" style="background:${hexToRgba(s.color, 0.25)}; border:1px solid ${hexToRgba(s.color, 0.5)}; color:${s.color};">
-                  ${escapeHtml(s.nickname)}${s.isMe ? ' 👤' : ''}
+                  ${escapeHtml(s.nickname)}${s.isMe ? ' (Tu)' : ''}
                 </span>
               `).join('')}
             </div>
           </div>
           <div class="shared-event-meta">
-            ${ev.start_time ? `<span>🕐 ${escapeHtml(ev.start_time)}${ev.end_time ? '–' + escapeHtml(ev.end_time) : ''}</span>` : ''}
-            ${ev.aula     ? `<span>📍 ${escapeHtml(ev.aula)}</span>` : ''}
-            ${ev.docente  ? `<span>👩‍🏫 ${escapeHtml(ev.docente)}</span>` : ''}
+            ${ev.start_time ? `<span><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:3px; vertical-align:-1px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${escapeHtml(ev.start_time)}${ev.end_time ? '–' + escapeHtml(ev.end_time) : ''}</span>` : ''}
+            ${ev.aula     ? `<span><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:3px; vertical-align:-1px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${escapeHtml(ev.aula)}</span>` : ''}
+            ${ev.docente  ? `<span><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:3px; vertical-align:-1px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>${escapeHtml(ev.docente)}</span>` : ''}
           </div>
         </div>
       `;
@@ -7862,7 +7884,7 @@ function renderFriendsGrid(allEvents, hasMyself, hasFriends) {
   if (validEvents.length === 0) {
     eventsHtml = `
       <div class="friends-grid-empty-banner">
-        <div style="font-size:2rem; margin-bottom:6px;">🎉</div>
+        <div class="empty-icon" style="margin-bottom:8px;"><svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="#10B981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
         <strong>Tutto il gruppo è libero ${selectedDayInfo.nameLong}!</strong>
         <p style="font-size:0.8rem; color:var(--text-secondary); margin-top:4px;">Nessuna lezione in programma tra le 08:30 e le 18:30.</p>
       </div>
@@ -7888,14 +7910,14 @@ function renderFriendsGrid(allEvents, hasMyself, hasFriends) {
             <div class="friends-grid-card-tags">
               ${ev.students.map(s => `
                 <span class="friends-grid-tag" style="background:${hexToRgba(s.color, 0.3)}; color:${s.color}; border:1px solid ${hexToRgba(s.color, 0.6)};">
-                  ${escapeHtml(s.nickname)}${s.isMe ? ' 👤' : ''}
+                  ${escapeHtml(s.nickname)}${s.isMe ? ' (Tu)' : ''}
                 </span>
               `).join('')}
             </div>
             <div class="friends-grid-card-title" title="${escapeHtml(ev.course)}">${escapeHtml(ev.course)}</div>
-            <div class="friends-grid-card-time">🕐 ${escapeHtml(ev.start_time)}–${escapeHtml(ev.end_time)}</div>
-            ${!isShort && ev.aula ? `<div class="friends-grid-card-room">📍 ${escapeHtml(ev.aula)}</div>` : ''}
-            ${!isShort && ev.docente ? `<div class="friends-grid-card-prof">👩‍🏫 ${escapeHtml(ev.docente)}</div>` : ''}
+            <div class="friends-grid-card-time"><svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:2px; vertical-align:-1px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${escapeHtml(ev.start_time)}–${escapeHtml(ev.end_time)}</div>
+            ${!isShort && ev.aula ? `<div class="friends-grid-card-room"><svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:2px; vertical-align:-1px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${escapeHtml(ev.aula)}</div>` : ''}
+            ${!isShort && ev.docente ? `<div class="friends-grid-card-prof"><svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:2px; vertical-align:-1px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>${escapeHtml(ev.docente)}</div>` : ''}
           </div>
         </div>
       `;
@@ -7956,11 +7978,11 @@ function showFriendsEventDetail(el) {
     students = JSON.parse(el.dataset.students || '[]');
   } catch (e) {}
 
-  let lines = [`📚 ${course}`, `🕐 ${time}`];
-  if (aula) lines.push(`📍 ${aula}`);
-  if (docente) lines.push(`👩‍🏫 ${docente}`);
+  let lines = [course, time];
+  if (aula) lines.push(`Aula: ${aula}`);
+  if (docente) lines.push(`Docente: ${docente}`);
   if (students && students.length) {
-    lines.push(`👥 Partecipanti: ${students.join(', ')}`);
+    lines.push(`Partecipanti: ${students.join(', ')}`);
   }
 
   showToast(lines.join('\n'));
@@ -8036,7 +8058,7 @@ function renderFreeSlots(allEvents, hasMyself, hasFriends) {
   }
 
   let html = `<div class="free-slots-intro">
-    <span style="font-size:1.3rem;">🤝</span>
+    <span class="lucide-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
     <div>
       <strong>Slot liberi per tutto il gruppo (08:30 – 18:30)</strong><br>
       <span style="font-size:0.78rem; color:var(--text-secondary);">Fasce orarie in cui <em>tutti</em> sono senza lezioni — ottimi momenti per trovarsi e studiare insieme!</span>
@@ -8074,7 +8096,7 @@ function renderFreeSlots(allEvents, hasMyself, hasFriends) {
     foundAny = true;
 
     const dayLabel = formatDateItalianLong(dateFormattedToIso(date));
-    html += `<div class="free-slots-day-header">📌 ${escapeHtml(dayLabel)}</div>`;
+    html += `<div class="free-slots-day-header"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:5px; vertical-align:-1px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>${escapeHtml(dayLabel)}</div>`;
     freeSlots.forEach(slot => {
       const duration = slot.end - slot.start;
       const durationStr = duration >= 60
@@ -8082,14 +8104,14 @@ function renderFreeSlots(allEvents, hasMyself, hasFriends) {
         : `${duration} min`;
       html += `
         <div class="free-slot-card">
-          <div class="free-slot-time">🟢 ${minToTime(slot.start)} – ${minToTime(slot.end)}</div>
+          <div class="free-slot-time"><span class="status-indicator-dot" style="background:#10B981; display:inline-block; margin-right:5px;"></span>${minToTime(slot.start)} – ${minToTime(slot.end)}</div>
           <div class="free-slot-duration">${durationStr} liberi • tutti disponibili</div>
         </div>`;
     });
   });
 
   if (!foundAny) {
-    html += '<p style="color:var(--text-muted); font-size:0.85rem; text-align:center; padding:24px 0;">Nessuno slot libero comune trovato tra le 08:30 e le 18:30 😅</p>';
+    html += '<p style="color:var(--text-muted); font-size:0.85rem; text-align:center; padding:24px 0;">Nessuno slot libero comune trovato tra le 08:30 e le 18:30</p>';
   }
 
   return html;
@@ -8156,7 +8178,7 @@ async function handleFriendShareUrl(friendCode) {
     if (!resp.ok) {
       friendsState.isLoading = false;
       renderFriendsView();
-      showToast('Codice calendario amico non valido o non trovato ❌');
+      showToast('Codice calendario amico non valido o non trovato');
       return;
     }
 
@@ -8254,7 +8276,7 @@ async function handleSharedGroupUrl(groupStr) {
     friendsState.isLoading = false;
     loadFriendsCalendar();
     if (newFriends.length > 0) {
-      showToast('Gruppo amici caricato nel calendario! 🎉');
+      showToast('Gruppo amici caricato nel calendario!');
     }
   } finally {
     // Clean URL without reloading page
@@ -8310,13 +8332,13 @@ function shareFriendsGroup() {
 function copyGroupUrlToClipboard(url) {
   if (navigator.clipboard && window.isSecureContext) {
     navigator.clipboard.writeText(url).then(() => {
-      showToast('Link copiato negli appunti! 📋');
+      showToast('Link copiato negli appunti!');
     }).catch(() => {
       prompt('Copia questo link da inviare ai tuoi amici:', url);
     });
   } else {
     legacyCopy(url);
-    showToast('Link copiato! 📋');
+    showToast('Link copiato!');
   }
 }
 

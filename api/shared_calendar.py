@@ -23,6 +23,9 @@ High-Performance Parallel Engine:
 import os
 import json
 import time
+import re
+import tempfile
+import threading
 import urllib.request
 import urllib.parse
 from http.server import BaseHTTPRequestHandler
@@ -59,24 +62,68 @@ CACHE_TTL = 300   # 5 minutes in-memory cache for UNIMIB grids
 # In-memory grid cache: (anno, corso, tuple(sorted(anni)), monday) -> (timestamp, list_of_raw_cells)
 _grid_cache = {}
 
+# ── Local File/In-Memory Key-Value Fallback (when Upstash Redis is not configured) ────
+_LOCAL_STORE_PATH = os.path.join(tempfile.gettempdir(), "unimib_kv_store.json")
+_LOCAL_LOCK = threading.Lock()
+
+def _local_kv_load() -> dict:
+    if os.path.exists(_LOCAL_STORE_PATH):
+        try:
+            with open(_LOCAL_STORE_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, dict):
+                    return data
+        except Exception:
+            pass
+    return {}
+
+def _local_redis_get(key: str):
+    with _LOCAL_LOCK:
+        store = _local_kv_load()
+        item = store.get(str(key))
+        if item is None:
+            return None
+        if isinstance(item, dict) and "v" in item:
+            exp = item.get("e")
+            if exp and time.time() > exp:
+                return None
+            return item["v"]
+        return item
+
 
 # ── Redis helper ────────────────────────────────────────────────────────────────
 
 def _redis_get(key: str):
     url, token = _get_redis_creds()
     if not url or not token:
-        raise RuntimeError(f"Upstash Redis env vars not configured: URL={'OK' if url else 'MISSING'}, TOKEN={'OK' if token else 'MISSING'}")
+        raw = _local_redis_get(key)
+        if raw is None:
+            return None
+        try:
+            return json.loads(raw)
+        except Exception:
+            return raw
+
     path = "/GET/" + urllib.parse.quote(key, safe="")
     req  = urllib.request.Request(
         url + path,
         headers={"Authorization": f"Bearer {token}"}
     )
-    with urllib.request.urlopen(req, timeout=5) as resp:
-        body = json.loads(resp.read())
-    if "error" in body:
-        raise RuntimeError(body["error"])
-    raw = body.get("result")
-    return json.loads(raw) if raw else None
+    try:
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            body = json.loads(resp.read())
+        if "error" in body:
+            raise RuntimeError(body["error"])
+        raw = body.get("result")
+        return json.loads(raw) if raw else None
+    except Exception:
+        raw = _local_redis_get(key)
+        if raw is None:
+            return None
+        try:
+            return json.loads(raw)
+        except Exception:
+            return raw
 
 
 def _resolve_profile(code: str):
@@ -206,11 +253,12 @@ class handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         qs    = self._qs()
-        codes = [i.strip().lower() for i in (qs.get("codes", "") or qs.get("ids", "")).split(",") if i.strip()][:MAX_PROFILES]
+        raw_codes = [i.strip().lower() for i in (qs.get("codes", "") or qs.get("ids", "")).split(",") if i.strip()]
+        codes = [c for c in raw_codes if re.match(r'^[a-z0-9_-]{3,30}$', c)][:MAX_PROFILES]
         date  = qs.get("date", "").strip()  # DD-MM-YYYY
 
         if not codes:
-            return self._send_json(400, {"error": "codes parameter required"})
+            return self._send_json(400, {"error": "codes parameter required and must be alphanumeric"})
 
         monday = _get_monday(date)
 
