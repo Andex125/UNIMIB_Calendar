@@ -68,12 +68,18 @@ def parse_date_to_monday(date_str: str) -> datetime:
     m_it = re.fullmatch(r'(\d{2})-(\d{2})-(\d{4})', clean)
     if m_it:
         d, m, y = map(int, m_it.groups())
-        dt = datetime(y, m, d)
+        try:
+            dt = datetime(y, m, d)
+        except ValueError:
+            raise ValueError("Data non valida (giorno o mese non esistente)")
         return dt - timedelta(days=dt.weekday())
     m_iso = re.fullmatch(r'(\d{4})-(\d{2})-(\d{2})', clean)
     if m_iso:
         y, m, d = map(int, m_iso.groups())
-        dt = datetime(y, m, d)
+        try:
+            dt = datetime(y, m, d)
+        except ValueError:
+            raise ValueError("Data non valida (giorno o mese non esistente)")
         return dt - timedelta(days=dt.weekday())
     raise ValueError("Parametro 'date' non valido (atteso GG-MM-AAAA o AAAA-MM-GG)")
 
@@ -87,16 +93,23 @@ class BoundedTTLCache:
         self._data: OrderedDict = OrderedDict()
         self._lock = threading.Lock()
 
-    def get(self, key: Any) -> Optional[Any]:
+    def get(self, key: Any, default: Any = None) -> Optional[Any]:
         with self._lock:
             if key not in self._data:
-                return None
+                return default
             ts, val = self._data[key]
             if time.time() - ts >= self.ttl:
                 del self._data[key]
-                return None
+                return default
             self._data.move_to_end(key)
             return val
+
+    def setdefault(self, key: Any, default: Any = None) -> Any:
+        val = self.get(key)
+        if val is not None:
+            return val
+        self.set(key, default)
+        return default
 
     def set(self, key: Any, val: Any) -> None:
         with self._lock:
@@ -372,18 +385,24 @@ class BaseApiHandler(BaseHTTPRequestHandler):
 
     def read_json_body(self, max_bytes: int = 65536) -> dict:
         """Safely read and parse JSON body with strict Content-Length validation."""
-        length_header = self.headers.get("Content-Length", "0")
+        headers = getattr(self, "headers", None) or {}
+        length_header = headers.get("Content-Length", "0") if hasattr(headers, "get") else "0"
         try:
             length = int(length_header)
         except ValueError:
             raise ValueError("Valore 'Content-Length' non valido")
 
+        if length < 0:
+            raise ValueError("Valore 'Content-Length' non valido")
         if length == 0:
             return {}
         if length > max_bytes:
             raise ValueError(f"Corpo della richiesta troppo grande (massimo {max_bytes // 1024}KB)")
 
-        raw = self.rfile.read(length).decode('utf-8', errors='replace')
+        rfile = getattr(self, "rfile", None)
+        if not rfile:
+            return {}
+        raw = rfile.read(length).decode('utf-8', errors='replace')
         try:
             parsed = json.loads(raw)
             if not isinstance(parsed, dict):

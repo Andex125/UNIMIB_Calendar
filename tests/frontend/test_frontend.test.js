@@ -260,3 +260,83 @@ test('announceA11y updates live region element text content asynchronously', (t,
   }, 100);
 });
 
+test('highlightMatch safely highlights queries without corrupting HTML entities', () => {
+  const highlightMatch = sandbox.highlightMatch;
+  assert.ok(typeof highlightMatch === 'function');
+
+  // Matches query and wraps in <mark>
+  const res1 = highlightMatch('Programmazione 1', 'programma');
+  assert.strictEqual(res1, '<mark class="search-highlight">Programma</mark>zione 1');
+
+  // Safe against ampersands without creating broken entities
+  const res2 = highlightMatch('Economia & Finanza', '&');
+  assert.strictEqual(res2, 'Economia <mark class="search-highlight">&amp;</mark> Finanza');
+
+  // Regex special characters in query are escaped
+  const res3 = highlightMatch('Fisica (Canale A)', '(Canale A)');
+  assert.strictEqual(res3, 'Fisica <mark class="search-highlight">(Canale A)</mark>');
+
+  // Null or empty handling
+  assert.strictEqual(highlightMatch('', 'query'), '');
+  assert.strictEqual(highlightMatch('Test', ''), 'Test');
+});
+
+test('renderBuildingBadgeHtml generates valid campus map badge markup', () => {
+  const renderBuildingBadgeHtml = sandbox.renderBuildingBadgeHtml;
+  assert.ok(typeof renderBuildingBadgeHtml === 'function');
+
+  // Valid building code
+  const htmlU1 = renderBuildingBadgeHtml('Aula U1-02');
+  assert.ok(htmlU1.includes('building-badge'));
+  assert.ok(htmlU1.includes('U1'));
+  assert.ok(htmlU1.includes('google.com/maps'));
+
+  // Building without code returns empty string
+  const empty = renderBuildingBadgeHtml('Aula Magna Esterna');
+  assert.strictEqual(empty, '');
+});
+
+test('debounce delays function execution until wait interval expires', (t, done) => {
+  const debounce = sandbox.debounce;
+  assert.ok(typeof debounce === 'function');
+
+  let callCount = 0;
+  const debouncedFn = debounce(() => {
+    callCount++;
+  }, 50);
+
+  debouncedFn();
+  debouncedFn();
+  debouncedFn();
+  assert.strictEqual(callCount, 0);
+
+  setTimeout(() => {
+    assert.strictEqual(callCount, 1);
+    done();
+  }, 80);
+});
+
+test('safeLoadConfig retrieves valid config and recovers from corrupt storage safely', () => {
+  const safeLoadConfig = sandbox.safeLoadConfig;
+  const configKey = 'unimib_config';
+
+  // 1. Valid config
+  const validCfg = {
+    anno: '2026',
+    corso: 'F1801Q',
+    anni: ['1'],
+    favorites: [{ code: 'INF101' }]
+  };
+  sandbox.localStorage.setItem(configKey, JSON.stringify(validCfg));
+  const loaded = safeLoadConfig();
+  assert.strictEqual(loaded.corso, 'F1801Q');
+  assert.strictEqual(loaded.favorites.length, 1);
+
+  // 2. Corrupt JSON in localStorage
+  sandbox.localStorage.setItem(configKey, '{corrupted-json:');
+  const fallback = safeLoadConfig();
+  assert.strictEqual(fallback, null);
+  // Backup was created
+  assert.ok(sandbox.localStorage.getItem('unimib_config_backup'));
+});
+

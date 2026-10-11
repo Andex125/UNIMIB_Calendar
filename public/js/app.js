@@ -183,14 +183,26 @@ function debounce(fn, wait = 200) {
   };
 }
 
-// Utility: evidenziazione visiva delle corrispondenze di ricerca
+// Utility: evidenziazione visiva delle corrispondenze di ricerca (sicura contro XSS ed entità HTML)
 function highlightMatch(text, query) {
   if (!text) return '';
   if (!query || !query.trim()) return escapeHtml(text);
-  const escaped = escapeHtml(text);
-  const qEscaped = query.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const regex = new RegExp(`(${qEscaped})`, 'gi');
-  return escaped.replace(regex, '<mark class="search-highlight">$1</mark>');
+  const qTrim = query.trim();
+  const qRegexSafe = qTrim.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(qRegexSafe, 'gi');
+  let result = '';
+  let lastIndex = 0;
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    result += escapeHtml(text.slice(lastIndex, match.index));
+    result += `<mark class="search-highlight">${escapeHtml(match[0])}</mark>`;
+    lastIndex = regex.lastIndex;
+    if (regex.lastIndex === match.index) {
+      regex.lastIndex++;
+    }
+  }
+  result += escapeHtml(text.slice(lastIndex));
+  return result;
 }
 
 // Profile / sync keys

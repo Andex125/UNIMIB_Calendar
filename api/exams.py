@@ -256,17 +256,21 @@ class handler(BaseApiHandler):
             corsi = [c.strip() for c in corsi_arg.split(',') if c.strip()] if corsi_arg else []
             anni = [a.strip() for a in anni_arg.split(',') if a.strip()] if anni_arg else []
 
-            if datefrom_arg and re.fullmatch(r'\d{4}-\d{2}-\d{2}', datefrom_arg):
-                y, m, d = datefrom_arg.split('-')
-                datefrom_arg = f"{d}-{m}-{y}"
-            elif datefrom_arg and not re.fullmatch(r'\d{2}-\d{2}-\d{4}', datefrom_arg):
-                return self.send_json(400, {"error": "Parametro 'datefrom' non valido (atteso GG-MM-AAAA)"}, cache_control='no-store')
+            if datefrom_arg:
+                datefrom_arg = datefrom_arg.strip().replace('/', '-')
+                if re.fullmatch(r'\d{4}-\d{2}-\d{2}', datefrom_arg):
+                    y, m, d = datefrom_arg.split('-')
+                    datefrom_arg = f"{d}-{m}-{y}"
+                elif not re.fullmatch(r'\d{2}-\d{2}-\d{4}', datefrom_arg):
+                    return self.send_json(400, {"error": "Parametro 'datefrom' non valido (atteso GG-MM-AAAA)"}, cache_control='no-store')
 
-            if dateto_arg and re.fullmatch(r'\d{4}-\d{2}-\d{2}', dateto_arg):
-                y, m, d = dateto_arg.split('-')
-                dateto_arg = f"{d}-{m}-{y}"
-            elif dateto_arg and not re.fullmatch(r'\d{2}-\d{2}-\d{4}', dateto_arg):
-                return self.send_json(400, {"error": "Parametro 'dateto' non valido (atteso GG-MM-AAAA)"}, cache_control='no-store')
+            if dateto_arg:
+                dateto_arg = dateto_arg.strip().replace('/', '-')
+                if re.fullmatch(r'\d{4}-\d{2}-\d{2}', dateto_arg):
+                    y, m, d = dateto_arg.split('-')
+                    dateto_arg = f"{d}-{m}-{y}"
+                elif not re.fullmatch(r'\d{2}-\d{2}-\d{4}', dateto_arg):
+                    return self.send_json(400, {"error": "Parametro 'dateto' non valido (atteso GG-MM-AAAA)"}, cache_control='no-store')
 
             payload = get_exams(
                 corsi=corsi,

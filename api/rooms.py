@@ -346,11 +346,13 @@ class handler(BaseApiHandler):
             if not date_arg:
                 now_it = get_rome_now()
                 date_arg = now_it.strftime('%d-%m-%Y')
-            elif re.fullmatch(r'\d{4}-\d{2}-\d{2}', date_arg):
-                y, m, d = date_arg.split('-')
-                date_arg = f"{d}-{m}-{y}"
-            elif not re.fullmatch(r'\d{2}-\d{2}-\d{4}', date_arg):
-                return self.send_json(400, {"error": "Parametro 'date' non valido (atteso GG-MM-AAAA)"}, cache_control='no-store')
+            else:
+                date_arg = date_arg.strip().replace('/', '-')
+                if re.fullmatch(r'\d{4}-\d{2}-\d{2}', date_arg):
+                    y, m, d = date_arg.split('-')
+                    date_arg = f"{d}-{m}-{y}"
+                elif not re.fullmatch(r'\d{2}-\d{2}-\d{4}', date_arg):
+                    return self.send_json(400, {"error": "Parametro 'date' non valido (atteso GG-MM-AAAA)"}, cache_control='no-store')
 
             if time_arg and time_arg not in ('now', 'all') and not re.fullmatch(r'\d{1,2}:\d{2}', time_arg):
                 return self.send_json(400, {"error": "Parametro 'time' non valido (atteso HH:MM, 'now' o 'all')"}, cache_control='no-store')
@@ -358,8 +360,10 @@ class handler(BaseApiHandler):
             if client_time_arg and not re.fullmatch(r'\d{1,2}:\d{2}', client_time_arg):
                 return self.send_json(400, {"error": "Parametro 'client_time' non valido (atteso HH:MM)"}, cache_control='no-store')
 
-            if client_date_arg and not re.fullmatch(r'\d{2}-\d{2}-\d{4}', client_date_arg):
-                return self.send_json(400, {"error": "Parametro 'client_date' non valido (atteso GG-MM-AAAA)"}, cache_control='no-store')
+            if client_date_arg:
+                client_date_arg = client_date_arg.strip().replace('/', '-')
+                if not re.fullmatch(r'\d{2}-\d{2}-\d{4}', client_date_arg):
+                    return self.send_json(400, {"error": "Parametro 'client_date' non valido (atteso GG-MM-AAAA)"}, cache_control='no-store')
 
             if sede == 'all' or mode == 'summary':
                 payload = get_campus_summary(date_arg, time_arg, client_time_arg, client_date_arg)
