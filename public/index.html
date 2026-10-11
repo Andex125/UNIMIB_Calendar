@@ -383,27 +383,27 @@
       </div>
 
       <!-- Active Course Chips -->
-      <div id="examCoursesChips" class="exam-courses-bar">
+      <div id="examCoursesChips" class="exam-courses-bar" style="margin-bottom: 0;">
         <!-- Rendered dynamically -->
       </div>
 
       <!-- Exam Filter Mode Toggle (All vs My Courses) -->
-      <div class="toggle-group" style="margin-bottom: 14px;">
+      <div class="toggle-group" style="margin-bottom: 0;">
         <button id="btnExamFilterAll" class="toggle-btn active" @click="$store.app.setExamsFilter('all')">📚 Tutti gli Appelli</button>
         <button id="btnExamFilterTarget" class="toggle-btn" @click="$store.app.setExamsFilter('target')">⭐ I Miei Corsi</button>
       </div>
 
-      <!-- Session Quick Pills with dedicated section and spacing -->
+      <!-- Session Quick Pills -->
       <div class="exam-session-section">
         <label class="exam-session-section-label">🗓️ Sessione d'esame</label>
-        <div id="examSessionPills" class="rooms-filter-pills">
+        <div id="examSessionPills" class="rooms-filter-pills" style="margin: 0;">
           <button class="filter-pill active" data-session="upcoming">Tutti i prossimi</button>
           <button class="filter-pill" data-session="winter">❄️ Invernale (Gen-Feb)</button>
           <button class="filter-pill" data-session="summer">☀️ Estiva (Giu-Lug)</button>
           <button class="filter-pill" data-session="autumn">🍂 Autunnale (Set-Ott)</button>
           <button class="filter-pill" data-session="custom">📅 Personalizzato</button>
         </div>
-        <div id="examCustomDateRange" style="display:none; align-items:center; gap:8px; margin-top:10px;">
+        <div id="examCustomDateRange" style="display:none; align-items:center; gap:8px; margin-top:8px;">
           <div id="examDateFromWrapper" class="date-picker-custom-wrapper" style="flex:1;" title="Clicca per selezionare data inizio">
             <span id="examDateFromText" class="custom-date-text" style="font-size:0.8rem;">gg/mm/aaaa</span>
             <span class="custom-date-icon" style="font-size:0.8rem;">📅</span>
@@ -420,7 +420,7 @@
       </div>
 
       <!-- Search & Year Filter -->
-      <div style="display: flex; gap: 8px; margin-top: 8px;">
+      <div style="display: flex; gap: 8px;">
         <div class="search-input-wrapper" style="flex: 1;">
           <input type="text" id="examsSearchInput" placeholder="🔍 Cerca esame o docente..." 
                  style="width: 100%; padding: 10px 36px 10px 14px; border-radius: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: #FFF; font-size: 0.85rem; outline: none;" autocomplete="off">
