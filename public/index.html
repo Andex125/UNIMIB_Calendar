@@ -94,7 +94,7 @@
       <!-- Live Search Bar with Autocomplete -->
       <div class="search-input-wrapper">
         <input type="text" id="searchInput" placeholder="🔍 Cerca per corso, docente o aula..." 
-               style="width: 100%; padding: 10px 36px 10px 14px; border-radius: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: #FFF; font-size: 0.85rem; outline: none;" autocomplete="off">
+               style="width: 100%; padding: 10px 36px 10px 14px; border-radius: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: var(--text-primary); font-size: 0.85rem; outline: none;" autocomplete="off">
         <button id="btnClearTimetableSearch" class="search-clear-btn" style="display:none;" title="Cancella ricerca">✕</button>
         <div id="timetableAutocompleteList" class="search-autocomplete-dropdown" style="display:none;"></div>
       </div>
@@ -177,7 +177,7 @@
         <label for="teachersSearchInput" style="font-size:0.75rem; font-weight:700; color:var(--text-secondary); text-transform:uppercase; margin:0;">🧑‍🏫 Cerca Docente</label>
         <div style="display: flex; align-items: center; gap: 6px;">
           <label for="teachersYearSelect" style="font-size:0.75rem; color:var(--text-muted); margin:0;">A.A.:</label>
-          <select id="teachersYearSelect" style="padding: 4px 8px; font-size: 0.78rem; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: #FFF; outline: none;">
+          <select id="teachersYearSelect" style="padding: 4px 8px; font-size: 0.78rem; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: var(--text-primary); outline: none;">
             <!-- Rendered dynamically -->
           </select>
         </div>
@@ -186,7 +186,7 @@
       <!-- Autocomplete Search Container -->
       <div class="search-input-wrapper" style="margin-bottom: 10px;">
         <input type="text" id="teachersSearchInput" placeholder="🔍 Cerca docente (es. Abbotto, Arcelli, Antoniotti)..." 
-               style="width: 100%; padding: 10px 36px 10px 14px; border-radius: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: #FFF; font-size: 0.88rem; outline: none;"
+               style="width: 100%; padding: 10px 36px 10px 14px; border-radius: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: var(--text-primary); font-size: 0.88rem; outline: none;"
                autocomplete="off">
         <button id="btnClearTeacherSearch" class="search-clear-btn" style="display: none;" title="Cancella ricerca">✕</button>
         <div id="teachersAutocompleteList" class="search-autocomplete-dropdown" style="display: none;">
@@ -209,7 +209,7 @@
         <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
           <div style="flex: 1; min-width: 0;">
             <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-              <span id="selectedTeacherName" style="font-size: 1rem; font-weight: 700; color: #FFF;"></span>
+              <span id="selectedTeacherName" style="font-size: 1rem; font-weight: 700; color: var(--text-primary);"></span>
               <span id="selectedTeacherBadge" class="badge-status" style="font-size: 0.72rem; padding: 2px 8px;">Docente</span>
             </div>
             <div id="selectedTeacherEmails" style="font-size: 0.78rem; color: var(--accent-cyan); margin-top: 4px; display: flex; flex-wrap: wrap; gap: 8px;">
@@ -225,7 +225,7 @@
         <!-- Optional course filter for this teacher -->
         <div id="teacherCourseFilterContainer" style="margin-top: 10px; display: none;">
           <label for="teacherCourseSelect" style="font-size: 0.74rem; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 4px;">Filtra per corso di laurea:</label>
-          <select id="teacherCourseSelect" style="width: 100%; padding: 8px 10px; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: #FFF; font-size: 0.82rem; outline: none;">
+          <select id="teacherCourseSelect" style="width: 100%; padding: 8px 10px; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: var(--text-primary); font-size: 0.82rem; outline: none;">
             <option value="">📚 Tutti i corsi del docente</option>
           </select>
         </div>
@@ -240,7 +240,7 @@
       <!-- Filter events search within selected schedule -->
       <div class="search-input-wrapper">
         <input type="text" id="teachersEventFilterInput" placeholder="🔍 Filtra lezioni per materia o aula..." 
-               style="width: 100%; padding: 10px 36px 10px 14px; border-radius: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: #FFF; font-size: 0.85rem; outline: none;" autocomplete="off">
+               style="width: 100%; padding: 10px 36px 10px 14px; border-radius: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: var(--text-primary); font-size: 0.85rem; outline: none;" autocomplete="off">
         <button id="btnClearTeacherEventFilter" class="search-clear-btn" style="display:none;" title="Cancella filtro">✕</button>
         <div id="teachersEventFilterAutocompleteList" class="search-autocomplete-dropdown" style="display:none;"></div>
       </div>
@@ -271,7 +271,7 @@
       <!-- Empty state when no teacher is chosen or no events -->
       <div id="teachersEmptyState" class="empty-state" style="padding: 40px 20px;">
         <div class="empty-icon" style="font-size: 2.8rem; margin-bottom: 12px;">🧑‍🏫</div>
-        <h3 id="teachersEmptyTitle" style="font-size: 1.15rem; color: #FFF; margin-bottom: 8px;">Cerca un docente</h3>
+        <h3 id="teachersEmptyTitle" style="font-size: 1.15rem; color: var(--text-primary); margin-bottom: 8px;">Cerca un docente</h3>
         <p id="teachersEmptyDesc" style="font-size: 0.85rem; color: var(--text-secondary); max-width: 320px; margin: 0 auto 16px;">
           Digita il cognome o nome di un professore per visualizzare l'orario settimanale delle sue lezioni e l'aula.
         </p>
@@ -338,7 +338,7 @@
       <!-- Quick Room Search -->
       <div class="search-input-wrapper">
         <input type="text" id="roomsSearchInput" placeholder="🔍 Cerca aula (es. 01, Lab, Magna)..." 
-               style="width: 100%; padding: 10px 36px 10px 14px; border-radius: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: #FFF; font-size: 0.85rem; outline: none;" autocomplete="off">
+               style="width: 100%; padding: 10px 36px 10px 14px; border-radius: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: var(--text-primary); font-size: 0.85rem; outline: none;" autocomplete="off">
         <button id="btnClearRoomsSearch" class="search-clear-btn" style="display:none;" title="Cancella ricerca">✕</button>
         <div id="roomsAutocompleteList" class="search-autocomplete-dropdown" style="display:none;"></div>
       </div>
@@ -423,11 +423,11 @@
       <div style="display: flex; gap: 8px;">
         <div class="search-input-wrapper" style="flex: 1;">
           <input type="text" id="examsSearchInput" placeholder="🔍 Cerca esame o docente..." 
-                 style="width: 100%; padding: 10px 36px 10px 14px; border-radius: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: #FFF; font-size: 0.85rem; outline: none;" autocomplete="off">
+                 style="width: 100%; padding: 10px 36px 10px 14px; border-radius: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: var(--text-primary); font-size: 0.85rem; outline: none;" autocomplete="off">
           <button id="btnClearExamsSearch" class="search-clear-btn" style="display:none;" title="Cancella ricerca">✕</button>
           <div id="examsAutocompleteList" class="search-autocomplete-dropdown" style="display:none;"></div>
         </div>
-        <select id="examYearFilter" style="width:auto; padding:10px; border-radius:10px; background:rgba(0,0,0,0.3); border:1px solid var(--border-color); color:#FFF; font-size:0.85rem; outline:none;">
+        <select id="examYearFilter" style="width:auto; padding:10px; border-radius:10px; background:rgba(0,0,0,0.3); border:1px solid var(--border-color); color:var(--text-primary); font-size:0.85rem; outline:none;">
           <option value="">Tutti gli anni</option>
         </select>
       </div>
@@ -477,7 +477,7 @@
     <!-- Zero Groups Empty State -->
     <div id="friendsNoGroupsState" class="control-card" style="display:none; text-align:center; padding:36px 18px; margin-bottom:14px;">
       <div style="font-size:3rem; margin-bottom:10px;">👥</div>
-      <h3 style="font-size:1.15rem; color:#FFF; margin-bottom:6px;">Nessun Gruppo Condiviso</h3>
+      <h3 style="font-size:1.15rem; color:var(--text-primary); margin-bottom:6px;">Nessun Gruppo Condiviso</h3>
       <p style="font-size:0.85rem; color:var(--text-secondary); max-width:420px; margin:0 auto 20px; line-height:1.45;">
         Puoi creare più gruppi di studio diversi (es. per singoli corsi o progetti) o unirti ai calendari condivisi dei tuoi compagni tramite codice.
       </p>
@@ -592,7 +592,7 @@
     <div class="modal-content" style="max-width: 480px; text-align: left;">
       <div class="modal-header">
         <div>
-          <h3 style="font-size:1.15rem; color:#FFF; margin:0 0 2px;">📥 Esporta Calendario</h3>
+          <h3 style="font-size:1.15rem; color:var(--text-primary); margin:0 0 2px;">📥 Esporta Calendario</h3>
           <p id="exportModalSubtitle" style="font-size:0.8rem; color:var(--text-secondary); margin:0;">Esporta nei formati standard per le tue app di calendario</p>
         </div>
         <button id="btnCloseExportModal" class="btn-icon" style="width:30px; height:30px;">✕</button>
@@ -636,7 +636,7 @@
       <div id="exportWebCalBox" style="margin-top:18px; padding:12px 14px; background:rgba(139,92,246,0.12); border:1px solid rgba(139,92,246,0.3); border-radius:12px;">
         <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
           <span style="font-size:1.1rem;">🔄</span>
-          <strong style="font-size:0.88rem; color:#FFF;">Sottoscrizione Live (WebCal)</strong>
+          <strong style="font-size:0.88rem; color:var(--text-primary);">Sottoscrizione Live (WebCal)</strong>
         </div>
         <p style="font-size:0.78rem; color:var(--text-secondary); line-height:1.4; margin-bottom:10px;">
           Aggiungi questo link ad Apple Calendar, Google Calendar o Outlook per aggiornare automaticamente gli orari sul tuo telefono quando cambiano le aule.
@@ -660,7 +660,7 @@
     <div class="modal-content" style="max-width: 480px; text-align: left;">
       <div class="modal-header">
         <div>
-          <h3 id="modalRoomTitle" style="font-size:1.15rem; color:#FFF; margin-bottom:2px;">Aula</h3>
+          <h3 id="modalRoomTitle" style="font-size:1.15rem; color:var(--text-primary); margin-bottom:2px;">Aula</h3>
           <div style="display:flex; align-items:center; gap:8px; margin-top:2px;">
             <span id="modalRoomSubtitle" style="font-size:0.8rem; color:var(--text-secondary);">Edificio</span>
             <a id="modalRoomMapLink" href="#" target="_blank" rel="noopener noreferrer" class="btn-secondary" style="display:inline-flex; align-items:center; gap:3px; padding:2px 8px; font-size:0.72rem; text-decoration:none; border-radius:6px;" title="Apri posizione su Google Maps">📍 Mappa Campus</a>
@@ -764,7 +764,7 @@
 
       <div id="extCourseTeachingSearchBox" style="display:none; margin-bottom:10px;">
         <input type="text" id="extCourseTeachingSearch" placeholder="🔍 Filtra materie per nome o docente..."
-               style="width: 100%; padding: 8px 12px; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: #FFF; font-size: 0.82rem; outline: none;">
+               style="width: 100%; padding: 8px 12px; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: var(--text-primary); font-size: 0.82rem; outline: none;">
       </div>
 
       <div id="extCourseStatusHint" style="display:none; font-size:0.8rem; color:var(--accent-cyan); margin-bottom:8px; text-align:center;">
@@ -785,7 +785,7 @@
 
       <!-- Profile Creation Banner (Step 2) -->
       <div id="setupProfileBanner" style="display:none; background:rgba(139,92,246,0.15); border:1px solid rgba(139,92,246,0.35); border-radius:10px; padding:10px 14px; margin-bottom:14px; font-size:0.85rem; line-height:1.45;">
-        👤 Stai configurando i corsi per <strong id="setupProfileBannerNick" style="color:#FFF;"></strong>.<br>
+        👤 Stai configurando i corsi per <strong id="setupProfileBannerNick" style="color:var(--text-primary);"></strong>.<br>
         <span style="font-size:0.78rem; color:var(--text-secondary);">Scegli il tuo corso di studio e seleziona con la stella ⭐ le materie che segui.</span>
       </div>
 
@@ -858,7 +858,7 @@
   <div id="onboardingModal" class="modal-overlay">
     <div class="modal-content setup-content" style="max-width: 440px; text-align: center;">
       <div style="font-size: 3rem; margin-bottom: 8px;">🎓</div>
-      <h2 style="font-size: 1.35rem; color: #FFF; margin-bottom: 8px;">Benvenuto su UNIMIB Orari</h2>
+      <h2 style="font-size: 1.35rem; color: var(--text-primary); margin-bottom: 8px;">Benvenuto su UNIMIB Orari</h2>
       <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 20px; line-height: 1.5;">
         Visualizza l'orario delle lezioni, l'occupazione delle aule in tempo reale e il calendario degli esami.
       </p>
@@ -1120,7 +1120,7 @@
     <div class="modal-content setup-content" style="max-width: 480px; text-align: left;">
       <div class="modal-header">
         <div>
-          <h3 style="font-size: 1.15rem; color: #FFF; margin: 0 0 2px; display: flex; align-items: center; gap: 8px;">
+          <h3 style="font-size: 1.15rem; color: var(--text-primary); margin: 0 0 2px; display: flex; align-items: center; gap: 8px;">
             <span>⚠️</span> Variazioni nel calendario
           </h3>
           <p id="scheduleChangesModalSubtitle" style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">

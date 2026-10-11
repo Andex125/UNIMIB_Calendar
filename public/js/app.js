@@ -2430,7 +2430,7 @@ function renderExternalCoursesUI() {
       extList.innerHTML = extCourses.map(ext => `
         <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 10px; background:rgba(255,255,255,0.04); border-radius:8px; margin-bottom:6px; border:1px solid var(--border-color);">
           <div style="flex:1; min-width:0; margin-right:8px;">
-            <strong style="font-size:0.84rem; color:#FFF; display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(ext.label)}</strong>
+            <strong style="font-size:0.84rem; color:var(--text-primary); display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(ext.label)}</strong>
             <span style="font-size:0.74rem; color:var(--text-secondary); display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
               ${escapeHtml(ext.corsoLabel || ext.corso)} · ${escapeHtml(ext.anno2Label || ext.anno2)}${ext.docente ? ` · ${escapeHtml(ext.docente)}` : ''}
             </span>
@@ -3218,7 +3218,7 @@ function renderScheduleChangesModalList() {
       badgeText = '➕ Nuova lezione';
       badgeClass = 'badge-added';
       detailHtml = `
-        <div style="color:#C4B5FD; font-weight:600; margin-top:2px;">
+        <div style="color:var(--text-primary); font-weight:600; margin-top:2px;">
           Nuova lezione inserita in orario (Aula: ${escapeHtml(c.newRoom || 'Non specificata')}).
         </div>`;
     } else {
@@ -3245,7 +3245,7 @@ function renderScheduleChangesModalList() {
       </div>
       <div class="change-card-title">
         ${escapeHtml(c.course)}
-        ${c.isFavorite ? '<span class="course-badge" style="margin-left:6px; background:rgba(139,92,246,0.2); color:#DDD6FE; font-size:0.68rem; padding:2px 6px; border-radius:4px;">⭐ Tuo corso</span>' : ''}
+        ${c.isFavorite ? '<span class="course-badge" style="margin-left:6px; background:var(--bicocca-red-bg); color:var(--bicocca-red); border:1px solid rgba(167,30,59,0.3); font-size:0.68rem; padding:2px 6px; border-radius:4px;">⭐ Tuo corso</span>' : ''}
       </div>
       <div class="change-card-body">
         <div style="color:var(--text-secondary); font-size:0.78rem; margin-bottom:2px;">
@@ -5245,7 +5245,7 @@ function renderRooms() {
 
       let currentSub = '';
       if (r.current_event) {
-        currentSub += `<div style="color:#FFF; font-weight:600; margin-top:4px; font-size:0.85rem;">📖 In corso: ${escapeHtml(r.current_event.name)} <span style="color:var(--accent-purple); font-size:0.78rem;">(${escapeHtml(r.current_event.from)} - ${escapeHtml(r.current_event.to)})</span></div>`;
+        currentSub += `<div style="color:var(--text-primary); font-weight:600; margin-top:4px; font-size:0.85rem;">📖 In corso: ${escapeHtml(r.current_event.name)} <span style="color:var(--accent-purple); font-size:0.78rem;">(${escapeHtml(r.current_event.from)} - ${escapeHtml(r.current_event.to)})</span></div>`;
         if (r.current_event.docenti && r.current_event.docenti.length) {
           currentSub += `<div style="color:var(--text-secondary); font-size:0.78rem;">👤 ${escapeHtml(r.current_event.docenti.join(', '))}</div>`;
         }
@@ -7359,7 +7359,7 @@ function renderFriendChips() {
 
   const notLoggedInBanner = !profileState.shareCode
     ? `<div style="background:rgba(139,92,246,0.12); border:1px solid rgba(139,92,246,0.3); border-radius:10px; padding:8px 12px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; gap:8px;">
-        <span style="font-size:0.78rem; color:var(--text-secondary);">👤 <strong style="color:#FFF;">Non hai ancora effettuato l'accesso?</strong> Accedi col tuo profilo per salvare il gruppo nel cloud e sincronizzarti all'istante con gli amici.</span>
+        <span style="font-size:0.78rem; color:var(--text-secondary);">👤 <strong style="color:var(--text-primary);">Non hai ancora effettuato l'accesso?</strong> Accedi col tuo profilo per salvare il gruppo nel cloud e sincronizzarti all'istante con gli amici.</span>
         <button onclick="openProfileModal()" class="btn-primary" style="width:auto; padding:5px 12px; font-size:0.75rem; white-space:nowrap;">Accedi</button>
       </div>`
     : '';
