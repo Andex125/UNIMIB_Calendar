@@ -199,8 +199,21 @@ const SESSION_TOKEN_KEY = 'unimib_session_token';   // stores opaque session tok
 const ACTIVE_GROUP_KEY   = 'unimib_active_group_id';  // stores active group ID
 const FRIENDS_KEY       = 'unimib_friends';          // stores [{id, nickname, color}]
 
-// Colors assigned to friends in shared calendar
-const FRIENDS_COLORS = ['#A71E3B', '#00753B', '#005096', '#E5C200', '#D83424', '#F29400', '#A4224B', '#B82585', '#06B6D4'];
+// Curated 12 distinct high-contrast colors assigned to friends in shared calendar
+const FRIENDS_COLORS = [
+  '#3B82F6', // Royal Blue
+  '#F97316', // Warm Orange
+  '#8B5CF6', // Vivid Purple
+  '#10B981', // Emerald Green
+  '#EC4899', // Hot Pink
+  '#EAB308', // Amber Gold
+  '#6366F1', // Indigo
+  '#F43F5E', // Rose Coral
+  '#84CC16', // Lime Green
+  '#06B6D4', // Electric Cyan
+  '#A855F7', // Orchid Purple
+  '#D97706'  // Bronze Gold
+];
 
 let state = {
   currentMonday: null,
@@ -6634,7 +6647,15 @@ async function _syncConfigToProfile() {
 function loadFriends() {
   try {
     const raw = localStorage.getItem(FRIENDS_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const list = raw ? JSON.parse(raw) : [];
+    if (Array.isArray(list)) {
+      list.forEach((f, idx) => {
+        if (!f.color || !FRIENDS_COLORS.includes(f.color)) {
+          f.color = FRIENDS_COLORS[idx % FRIENDS_COLORS.length];
+        }
+      });
+    }
+    return list;
   } catch (e) {
     return [];
   }
@@ -7464,9 +7485,9 @@ function renderFriendChips() {
     return;
   }
   container.innerHTML = notLoggedInBanner + friendsState.friends.map(f => `
-    <span class="friend-chip" style="background: ${hexToRgba(f.color, 0.18)}; border-color: ${hexToRgba(f.color, 0.4)};">
-      <span class="friend-chip-dot" style="background:${f.color};"></span>
-      <span style="overflow:hidden; text-overflow:ellipsis;">${escapeHtml(f.nickname)}</span>
+    <span class="friend-chip" style="background: ${hexToRgba(f.color, 0.16)}; border-color: ${hexToRgba(f.color, 0.45)}; box-shadow: 0 2px 8px -2px ${hexToRgba(f.color, 0.28)};">
+      <span class="friend-chip-dot" style="background:${f.color}; box-shadow: 0 0 6px ${f.color};"></span>
+      <span style="overflow:hidden; text-overflow:ellipsis; font-weight:600; color:var(--text-primary);">${escapeHtml(f.nickname)}</span>
       <button class="friend-chip-remove" onclick="removeFriend('${escapeHtml(f.id)}')" title="Rimuovi dal gruppo"><svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none; display:inline-block; vertical-align:middle;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </span>
   `).join('');
@@ -7636,15 +7657,15 @@ function renderFriendsView() {
     let legendHtml = '';
     if (hasMyself) {
       legendHtml += `
-        <div class="friends-legend-item">
-          <span class="friends-legend-dot" style="background:${MY_COLOR};"></span>
-          <span><strong>${escapeHtml(profileState.nickname || 'Io')}</strong> <span style="font-size:0.7rem;opacity:0.7;">(tu)</span></span>
+        <div class="friends-legend-item" style="border:1px solid ${hexToRgba(MY_COLOR, 0.4)}; background:${hexToRgba(MY_COLOR, 0.12)};">
+          <span class="friends-legend-dot" style="background:${MY_COLOR}; box-shadow:0 0 8px ${MY_COLOR};"></span>
+          <span><strong style="color:${MY_COLOR};">${escapeHtml(profileState.nickname || 'Io')}</strong> <span style="font-size:0.7rem;opacity:0.75;">(tu)</span></span>
         </div>`;
     }
     legendHtml += friendsState.friends.map(f => `
-      <div class="friends-legend-item">
-        <span class="friends-legend-dot" style="background:${f.color};"></span>
-        <span>${escapeHtml(f.nickname)}</span>
+      <div class="friends-legend-item" style="border:1px solid ${hexToRgba(f.color, 0.4)}; background:${hexToRgba(f.color, 0.12)};">
+        <span class="friends-legend-dot" style="background:${f.color}; box-shadow:0 0 8px ${f.color};"></span>
+        <span style="font-weight:600; color:var(--text-primary);">${escapeHtml(f.nickname)}</span>
       </div>
     `).join('');
     legend.innerHTML = legendHtml;
@@ -7691,14 +7712,27 @@ function renderFriendsView() {
     events.forEach(ev => {
       const hasMe = ev.students.some(s => s.isMe);
       const primaryColor = hasMe ? MY_COLOR : (ev.students[0]?.color || '#8B5CF6');
+
+      let cardBg = `background: linear-gradient(135deg, ${hexToRgba(primaryColor, 0.14)} 0%, ${hexToRgba(primaryColor, 0.04)} 100%);`;
+      let cardBorder = `border: 1px solid ${hexToRgba(primaryColor, 0.32)}; border-left: 4px solid ${primaryColor};`;
+      let cardShadow = `box-shadow: 0 3px 12px -2px ${hexToRgba(primaryColor, 0.22)};`;
+
+      if (ev.students.length > 1) {
+        const c1 = ev.students[0]?.color || primaryColor;
+        const c2 = ev.students[1]?.color || primaryColor;
+        cardBg = `background: linear-gradient(135deg, ${hexToRgba(c1, 0.16)} 0%, ${hexToRgba(c2, 0.10)} 100%);`;
+        cardBorder = `border: 1px solid ${hexToRgba(c1, 0.35)}; border-left: 4px solid ${c1}; border-right: 3px solid ${c2};`;
+        cardShadow = `box-shadow: 0 3px 14px -2px ${hexToRgba(c1, 0.22)}, 0 2px 8px -1px ${hexToRgba(c2, 0.16)};`;
+      }
+
       html += `
-        <div class="shared-event-card${hasMe ? ' shared-event-card--me' : ''}" style="border-left-color:${primaryColor};">
+        <div class="shared-event-card${hasMe ? ' shared-event-card--me' : ''}" style="${cardBg} ${cardBorder} ${cardShadow}">
           <div class="shared-event-header">
             <span class="shared-event-name">${escapeHtml(ev.course || '—')}</span>
             <div class="shared-event-tags">
               ${ev.students.map(s => `
-                <span class="shared-event-owner" style="background:${hexToRgba(s.color, 0.25)}; border:1px solid ${hexToRgba(s.color, 0.5)}; color:${s.color};">
-                  ${escapeHtml(s.nickname)}${s.isMe ? ' (Tu)' : ''}
+                <span class="shared-event-owner" style="background:${hexToRgba(s.color, 0.22)}; border:1px solid ${hexToRgba(s.color, 0.55)}; color:${s.color};">
+                  <span class="friend-beacon-dot" style="background:${s.color}; box-shadow:0 0 6px ${s.color};"></span>${escapeHtml(s.nickname)}${s.isMe ? ' (Tu)' : ''}
                 </span>
               `).join('')}
             </div>
@@ -7970,9 +8004,21 @@ function renderFriendsGrid(allEvents, hasMyself, hasFriends) {
       const primaryColor = hasMe ? '#2DD4BF' : (ev.students[0]?.color || '#8B5CF6');
       const isShort = ev.heightPx < 55;
 
+      let cardBg = `background: linear-gradient(135deg, ${hexToRgba(primaryColor, 0.22)} 0%, ${hexToRgba(primaryColor, 0.08)} 100%);`;
+      let cardBorder = `border: 1px solid ${hexToRgba(primaryColor, 0.35)}; border-left: 4px solid ${primaryColor};`;
+      let cardShadow = `box-shadow: 0 3px 12px -2px ${hexToRgba(primaryColor, 0.28)};`;
+
+      if (ev.students.length > 1) {
+        const c1 = ev.students[0]?.color || primaryColor;
+        const c2 = ev.students[1]?.color || primaryColor;
+        cardBg = `background: linear-gradient(135deg, ${hexToRgba(c1, 0.22)} 0%, ${hexToRgba(c2, 0.15)} 100%);`;
+        cardBorder = `border: 1px solid ${hexToRgba(c1, 0.4)}; border-left: 4px solid ${c1}; border-right: 3px solid ${c2};`;
+        cardShadow = `box-shadow: 0 4px 14px -2px ${hexToRgba(c1, 0.25)}, 0 2px 8px -1px ${hexToRgba(c2, 0.2)};`;
+      }
+
       eventsHtml += `
         <div class="friends-grid-card${hasMe ? ' friends-grid-card--me' : ''}"
-             style="top:${ev.topPx}px; height:${ev.heightPx}px; left:calc(${leftPercent}% + 2px); width:calc(${colWidthPercent}% - 4px); border-left-color:${primaryColor};"
+             style="top:${ev.topPx}px; height:${ev.heightPx}px; left:calc(${leftPercent}% + 2px); width:calc(${colWidthPercent}% - 4px); ${cardBg} ${cardBorder} ${cardShadow}"
              onclick="showFriendsEventDetail(this)"
              data-course="${escapeHtml(ev.course)}"
              data-time="${escapeHtml(ev.start_time)} – ${escapeHtml(ev.end_time)}"
@@ -7982,8 +8028,8 @@ function renderFriendsGrid(allEvents, hasMyself, hasFriends) {
           <div class="friends-grid-card-inner">
             <div class="friends-grid-card-tags">
               ${ev.students.map(s => `
-                <span class="friends-grid-tag" style="background:${hexToRgba(s.color, 0.3)}; color:${s.color}; border:1px solid ${hexToRgba(s.color, 0.6)};">
-                  ${escapeHtml(s.nickname)}${s.isMe ? ' (Tu)' : ''}
+                <span class="friends-grid-tag" style="background:${hexToRgba(s.color, 0.22)}; color:${s.color}; border:1px solid ${hexToRgba(s.color, 0.55)};">
+                  <span class="friend-beacon-dot" style="background:${s.color}; box-shadow:0 0 6px ${s.color};"></span>${escapeHtml(s.nickname)}${s.isMe ? ' (Tu)' : ''}
                 </span>
               `).join('')}
             </div>

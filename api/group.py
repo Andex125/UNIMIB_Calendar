@@ -55,10 +55,20 @@ def _get_redis_creds():
     ).strip().strip('"').strip("'")
     return url, token
 
-# Colors for group members
+# Curated 12 distinct high-contrast colors for group members
 MEMBER_COLORS = [
-    "#8B5CF6", "#10B981", "#F59E0B", "#EC4899",
-    "#3B82F6", "#F97316", "#06B6D4", "#84CC16"
+    "#3B82F6",  # Royal Blue
+    "#F97316",  # Warm Orange
+    "#8B5CF6",  # Vivid Purple
+    "#10B981",  # Emerald Green
+    "#EC4899",  # Hot Pink
+    "#EAB308",  # Amber Gold
+    "#6366F1",  # Indigo
+    "#F43F5E",  # Rose Coral
+    "#84CC16",  # Lime Green
+    "#06B6D4",  # Electric Cyan
+    "#A855F7",  # Orchid Purple
+    "#D97706",  # Bronze Gold
 ]
 
 SHARE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"

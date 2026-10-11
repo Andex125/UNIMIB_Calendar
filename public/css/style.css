@@ -441,9 +441,7 @@
 }
 
 [data-theme="light"] .friends-grid-card {
-  background: #FFFFFF !important;
-  border-color: #CBD5E1 !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 [data-theme="light"] .friends-day-pill:hover {
@@ -855,9 +853,7 @@
   }
 
   :root:not([data-theme="dark"]) .friends-grid-card {
-    background: #FFFFFF !important;
-    border-color: #CBD5E1 !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   }
 
   :root:not([data-theme="dark"]) .friends-day-pill:hover {
@@ -3053,18 +3049,42 @@ body {
 
 /* Friends legend bar */
 .friends-legend-item {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   color: var(--text-secondary);
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all 0.2s ease;
 }
 
 .friends-legend-dot {
-  width: 10px;
-  height: 10px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
   flex-shrink: 0;
+  display: inline-block;
+}
+
+.friend-beacon-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: 4px;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+.friends-grid-tag,
+.shared-event-owner {
+  display: inline-flex;
+  align-items: center;
 }
 
 /* ── Friends view: shared event card (me variant) ── */
