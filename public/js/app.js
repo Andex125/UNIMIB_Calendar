@@ -5734,6 +5734,33 @@ function setExamFilter(filterType) {
   renderExams();
 }
 
+function getExamCourseColor(ex) {
+  const courseInfo = ex.courses && ex.courses.length ? ex.courses[0] : null;
+  const code = courseInfo?.code || ex.code || '';
+  if (code && state.favoriteColors && state.favoriteColors[code]) {
+    return state.favoriteColors[code];
+  }
+  if (state.config && state.config.favorites) {
+    const exName = (ex.name || '').toLowerCase();
+    for (const fav of state.config.favorites) {
+      if (fav.code && state.favoriteColors[fav.code]) {
+        const fLabel = (fav.label || '').toLowerCase();
+        if (fLabel && (exName.includes(fLabel) || fLabel.includes(exName))) {
+          return state.favoriteColors[fav.code];
+        }
+      }
+    }
+  }
+  const key = code || ex.name || 'exam';
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) {
+    hash = (hash << 5) - hash + key.charCodeAt(i);
+    hash |= 0;
+  }
+  const idx = Math.abs(hash) % FAVORITE_COLORS.length;
+  return FAVORITE_COLORS[idx];
+}
+
 function renderExams() {
   const container = document.getElementById('examsContainer');
   let list = examsState.exams || [];
@@ -5822,7 +5849,10 @@ function renderExams() {
 
     const cardsHtml = list.map(ex => {
       const courseInfo = ex.courses && ex.courses.length ? ex.courses[0] : null;
-      const courseBadge = courseInfo ? `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:4px;"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>${escapeHtml(courseInfo.title || courseInfo.code)}${courseInfo.year ? ' · ' + courseInfo.year + '° anno' : ''}` : '';
+      const examColor = getExamCourseColor(ex);
+      const courseBadge = courseInfo
+        ? `<span class="exam-course-badge" style="background: color-mix(in srgb, ${examColor} 16%, transparent); color: ${examColor}; border: 1px solid color-mix(in srgb, ${examColor} 35%, transparent);"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:4px;"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>${escapeHtml(courseInfo.title || courseInfo.code)}${courseInfo.year ? ' · ' + courseInfo.year + '° anno' : ''}</span>`
+        : '';
 
       let countdownBadge = '';
       if (ex.date) {
@@ -5842,19 +5872,21 @@ function renderExams() {
         }
       }
 
+      const buildingBadge = renderBuildingBadgeHtml(ex.aula || ex.sede || '');
+
       return `
-        <div class="exam-card">
+        <div class="exam-card" style="--exam-color: ${examColor}; border-left-color: ${examColor};">
           <div class="exam-top">
             <div class="exam-title">${escapeHtml(ex.name)}</div>
             <div style="display:flex; align-items:center; gap:6px;">
               ${countdownBadge}
-              <span class="exam-time-badge">${escapeHtml(ex.time_label)}</span>
+              <span class="exam-time-badge"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:2px; vertical-align:-1px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${escapeHtml(ex.time_label)}</span>
             </div>
           </div>
 
           <div class="exam-meta-grid">
             ${courseBadge ? `<span class="exam-meta-item course">${courseBadge}</span>` : ''}
-            <span class="exam-meta-item"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:4px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${escapeHtml(ex.aula || 'Aula da definire')} ${ex.sede ? '· ' + escapeHtml(ex.sede) : ''}</span>
+            <span class="exam-meta-item"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:4px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><strong class="room-pill">${escapeHtml(ex.aula || 'Aula da definire')}</strong>${ex.sede ? ' · ' + escapeHtml(ex.sede) : ''}${buildingBadge}</span>
             ${ex.docenti && ex.docenti.length ? `<span class="exam-meta-item"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:4px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Prof. ${escapeHtml(ex.docenti.join(', '))}</span>` : ''}
             ${ex.appello ? `<span class="badge-status" style="font-size:0.7rem;">Appello ${escapeHtml(ex.appello)}</span>` : ''}
           </div>
@@ -7583,7 +7615,7 @@ async function loadFriendsCalendar() {
     myEvs.forEach(ev => {
       ev.profile_id = 'MY_SELF';
       ev.nickname   = profileState.nickname || 'Io';
-      ev.color      = '#2DD4BF';
+      ev.color      = (ev.course_code && state.favoriteColors && state.favoriteColors[ev.course_code]) || '#2DD4BF';
     });
     friendsState.myEvents = myEvs;
   } else {
@@ -7711,7 +7743,8 @@ function renderFriendsView() {
     html += `<div class="shared-date-group"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:6px; vertical-align:-2px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>${escapeHtml(dayLabel)} — ${escapeHtml(date.split('-').join('/'))}</div>`;
     events.forEach(ev => {
       const hasMe = ev.students.some(s => s.isMe);
-      const primaryColor = hasMe ? MY_COLOR : (ev.students[0]?.color || '#8B5CF6');
+      const myCourseColor = (ev.course_code && state.favoriteColors && state.favoriteColors[ev.course_code]) || MY_COLOR;
+      const primaryColor = hasMe ? myCourseColor : (ev.students[0]?.color || '#8B5CF6');
 
       let cardBg = `background: linear-gradient(135deg, ${hexToRgba(primaryColor, 0.14)} 0%, ${hexToRgba(primaryColor, 0.04)} 100%);`;
       let cardBorder = `border: 1px solid ${hexToRgba(primaryColor, 0.32)}; border-left: 4px solid ${primaryColor};`;
@@ -7739,7 +7772,7 @@ function renderFriendsView() {
           </div>
           <div class="shared-event-meta">
             ${ev.start_time ? `<span><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:3px; vertical-align:-1px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${escapeHtml(ev.start_time)}${ev.end_time ? '–' + escapeHtml(ev.end_time) : ''}</span>` : ''}
-            ${ev.aula     ? `<span><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:3px; vertical-align:-1px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${escapeHtml(ev.aula)}</span>` : ''}
+            ${ev.aula     ? `<span><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:3px; vertical-align:-1px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><strong class="room-pill">${escapeHtml(ev.aula)}</strong>${renderBuildingBadgeHtml(ev.aula)}</span>` : ''}
             ${ev.docente  ? `<span><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:3px; vertical-align:-1px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>${escapeHtml(ev.docente)}</span>` : ''}
           </div>
         </div>
@@ -7771,7 +7804,7 @@ function mergeGroupEvents(events) {
     const studentInfo = {
       id: ev.profile_id,
       nickname: ev.nickname || (ev.profile_id === 'MY_SELF' ? 'Io' : 'Amico'),
-      color: ev.color || '#8B5CF6',
+      color: (ev.profile_id === 'MY_SELF' && ev.course_code && state.favoriteColors && state.favoriteColors[ev.course_code]) || ev.color || '#8B5CF6',
       isMe: ev.profile_id === 'MY_SELF'
     };
 
@@ -8001,7 +8034,8 @@ function renderFriendsGrid(allEvents, hasMyself, hasFriends) {
       const colWidthPercent = 100 / ev.numCols;
       const leftPercent     = ev.colIndex * colWidthPercent;
       const hasMe = ev.students.some(s => s.isMe);
-      const primaryColor = hasMe ? '#2DD4BF' : (ev.students[0]?.color || '#8B5CF6');
+      const myCourseColor = (ev.course_code && state.favoriteColors && state.favoriteColors[ev.course_code]) || '#2DD4BF';
+      const primaryColor = hasMe ? myCourseColor : (ev.students[0]?.color || '#8B5CF6');
       const isShort = ev.heightPx < 55;
 
       let cardBg = `background: linear-gradient(135deg, ${hexToRgba(primaryColor, 0.22)} 0%, ${hexToRgba(primaryColor, 0.08)} 100%);`;
@@ -8009,8 +8043,8 @@ function renderFriendsGrid(allEvents, hasMyself, hasFriends) {
       let cardShadow = `box-shadow: 0 3px 12px -2px ${hexToRgba(primaryColor, 0.28)};`;
 
       if (ev.students.length > 1) {
-        const c1 = ev.students[0]?.color || primaryColor;
-        const c2 = ev.students[1]?.color || primaryColor;
+        const c1 = (ev.students[0]?.isMe ? myCourseColor : ev.students[0]?.color) || primaryColor;
+        const c2 = (ev.students[1]?.isMe ? myCourseColor : ev.students[1]?.color) || primaryColor;
         cardBg = `background: linear-gradient(135deg, ${hexToRgba(c1, 0.22)} 0%, ${hexToRgba(c2, 0.15)} 100%);`;
         cardBorder = `border: 1px solid ${hexToRgba(c1, 0.4)}; border-left: 4px solid ${c1}; border-right: 3px solid ${c2};`;
         cardShadow = `box-shadow: 0 4px 14px -2px ${hexToRgba(c1, 0.25)}, 0 2px 8px -1px ${hexToRgba(c2, 0.2)};`;
