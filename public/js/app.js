@@ -3826,7 +3826,7 @@ function renderEvents() {
             ${color ? '<span class="course-badge">Mio corso</span>' : ''}
           </div>
         </div>
-        ${isCanceled ? '<div class="canceled-banner">LEZIONE ANNULLATA</div>' : ''}
+        ${isCanceled ? '<div class="canceled-banner"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>LEZIONE ANNULLATA</div>' : ''}
         <div class="course-title ${isCanceled ? 'canceled-text' : ''}">${highlightMatch(e.course, state.searchQuery)}</div>
         ${changeBadgeHtml}
         <div class="card-details">
@@ -3860,7 +3860,7 @@ function renderEvents() {
           <span class="time-badge"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:4px; vertical-align:-1px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${escapeHtml(rem.startTime)} - ${escapeHtml(rem.endTime)}</span>
           ${rem.isFavorite ? '<span class="course-badge">Mio corso</span>' : ''}
         </div>
-        <div class="canceled-banner">LEZIONE RIMOSSA DALL'ORARIO</div>
+        <div class="canceled-banner"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>LEZIONE RIMOSSA DALL'ORARIO</div>
         <div class="course-title canceled-text">${escapeHtml(rem.course)}</div>
         <div class="card-details">
           <div class="detail-item">
@@ -4794,7 +4794,7 @@ function renderTeacherEvents() {
           <span class="time-badge"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:4px; vertical-align:-1px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${escapeHtml(e.start_time)} - ${escapeHtml(e.end_time)}</span>
           <span class="badge-status" style="font-size: 0.72rem; padding: 2px 8px;">${escapeHtml(e.type || 'Lezione')}</span>
         </div>
-        ${isCanceled ? '<div class="canceled-banner">LEZIONE ANNULLATA</div>' : ''}
+        ${isCanceled ? '<div class="canceled-banner"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>LEZIONE ANNULLATA</div>' : ''}
         <div class="course-title ${isCanceled ? 'canceled-text' : ''}">${escapeHtml(e.course)}</div>
         <div class="card-details">
           <div class="detail-item">
