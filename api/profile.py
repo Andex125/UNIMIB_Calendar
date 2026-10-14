@@ -51,20 +51,7 @@ import urllib.parse
 import unicodedata
 from typing import Optional, Tuple, Dict, Any
 
-def _get_redis_creds():
-    url = (
-        os.environ.get("UPSTASH_REDIS_REST_URL")
-        or os.environ.get("KV_REST_API_URL")
-        or os.environ.get("REDIS_REST_URL")
-        or ""
-    ).strip().strip('"').strip("'").rstrip("/")
-    token = (
-        os.environ.get("UPSTASH_REDIS_REST_TOKEN")
-        or os.environ.get("KV_REST_API_TOKEN")
-        or os.environ.get("REDIS_REST_TOKEN")
-        or ""
-    ).strip().strip('"').strip("'")
-    return url, token
+from api._common import get_redis_creds as _get_redis_creds
 
 # Unambiguous characters for share codes and recovery codes (no 0/O, 1/I)
 SHARE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"

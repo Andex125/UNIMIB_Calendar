@@ -210,7 +210,30 @@ def fetch_upstream(url: str, headers: Optional[dict] = None, timeout: int = 10, 
 _LOCAL_STORE_PATH = os.path.join(tempfile.gettempdir(), "unimib_kv_store.json")
 _LOCAL_LOCK = threading.Lock()
 
+def _load_env_files() -> None:
+    """Carica variabili d'ambiente da .env o .env.local se presenti nella root."""
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    for fname in ('.env.local', '.env'):
+        p = os.path.join(root, fname)
+        if os.path.isfile(p):
+            try:
+                with open(p, 'r', encoding='utf-8') as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line or line.startswith('#') or '=' not in line:
+                            continue
+                        k, v = line.split('=', 1)
+                        k = k.strip()
+                        v = v.strip().strip('"').strip("'")
+                        if k and k not in os.environ:
+                            os.environ[k] = v
+            except Exception:
+                pass
+
+_load_env_files()
+
 def get_redis_creds() -> Tuple[str, str]:
+    _load_env_files()
     url = (
         os.environ.get("UPSTASH_REDIS_REST_URL")
         or os.environ.get("KV_REST_API_URL")

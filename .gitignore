@@ -10,3 +10,4 @@ ENV/
 .vercel/
 .vercel
 .env*
+!.env.example
