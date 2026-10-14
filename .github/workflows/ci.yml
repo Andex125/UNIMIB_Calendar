@@ -1,3 +1,4 @@
+# CI workflow for UNIMIB Calendar test suite
 name: CI Test Suite
 
 on:
