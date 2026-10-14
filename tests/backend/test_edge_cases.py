@@ -171,6 +171,13 @@ from api.profile import (
 )
 from api.group import handler as GroupHandler
 
+_ORIG_PROFILE_REDIS_GET = profile_module.redis_get
+_ORIG_PROFILE_REDIS_SET = profile_module.redis_set
+_ORIG_PROFILE_REDIS_DEL = profile_module.redis_del
+_ORIG_GROUP_REDIS_GET = group_module.redis_get
+_ORIG_GROUP_REDIS_SET = group_module.redis_set
+_ORIG_GROUP_REDIS_DEL = group_module.redis_del
+
 
 class InMemoryRedis:
     def __init__(self):
@@ -282,6 +289,14 @@ class TestProfileSecurityAndAuth(unittest.TestCase):
         group_module.redis_get = self.redis.get
         group_module.redis_set = self.redis.set
         group_module.redis_del = self.redis.delete
+
+    def tearDown(self):
+        profile_module.redis_get = _ORIG_PROFILE_REDIS_GET
+        profile_module.redis_set = _ORIG_PROFILE_REDIS_SET
+        profile_module.redis_del = _ORIG_PROFILE_REDIS_DEL
+        group_module.redis_get = _ORIG_GROUP_REDIS_GET
+        group_module.redis_set = _ORIG_GROUP_REDIS_SET
+        group_module.redis_del = _ORIG_GROUP_REDIS_DEL
 
     def test_nickname_and_pin_validation(self):
         self.assertEqual(_clean_nickname("  Müller Mario 123  "), "mullermario123")
@@ -493,6 +508,14 @@ class TestMultiGroupAPI(unittest.TestCase):
         self.bob_token = h_b.get_json()["session_token"]
         self.bob_code = h_b.get_json()["share_code"]
 
+    def tearDown(self):
+        profile_module.redis_get = _ORIG_PROFILE_REDIS_GET
+        profile_module.redis_set = _ORIG_PROFILE_REDIS_SET
+        profile_module.redis_del = _ORIG_PROFILE_REDIS_DEL
+        group_module.redis_get = _ORIG_GROUP_REDIS_GET
+        group_module.redis_set = _ORIG_GROUP_REDIS_SET
+        group_module.redis_del = _ORIG_GROUP_REDIS_DEL
+
     def test_zero_group_initial_state(self):
         # Alice starts with zero groups
         h = MockGroupHandler("GET", f"/api/group?user={self.alice_code}")
@@ -697,6 +720,11 @@ class TestProfileEdgeCases(unittest.TestCase):
         profile_module.redis_get = self.redis.get
         profile_module.redis_set = self.redis.set
         profile_module.redis_del = self.redis.delete
+
+    def tearDown(self):
+        profile_module.redis_get = _ORIG_PROFILE_REDIS_GET
+        profile_module.redis_set = _ORIG_PROFILE_REDIS_SET
+        profile_module.redis_del = _ORIG_PROFILE_REDIS_DEL
 
     def test_invalid_inputs_registration(self):
         # Empty nickname -> 400
