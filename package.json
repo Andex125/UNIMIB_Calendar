@@ -4,13 +4,11 @@
   "description": "Progressive Web App per gli orari e il campus dell'Università degli Studi di Milano-Bicocca",
   "private": true,
   "scripts": {
+    "build": "echo 'Static assets ready'",
     "test": "npm run test:backend && npm run test:frontend",
     "test:backend": "python3 -m unittest discover -s tests/backend -p \"test_*.py\"",
     "test:frontend": "node --test tests/frontend/*.test.js",
     "lint:py": "python3 -m ruff check api/ tests/ || true",
     "format:py": "python3 -m ruff format api/ tests/ || true"
-  },
-  "devDependencies": {
-    "vercel": "^37.0.0"
   }
 }

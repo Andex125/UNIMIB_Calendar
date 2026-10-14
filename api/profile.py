@@ -36,6 +36,7 @@ Endpoints:
 - DELETE /api/profile                  – terminate session (logout)
 """
 
+import sys
 import os
 import json
 import re
@@ -51,7 +52,11 @@ import urllib.parse
 import unicodedata
 from typing import Optional, Tuple, Dict, Any
 
-from api._common import get_redis_creds as _get_redis_creds
+_parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _parent_dir not in sys.path:
+    sys.path.insert(0, _parent_dir)
+
+from api._common import get_redis_creds as _get_redis_creds, BaseApiHandler
 
 # Unambiguous characters for share codes and recovery codes (no 0/O, 1/I)
 SHARE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
@@ -365,7 +370,6 @@ def _reset_failed_attempts(clean_nick: str, prefix: str = "login"):
 
 # ── HTTP Handler ───────────────────────────────────────────────────────────────
 
-from api._common import BaseApiHandler
 
 class handler(BaseApiHandler):
 

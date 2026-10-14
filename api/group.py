@@ -28,6 +28,7 @@ Endpoints:
                                                                 list_user_groups, sync
 """
 
+import sys
 import os
 import json
 import re
@@ -40,7 +41,11 @@ import urllib.parse
 from http.server import BaseHTTPRequestHandler
 from typing import Optional, Dict, Any, List
 
-from api._common import get_redis_creds as _get_redis_creds
+_parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _parent_dir not in sys.path:
+    sys.path.insert(0, _parent_dir)
+
+from api._common import get_redis_creds as _get_redis_creds, BaseApiHandler
 
 # Curated 12 distinct high-contrast colors for group members
 MEMBER_COLORS = [
@@ -374,7 +379,6 @@ def _get_group_with_members(group_id: str) -> Optional[dict]:
 
 # ── HTTP Handler ───────────────────────────────────────────────────────────────
 
-from api._common import BaseApiHandler
 
 class handler(BaseApiHandler):
 

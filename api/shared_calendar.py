@@ -1,8 +1,14 @@
+import sys
+import os
 import json
 import re
 import urllib.parse
 from datetime import datetime, timedelta
 import concurrent.futures
+
+_parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _parent_dir not in sys.path:
+    sys.path.insert(0, _parent_dir)
 
 from api._common import (
     BaseApiHandler,

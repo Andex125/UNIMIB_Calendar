@@ -1,0 +1,2 @@
+# UNIMIB Calendar - Serverless Python Dependencies
+# Tutti gli endpoint usano esclusivamente la standard library Python.
