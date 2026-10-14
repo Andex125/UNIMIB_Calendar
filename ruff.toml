@@ -1,10 +1,10 @@
-[tool.ruff]
+# Ruff configuration for UNIMIB Calendar
 target-version = "py310"
 line-length = 120
 
-[tool.ruff.lint]
+[lint]
 select = ["E", "F", "W", "I"]
 ignore = ["E501"]
 
-[tool.ruff.lint.isort]
+[lint.isort]
 known-first-party = ["api"]
