@@ -7,6 +7,7 @@ import re
 import urllib.parse
 from datetime import datetime, timedelta, timezone
 import concurrent.futures
+from typing import Any, Dict, List, Optional
 
 _parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _parent_dir not in sys.path:
