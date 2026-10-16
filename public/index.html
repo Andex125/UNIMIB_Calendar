@@ -17,10 +17,9 @@
   <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
   <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 
-  <!-- UNIMIB Official Fonts: PT Sans & PT Sans Narrow -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=PT+Sans:ital,wght@0,400;0,700;1,400;1,700&family=PT+Sans+Narrow:wght@400;700&display=swap" rel="stylesheet">
+  <!-- UNIMIB Official Fonts: Self-Hosted Local WOFF2 (Zero-Leakage Privacy) -->
+  <link rel="preload" href="/fonts/pt-sans-v18-latin-regular-400.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/pt-sans-narrow-v19-latin-regular-400.woff2" as="font" type="font/woff2" crossorigin>
 
   <!-- CSS Styles -->
   <link rel="stylesheet" href="/css/style.css">
@@ -1086,7 +1085,7 @@
             <div>
               <strong>Nota Legale e Trasparenza:</strong> UNIMIB Orari è un progetto autonomo open-source realizzato da studenti. Non è affiliato né gestito dall'Università degli Studi di Milano-Bicocca. I dati non vengono ceduti a terzi.
               <div style="margin-top:6px;">
-                <button type="button" id="btnOpenPrivacyModal" style="background:none; border:none; color:var(--accent-cyan); font-size:0.75rem; text-decoration:underline; cursor:pointer; padding:0;">Informativa Privacy e Diritti GDPR (Art. 17)</button>
+                <button type="button" id="btnOpenPrivacyModal" style="background:none; border:none; color:var(--accent-cyan); font-size:0.75rem; text-decoration:underline; cursor:pointer; padding:0;">Informativa Privacy e Diritti GDPR (Art. 17 e Art. 20)</button>
               </div>
             </div>
           </div>
@@ -1242,8 +1241,19 @@
         <hr style="border-color:rgba(255,255,255,0.08); margin-bottom:12px;">
 
         <button id="btnLogoutProfile" class="btn-secondary" style="width:100%; font-size:0.85rem;"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Esci dal profilo</button>
+        <button id="btnExportUserData" class="btn-secondary" style="width:100%; font-size:0.8rem; margin-top:8px;"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Scarica i miei dati (JSON - GDPR Art. 20)</button>
         <button id="btnWipeAccount" class="btn-secondary" style="width:100%; font-size:0.8rem; margin-top:8px; color:#EF4444; border-color:rgba(239, 68, 68, 0.35);"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Elimina account e tutti i dati (GDPR Art. 17)</button>
         <p style="font-size:0.72rem; color:var(--text-muted); margin-top:8px; text-align:center;">Le tue impostazioni rimangono salvate localmente sul dispositivo.</p>
+
+        <details class="privacy-details-card" style="margin-top:14px; font-size:0.75rem; color:var(--text-secondary); background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:8px 12px;">
+          <summary style="cursor:pointer; font-weight:600; color:var(--text-primary); user-select:none;">🛡️ Privacy e Protezione Dati</summary>
+          <div style="margin-top:8px; line-height:1.45;">
+            <p style="margin-bottom:6px;"><strong>Minimizzazione e Zero Cookie</strong>: L'applicazione non utilizza cookie di profilazione o tracker commerciali. I dati di navigazione e orario sono memorizzati localmente nel browser (localStorage / Service Worker).</p>
+            <p style="margin-bottom:6px;"><strong>Archiviazione Sicura Cloud</strong>: I dati dell'account (email istituzionale, materie scelte, gruppi studio) sono ospitati nell'Unione Europea (Upstash Redis Francoforte) con cifratura HTTPS/TLS e controlli di accesso restrittivi.</p>
+            <p style="margin-bottom:6px;"><strong>Diritti GDPR</strong>: Puoi scaricare una copia integrale dei tuoi dati (Art. 20 Portabilità) o richiederne la cancellazione immediata a cascata (Art. 17 Diritto all'Oblio).</p>
+            <p style="margin:0;"><strong>Generazione QR Locale</strong>: I codici QR vengono generati direttamente sul tuo dispositivo senza trasmettere link o dati a server terzi.</p>
+          </div>
+        </details>
       </div>
 
     </div>
@@ -1394,8 +1404,8 @@
           A differenza di altri portali universitari che impongono frequenti disconnessioni, la sessione di accesso viene rinnovata automaticamente per 365 giorni ad ogni visita, così da non richiedere continui re-login.
         </div>
         <div>
-          <strong style="color:var(--text-primary); display:block; margin-bottom:2px;">5. Diritto all'Oblio (Art. 17 GDPR)</strong>
-          In piena conformità con il Regolamento Generale sulla Protezione dei Dati (GDPR), puoi richiedere la cancellazione totale e istantanea di tutti i tuoi dati, dell'account e delle sincronizzazioni associate in qualsiasi momento premendo il tasto "Elimina account e tutti i dati" nel tuo profilo.
+          <strong style="color:var(--text-primary); display:block; margin-bottom:2px;">5. Diritti GDPR: Diritto all'Oblio (Art. 17) e Portabilità dei Dati (Art. 20)</strong>
+          In piena conformità con il Regolamento Generale sulla Protezione dei Dati (GDPR - UE 2016/679), puoi scaricare una copia integrale dei tuoi dati in formato JSON aperto (Art. 20 Portabilità) o richiedere la cancellazione totale, irreversibile e a cascata di account, gruppi e sincronizzazioni (Art. 17 Diritto all'Oblio) in qualsiasi momento dal tuo profilo. I database risiedono interamente all'interno dell'Unione Europea (Francoforte, Germania).
         </div>
       </div>
 
@@ -1466,6 +1476,7 @@
   <div id="toastNotification" class="toast"></div>
 
   <!-- JS Logic -->
+  <script src="/js/qrcode.js"></script>
   <script src="/js/app.js"></script>
 </body>
 </html>

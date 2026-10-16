@@ -1,4 +1,4 @@
-const CACHE_NAME = 'unimib-calendar-v25';
+const CACHE_NAME = 'unimib-calendar-v27';
 const FONTS_CACHE_NAME = 'unimib-fonts-v1';
 const MAX_API_ENTRIES = 50;
 
@@ -8,6 +8,7 @@ const ASSETS = [
   '/css/style.css',
   '/js/app.js',
   '/js/alpine.min.js',
+  '/js/qrcode.js',
   '/manifest.json',
   '/favicon.ico',
   '/icons/ottaedro.svg',
@@ -15,7 +16,13 @@ const ASSETS = [
   '/icons/icon-512.png',
   '/icons/icon-maskable-512.png',
   '/icons/apple-touch-icon.png',
-  '/icons/favicon-32.png'
+  '/icons/favicon-32.png',
+  '/fonts/pt-sans-v18-latin-regular-400.woff2',
+  '/fonts/pt-sans-v18-latin-bold-700.woff2',
+  '/fonts/pt-sans-v18-latin-italic-400.woff2',
+  '/fonts/pt-sans-v18-latin-italic-700.woff2',
+  '/fonts/pt-sans-narrow-v19-latin-regular-400.woff2',
+  '/fonts/pt-sans-narrow-v19-latin-bold-700.woff2'
 ];
 
 function trimCache(cacheName, maxItems) {
@@ -90,6 +97,12 @@ self.addEventListener('fetch', (event) => {
 
   // 2. API Requests: Network-first, only cache successful GET 200 responses with bounded size
   if (requestUrl.pathname.startsWith('/api/')) {
+    // SECURITY & PRIVACY GUARD: Never cache private/authenticated endpoints in SW CacheStorage
+    const SENSITIVE_ENDPOINTS = ['/api/profile', '/api/group', '/api/teacher_notes'];
+    if (SENSITIVE_ENDPOINTS.some((ep) => requestUrl.pathname.startsWith(ep))) {
+      return;
+    }
+
     if (event.request.method !== 'GET') {
       return;
     }

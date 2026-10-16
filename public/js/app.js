@@ -725,6 +725,8 @@ function setupEventListeners() {
 
   const btnWipe = document.getElementById('btnWipeAccount');
   if (btnWipe) btnWipe.addEventListener('click', handleWipeAccount);
+  const btnExport = document.getElementById('btnExportUserData');
+  if (btnExport) btnExport.addEventListener('click', handleExportUserData);
   const btnMockStudent = document.getElementById('btnMockStudentLogin');
   if (btnMockStudent) btnMockStudent.addEventListener('click', handleMockStudentLogin);
   const btnMockProf = document.getElementById('btnMockProfessorLogin');
@@ -1904,7 +1906,24 @@ function openShare() {
     ? 'Chi apre questo link (o inquadra il QR) vedrà questo orario e potrà importarlo.'
     : 'Scegli prima il tuo corso per condividere l\'orario. Intanto, ecco il link all\'app:';
   document.getElementById('shareUrlText').textContent = url;
-  document.getElementById('qrImage').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}`;
+
+  // Zero-leakage local client-side QR generation (no external server requests)
+  const qrImg = document.getElementById('qrImage');
+  if (qrImg) {
+    if (typeof qrcode === 'function') {
+      try {
+        const qr = qrcode(0, 'M');
+        qr.addData(url);
+        qr.make();
+        qrImg.src = qr.createDataURL(6, 4);
+      } catch (err) {
+        console.warn('Errore generazione QR locale:', err);
+      }
+    } else {
+      qrImg.alt = 'QR Code';
+    }
+  }
+
   document.getElementById('btnNativeShare').style.display = navigator.share ? '' : 'none';
   openModal('shareModal');
 }
@@ -7071,6 +7090,63 @@ async function handleWipeAccount() {
   updateTimetableForRole();
   showToast('Account e dati eliminati con successo (GDPR Art. 17)');
   closeModal('profileModal');
+}
+
+async function handleExportUserData() {
+  let exportData = null;
+
+  if (profileState.sessionToken) {
+    try {
+      const res = await fetch('/api/profile?export=1', {
+        headers: { 'Authorization': `Bearer ${profileState.sessionToken}` }
+      });
+      if (res.ok) {
+        exportData = await res.json();
+      }
+    } catch (e) {
+      console.warn('Errore recupero export server:', e);
+    }
+  }
+
+  // Fallback / integrazione dati locali se offline o non autenticato
+  if (!exportData) {
+    exportData = {
+      ok: true,
+      gdpr_compliance: 'Regolamento UE 2016/679 (GDPR) - Art. 20 Portabilità dei Dati',
+      export_timestamp: new Date().toISOString(),
+      user_profile: {
+        nickname: profileState.nickname || 'Anonimo',
+        role: profileState.role || 'student',
+        auth_type: profileState.authType || 'local',
+        share_code: profileState.shareCode || null,
+        email: profileState.email || '',
+        picture: profileState.picture || ''
+      },
+      study_preferences: {
+        config: state.config || {},
+        exam_courses: state.examCourses || []
+      },
+      study_groups: friendsState.groups || []
+    };
+  }
+
+  try {
+    const jsonStr = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const dateStr = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `dati_unimib_calendar_${dateStr}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('Dati esportati con successo (GDPR Art. 20)');
+  } catch (err) {
+    console.error('Errore durante download dati:', err);
+    showToast('Errore durante esportazione dei dati');
+  }
 }
 
 // Open the Profile modal, showing logged-in or logged-out state

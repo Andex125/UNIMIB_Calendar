@@ -396,6 +396,7 @@ class BaseApiHandler(BaseHTTPRequestHandler):
         self.send_header('X-Frame-Options', 'DENY')
         self.send_header('Referrer-Policy', 'strict-origin-when-cross-origin')
         self.send_header('Permissions-Policy', 'geolocation=(), camera=(), microphone=()')
+        self.send_header('Cross-Origin-Opener-Policy', 'same-origin-allow-popups')
         self.send_header('Content-Length', str(len(data)))
 
         if cache_control:

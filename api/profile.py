@@ -44,6 +44,7 @@ import hashlib
 import hmac
 import secrets
 import time
+from datetime import datetime, timezone
 import tempfile
 import threading
 from http.server import BaseHTTPRequestHandler
@@ -451,6 +452,53 @@ def _reset_failed_attempts(clean_nick: str, prefix: str = "login"):
     redis_del(f"ratelimit:{prefix}:{clean_nick}")
 
 
+def cascade_wipe_account(clean_nick: str, share_code: str) -> dict:
+    """
+    Complete GDPR Art. 17 right-to-erasure cascade wipe.
+    Removes account, share code, group memberships, zombie groups, and rate-limiting counters.
+    """
+    deleted_keys = []
+
+    # 1. Delete account record & rate limits
+    if clean_nick:
+        redis_del(f"account:{clean_nick}")
+        deleted_keys.append(f"account:{clean_nick}")
+        _reset_failed_attempts(clean_nick, "login")
+        _reset_failed_attempts(clean_nick, "recover")
+
+    # 2. Delete public share record & clean groups
+    if share_code:
+        share_lower = share_code.lower()
+        redis_del(f"share:{share_lower}")
+        deleted_keys.append(f"share:{share_lower}")
+
+        # Clean up group memberships in user_groups
+        user_group_ids = redis_get(f"user_groups:{share_lower}") or []
+        if isinstance(user_group_ids, list):
+            for gid in user_group_ids:
+                gdata = redis_get(f"group:{gid}")
+                if gdata and isinstance(gdata, dict):
+                    members = gdata.get("members", [])
+                    # Remove user from group members
+                    updated_members = [
+                        m for m in members
+                        if str(m).strip().lower() != share_lower
+                    ]
+                    # If no members left or creator was sole member, delete group
+                    if not updated_members or (str(gdata.get("creator", "")).strip().lower() == share_lower and len(updated_members) == 0):
+                        redis_del(f"group:{gid}")
+                        deleted_keys.append(f"group:{gid}")
+                    else:
+                        gdata["members"] = updated_members
+                        gdata["updated_at"] = int(time.time())
+                        redis_set(f"group:{gid}", gdata)
+
+            redis_del(f"user_groups:{share_lower}")
+            deleted_keys.append(f"user_groups:{share_lower}")
+
+    return {"ok": True, "wiped": True, "deleted_keys": deleted_keys}
+
+
 # ── HTTP Handler ───────────────────────────────────────────────────────────────
 
 
@@ -495,7 +543,57 @@ class handler(BaseApiHandler):
                     "disclaimer":       "Progetto autonomo studentesco non affiliato all'Universita degli Studi di Milano-Bicocca"
                 })
 
-            # ── 1. Authenticated user lookup via Bearer token (?me=1) ──────────
+            # ── 1. GDPR Art. 20 Data Portability Export (?export=1) ───────────
+            if qs.get("export") or qs.get("gdpr_export") or qs.get("action") == "export":
+                token = _extract_bearer_token(self.headers)
+                session = _get_session(token)
+                if not session:
+                    return self._send_json(401, {"error": "Sessione non valida o scaduta"})
+                clean_nick = session.get("clean_nick", "")
+                account = redis_get(f"account:{clean_nick}")
+                if not account or not isinstance(account, dict):
+                    return self._send_json(404, {"error": "Account non trovato"})
+
+                share_code = account.get("share_code", "")
+                groups = []
+                if share_code:
+                    user_group_ids = redis_get(f"user_groups:{share_code.lower()}") or []
+                    if isinstance(user_group_ids, list):
+                        for gid in user_group_ids:
+                            gdata = redis_get(f"group:{gid}")
+                            if gdata and isinstance(gdata, dict):
+                                groups.append({
+                                    "id": gid,
+                                    "name": gdata.get("name"),
+                                    "creator": gdata.get("creator"),
+                                    "members": gdata.get("members", []),
+                                    "created_at": gdata.get("created_at"),
+                                    "updated_at": gdata.get("updated_at")
+                                })
+
+                return self._send_json(200, {
+                    "ok": True,
+                    "gdpr_compliance": "Regolamento UE 2016/679 (GDPR) - Art. 20 Portabilità dei Dati",
+                    "export_timestamp": datetime.now(timezone.utc).isoformat(),
+                    "user_profile": {
+                        "nickname": account.get("nickname"),
+                        "clean_nick": clean_nick,
+                        "email": account.get("email", ""),
+                        "role": account.get("role", "student"),
+                        "auth_type": account.get("auth_type", "pin"),
+                        "share_code": share_code,
+                        "picture": account.get("picture", ""),
+                        "created_at": account.get("created_at"),
+                        "updated_at": account.get("updated_at")
+                    },
+                    "study_preferences": {
+                        "config": account.get("config") or {},
+                        "exam_courses": account.get("exam_courses", [])
+                    },
+                    "study_groups": groups
+                })
+
+            # ── 2. Authenticated user lookup via Bearer token (?me=1) ──────────
             if qs.get("me") or qs.get("current"):
                 token = _extract_bearer_token(self.headers)
                 session = _get_session(token)
@@ -812,6 +910,10 @@ class handler(BaseApiHandler):
                 if "exam_courses" in body and body["exam_courses"] is not None:
                     raw_exams = body["exam_courses"]
                     account["exam_courses"] = [_sanitize_text(c, 120) for c in raw_exams if isinstance(c, str)]
+                if "nickname" in body and body["nickname"] is not None:
+                    new_nick = _sanitize_nickname(str(body["nickname"]))
+                    if new_nick:
+                        account["nickname"] = new_nick
 
                 account["updated_at"] = int(time.time())
                 share_code = account.get("share_code") or session.get("share_code")
@@ -958,15 +1060,15 @@ class handler(BaseApiHandler):
             qs = self._qs()
             if token:
                 session = _get_session(token)
-                if session and (qs.get("wipe") == "1" or qs.get("action") == "delete_account"):
+                is_wipe = (qs.get("wipe") == "1" or qs.get("action") == "delete_account")
+                if session and is_wipe:
                     clean_nick = session.get("clean_nick", "")
                     share_code = session.get("share_code", "")
-                    if clean_nick:
-                        redis_del(f"account:{clean_nick}")
-                    if share_code:
-                        redis_del(f"share:{share_code.lower()}")
+                    cascade_wipe_account(clean_nick, share_code)
                 _delete_session(token)
-            return self._send_json(200, {"message": "Sessione terminata"})
+                msg = "Account e tutti i dati correlati eliminati con successo (GDPR Art. 17)" if is_wipe else "Sessione terminata"
+                return self._send_json(200, {"ok": True, "message": msg, "wiped": is_wipe})
+            return self._send_json(401, {"error": "Token di sessione mancante o non valido"})
         except Exception as e:
             return self._send_json(500, {"error": str(e)})
 

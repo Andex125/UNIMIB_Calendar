@@ -1422,6 +1422,53 @@ test('Role switching and logout resets timetable view and subtitle cleanly', () 
   }
 });
 
+test('Zero-Leakage local QR code generator creates data URL without calling api.qrserver.com', () => {
+  const qrcode = require('../../public/js/qrcode.js');
+  assert.strictEqual(typeof qrcode, 'function');
+  const qr = qrcode(0, 'M');
+  qr.addData('https://orari.didattica.unimib.it/?friend=TEST12');
+  qr.make();
+  const dataUrl = qr.createDataURL(4, 2);
+  assert.ok(dataUrl.startsWith('data:image/gif;base64,'));
+
+  // Verify openShare in appJsCode does NOT contain api.qrserver.com
+  assert.strictEqual(appJsCode.includes('api.qrserver.com'), false);
+  assert.ok(appJsCode.includes('qr.createDataURL'));
+});
+
+test('GDPR Art. 20 export and Art. 17 wipe buttons and transparency elements exist in index.html', () => {
+  const htmlPath = path.join(__dirname, '../../public/index.html');
+  const html = fs.readFileSync(htmlPath, 'utf8');
+  assert.ok(html.includes('id="btnExportUserData"'));
+  assert.ok(html.includes('id="btnWipeAccount"'));
+  assert.ok(html.includes('privacy-details-card'));
+  assert.ok(html.includes('Art. 20 Portabilità'));
+  assert.ok(html.includes('Art. 17 Diritto all\'Oblio'));
+  assert.ok(html.includes('qrcode.js'));
+});
+
+test('Service Worker excludes sensitive endpoints from CacheStorage and bundles qrcode.js', () => {
+  const swPath = path.join(__dirname, '../../public/sw.js');
+  const swCode = fs.readFileSync(swPath, 'utf8');
+  assert.ok(swCode.includes('/js/qrcode.js'));
+  assert.ok(swCode.includes('SENSITIVE_ENDPOINTS'));
+  assert.ok(swCode.includes('/api/profile'));
+  assert.ok(swCode.includes('/api/group'));
+});
+
+test('Self-hosted fonts are included in Service Worker ASSETS and index.html preloads local WOFF2', () => {
+  const swPath = path.join(__dirname, '../../public/sw.js');
+  const swCode = fs.readFileSync(swPath, 'utf8');
+  assert.ok(swCode.includes('/fonts/pt-sans-v18-latin-regular-400.woff2'));
+  assert.ok(swCode.includes('/fonts/pt-sans-narrow-v19-latin-regular-400.woff2'));
+
+  const htmlPath = path.join(__dirname, '../../public/index.html');
+  const html = fs.readFileSync(htmlPath, 'utf8');
+  assert.strictEqual(html.includes('fonts.googleapis.com'), false);
+  assert.strictEqual(html.includes('fonts.gstatic.com'), false);
+  assert.ok(html.includes('rel="preload" href="/fonts/pt-sans-v18-latin-regular-400.woff2"'));
+});
+
 
 
 
