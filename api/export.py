@@ -16,6 +16,7 @@ if _parent_dir not in sys.path:
 from api._common import (
     BaseApiHandler,
     BoundedTTLCache,
+    GRID_URL,
     get_rome_now,
     get_monday,
     parse_date_to_monday,
@@ -25,7 +26,6 @@ from api._common import (
     redis_get,
 )
 
-GRID_URL = 'https://gestioneorari.didattica.unimib.it/PortaleStudentiUnimib/grid_call.php'
 CACHE_TTL = 300
 
 _grid_cache = BoundedTTLCache(maxsize=200, ttl_seconds=CACHE_TTL)

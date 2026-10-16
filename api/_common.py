@@ -47,6 +47,24 @@ MONTHS_IT = {
     9: 'Settembre', 10: 'Ottobre', 11: 'Novembre', 12: 'Dicembre'
 }
 
+# ── Shared Canonical Constants ────────────────────────────────────────────────
+GRID_URL = 'https://gestioneorari.didattica.unimib.it/PortaleStudentiUnimib/grid_call.php'
+SHARE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+PALETTE_COLORS = [
+    "#3B82F6",  # Royal Blue
+    "#F97316",  # Warm Orange
+    "#8B5CF6",  # Vivid Purple
+    "#10B981",  # Emerald Green
+    "#EC4899",  # Hot Pink
+    "#EAB308",  # Amber Gold
+    "#6366F1",  # Indigo
+    "#F43F5E",  # Rose Coral
+    "#84CC16",  # Lime Green
+    "#06B6D4",  # Electric Cyan
+    "#A855F7",  # Orchid Purple
+    "#D97706",  # Bronze Gold
+]
+
 def get_rome_now() -> datetime:
     """Return the current localized datetime in Europe/Rome."""
     try:
@@ -380,6 +398,21 @@ def sanitize_text(s: Any, max_len: int = 100) -> str:
         clean = clean.replace(ch, '')
     clean = ''.join(ch for ch in clean if ch.isprintable())
     return clean.strip()[:max_len]
+
+
+def extract_bearer_token(headers: Any) -> str:
+    """Extract Bearer token from request headers safely."""
+    if not headers:
+        return ""
+    auth = headers.get("Authorization") or headers.get("authorization") or ""
+    if auth.lower().startswith("bearer "):
+        return auth[7:].strip()
+    return ""
+
+
+def is_safe_code(code: str) -> bool:
+    """Validate share/group code format (alphanumeric, 3-32 chars)."""
+    return bool(code and re.match(r'^[A-Za-z0-9_-]{3,32}$', str(code).strip()))
 
 
 # ── Base HTTP Handler Class ───────────────────────────────────────────────────

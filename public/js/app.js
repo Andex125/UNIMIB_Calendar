@@ -4512,6 +4512,12 @@ function isoToFormatted(iso) {
   return `${parts[2]}-${parts[1]}-${parts[0]}`;
 }
 
+function dateFormattedToIso(ddmmyyyy) {
+  if (!ddmmyyyy) return '';
+  const p = ddmmyyyy.split('-');
+  return p.length === 3 ? `${p[2]}-${p[1]}-${p[0]}` : ddmmyyyy;
+}
+
 function parseAnyDate(d) {
   if (!d) return new Date();
   if (d instanceof Date) return d;

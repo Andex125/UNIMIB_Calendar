@@ -12,6 +12,7 @@ if _parent_dir not in sys.path:
 
 from api._common import (
     BaseApiHandler,
+    GRID_URL,
     get_monday,
     safe_ts,
     split_curricula,
@@ -20,7 +21,6 @@ from api._common import (
     UpstreamError,
 )
 
-GRID_URL = 'https://gestioneorari.didattica.unimib.it/PortaleStudentiUnimib/grid_call.php'
 CACHE_TTL = 300
 _grid_cache = BoundedTTLCache(maxsize=200, ttl_seconds=CACHE_TTL)
 _safe_ts = safe_ts

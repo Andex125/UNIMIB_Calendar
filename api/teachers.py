@@ -12,6 +12,7 @@ if _parent_dir not in sys.path:
 from api._common import (
     BaseApiHandler,
     BoundedTTLCache,
+    GRID_URL,
     get_rome_now,
     get_monday,
     parse_date_to_monday,
@@ -23,7 +24,6 @@ from api._common import (
 )
 
 COMBO_URL = 'https://gestioneorari.didattica.unimib.it/PortaleStudentiUnimib/combo.php'
-GRID_URL = 'https://gestioneorari.didattica.unimib.it/PortaleStudentiUnimib/grid_call.php'
 
 CACHE_TEACHERS_TTL = 3600  # 1 hour
 CACHE_GRID_TTL = 300       # 5 minutes

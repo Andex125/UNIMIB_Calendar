@@ -13,6 +13,8 @@ if _parent_dir not in sys.path:
 from api._common import (
     BaseApiHandler,
     BoundedTTLCache,
+    GRID_URL,
+    PALETTE_COLORS,
     get_rome_now,
     get_monday,
     parse_date_to_monday,
@@ -23,22 +25,7 @@ from api._common import (
     get_redis_creds,
 )
 
-GRID_URL = 'https://gestioneorari.didattica.unimib.it/PortaleStudentiUnimib/grid_call.php'
-
-SHARED_COLORS = [
-    "#3B82F6",  # Royal Blue
-    "#F97316",  # Warm Orange
-    "#8B5CF6",  # Vivid Purple
-    "#10B981",  # Emerald Green
-    "#EC4899",  # Hot Pink
-    "#EAB308",  # Amber Gold
-    "#6366F1",  # Indigo
-    "#F43F5E",  # Rose Coral
-    "#84CC16",  # Lime Green
-    "#06B6D4",  # Electric Cyan
-    "#A855F7",  # Orchid Purple
-    "#D97706",  # Bronze Gold
-]
+SHARED_COLORS = PALETTE_COLORS
 
 MAX_PROFILES = 8  # safety cap
 CACHE_TTL = 300   # 5 minutes in-memory cache for UNIMIB grids
