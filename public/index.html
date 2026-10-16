@@ -28,6 +28,9 @@
 
   <!-- Alpine.js Lightweight Reactive Layer -->
   <script defer src="/js/alpine.min.js"></script>
+
+  <!-- Google Identity Services (GIS) for Campus Authentication -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 
@@ -79,105 +82,182 @@
   <!-- Main Views Container -->
   <!-- 1. Timetable View -->
   <section id="viewTimetable" class="app-view">
-    <!-- Filter & Mode Selection -->
-    <div class="control-card">
-      <div style="display: flex; gap: 8px; align-items: center;">
-        <div class="toggle-group" style="flex: 1; margin-bottom: 0;">
-          <button id="btnFilterTarget" class="toggle-btn active" @click="$store.app.setTimetableFilter('target')"><svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" stroke="none" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>I Miei Corsi</button>
-          <button id="btnFilterAll" class="toggle-btn" @click="$store.app.setTimetableFilter('all')"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>Tutti i Corsi</button>
-        </div>
-        <button id="btnQuickAddExternal" class="btn-secondary" type="button" style="width: auto; padding: 10px 14px; font-size: 0.8rem; font-weight: 600; white-space: nowrap; display: flex; align-items: center; gap: 6px; border-radius: 10px;" title="Aggiungi materia da un altro corso di studio">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>+ Corso Esterno
-        </button>
-      </div>
-
-      <!-- Active External Courses Chips Bar -->
-      <div id="externalCoursesChipsBar" class="exam-courses-bar" style="display: none; margin-bottom: 0;">
-        <!-- Chips rendered dynamically -->
-      </div>
-
-      <!-- Live Search Bar with Autocomplete -->
-      <div class="search-input-wrapper">
-        <input type="text" id="searchInput" placeholder="Cerca per corso, docente o aula..." 
-               style="width: 100%; padding: 10px 36px 10px 14px; border-radius: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: var(--text-primary); font-size: 0.85rem; outline: none;" autocomplete="off">
-        <button id="btnClearTimetableSearch" class="search-clear-btn" style="display:none;" title="Cancella ricerca"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-        <div id="timetableAutocompleteList" class="search-autocomplete-dropdown" style="display:none;"></div>
-      </div>
-    </div>
-
-    <!-- Timetable Changes Banner -->
-    <div id="timetableChangesBanner" class="timetable-changes-banner" style="display: none;">
-      <div class="changes-banner-content">
-        <span class="changes-banner-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
-        <div class="changes-banner-text">
-          <strong id="changesBannerTitle">Variazioni nel calendario</strong>
-          <span id="changesBannerSubtitle">Rilevate modifiche per questa settimana</span>
-        </div>
-      </div>
-      <div class="changes-banner-actions">
-        <button id="btnBannerViewChanges" class="btn-changes-view" type="button">Vedi dettagli</button>
-        <button id="btnBannerDismissChanges" class="btn-changes-dismiss" type="button" title="Nascondi avviso" style="display:inline-flex; align-items:center; justify-content:center;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-      </div>
-    </div>
-
-    <!-- Pull-to-Refresh Indicator -->
-    <div id="pullToRefreshIndicator" class="pull-to-refresh" style="display: none;">
-      <div class="pull-spinner"></div>
-      <span id="pullToRefreshText">Trascina verso il basso per ricaricare</span>
-    </div>
-
-    <!-- Live "Adesso / Prossima Lezione" Campus Widget -->
-    <div id="nowNextWidget" class="now-next-widget" style="display: none;">
-      <!-- Popolato dinamicamente da app.js -->
-    </div>
-
-    <!-- Week Navigation Bar -->
-    <div class="week-navigator">
-      <button id="btnPrevWeek" class="week-nav-btn" aria-label="Settimana precedente" style="display:inline-flex; align-items:center; justify-content:center; gap:3px;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><polyline points="15 18 9 12 15 6"/></svg>Prev</button>
-      <div class="week-label" style="position: relative;">
-        <div id="weekLabelText" class="date-range" title="Clicca per scegliere una data specifica nel calendario" style="cursor: pointer;">Caricamento...</div>
-        <input type="date" id="weekDatePicker" aria-label="Seleziona data da calendario" style="position: absolute; opacity: 0; pointer-events: none; width: 0; height: 0;">
-        <span id="btnToday" class="badge-status" style="cursor: pointer;" aria-label="Vai alla data odierna">Oggi</span>
-      </div>
-      <button id="btnNextWeek" class="week-nav-btn" aria-label="Settimana successiva" style="display:inline-flex; align-items:center; justify-content:center; gap:3px;">Next<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><polyline points="9 18 15 12 9 6"/></svg></button>
-    </div>
-
-    <!-- Day Tabs (Horizontal Scroll on Mobile) -->
-    <div id="daysTabBar" class="days-tab-bar">
-      <!-- Rendered dynamically by app.js -->
-    </div>
-
-    <!-- Main Timetable Content -->
-    <main>
-      <div id="spinnerContainer" class="spinner-container" style="display:none">
-        <div class="spinner"></div>
-        <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom: 8px;">Carico l'orario…</p>
-        <div class="skeleton-container">
-          <div class="skeleton-card">
-            <div class="skeleton-shimmer"></div>
-            <div class="skeleton-line" style="width: 38%; height: 16px;"></div>
-            <div class="skeleton-line" style="width: 75%; height: 18px; margin-top: 10px;"></div>
-            <div class="skeleton-line" style="width: 50%; height: 14px; margin-top: 10px;"></div>
+    <!-- Student Timetable Section (Default for students / visitors) -->
+    <div id="studentTimetableSection">
+      <!-- Filter & Mode Selection -->
+      <div class="control-card">
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <div id="timetableFilterToggleGroup" class="toggle-group" style="flex: 1; margin-bottom: 0;">
+            <button id="btnFilterTarget" class="toggle-btn active" @click="$store.app.setTimetableFilter('target')"><svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" stroke="none" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>I Miei Corsi</button>
+            <button id="btnFilterAll" class="toggle-btn" @click="$store.app.setTimetableFilter('all')"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>Tutti i Corsi</button>
           </div>
-          <div class="skeleton-card">
-            <div class="skeleton-shimmer"></div>
-            <div class="skeleton-line" style="width: 32%; height: 16px;"></div>
-            <div class="skeleton-line" style="width: 82%; height: 18px; margin-top: 10px;"></div>
-            <div class="skeleton-line" style="width: 55%; height: 14px; margin-top: 10px;"></div>
+          <div id="profTimetableInfoBanner" style="display:none; flex: 1; align-items:center; gap:8px; padding:8px 12px; background:rgba(216,52,36,0.08); border:1px solid rgba(216,52,36,0.22); border-radius:10px; font-size:0.83rem; color:var(--text-primary); font-weight:500;">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--bicocca-primary)" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+            <span>Lezioni della tua cattedra docente</span>
+          </div>
+          <button id="btnQuickAddExternal" class="btn-secondary" type="button" style="width: auto; padding: 10px 14px; font-size: 0.8rem; font-weight: 600; white-space: nowrap; display: flex; align-items: center; gap: 6px; border-radius: 10px;" title="Aggiungi materia da un altro corso di studio">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>+ Corso Esterno
+          </button>
+        </div>
+
+        <!-- Active External Courses Chips Bar -->
+        <div id="externalCoursesChipsBar" class="exam-courses-bar" style="display: none; margin-bottom: 0;">
+          <!-- Chips rendered dynamically -->
+        </div>
+
+        <!-- Live Search Bar with Autocomplete -->
+        <div class="search-input-wrapper">
+          <input type="text" id="searchInput" placeholder="Cerca per corso, docente o aula..." 
+                 style="width: 100%; padding: 10px 36px 10px 14px; border-radius: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: var(--text-primary); font-size: 0.85rem; outline: none;" autocomplete="off">
+          <button id="btnClearTimetableSearch" class="search-clear-btn" style="display:none;" title="Cancella ricerca"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+          <div id="timetableAutocompleteList" class="search-autocomplete-dropdown" style="display:none;"></div>
+        </div>
+      </div>
+
+      <!-- Timetable Changes Banner -->
+      <div id="timetableChangesBanner" class="timetable-changes-banner" style="display: none;">
+        <div class="changes-banner-content">
+          <span class="changes-banner-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+          <div class="changes-banner-text">
+            <strong id="changesBannerTitle">Variazioni nel calendario</strong>
+            <span id="changesBannerSubtitle">Rilevate modifiche per questa settimana</span>
           </div>
         </div>
+        <div class="changes-banner-actions">
+          <button id="btnBannerViewChanges" class="btn-changes-view" type="button">Vedi dettagli</button>
+          <button id="btnBannerDismissChanges" class="btn-changes-dismiss" type="button" title="Nascondi avviso" style="display:inline-flex; align-items:center; justify-content:center;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
       </div>
 
-      <div id="eventsContainer" class="events-container" style="display: none;">
-        <!-- Events rendered dynamically by app.js -->
+      <!-- Pull-to-Refresh Indicator -->
+      <div id="pullToRefreshIndicator" class="pull-to-refresh" style="display: none;">
+        <div class="pull-spinner"></div>
+        <span id="pullToRefreshText">Trascina verso il basso per ricaricare</span>
       </div>
-    </main>
+
+      <!-- Live "Adesso / Prossima Lezione" Campus Widget -->
+      <div id="nowNextWidget" class="now-next-widget" style="display: none;">
+        <!-- Popolato dinamicamente da app.js -->
+      </div>
+
+      <!-- Week Navigation Bar -->
+      <div class="week-navigator">
+        <button id="btnPrevWeek" class="week-nav-btn" aria-label="Settimana precedente" style="display:inline-flex; align-items:center; justify-content:center; gap:3px;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><polyline points="15 18 9 12 15 6"/></svg>Prev</button>
+        <div class="week-label" style="position: relative;">
+          <div id="weekLabelText" class="date-range" title="Clicca per scegliere una data specifica nel calendario" style="cursor: pointer;">Caricamento...</div>
+          <input type="date" id="weekDatePicker" aria-label="Seleziona data da calendario" style="position: absolute; opacity: 0; pointer-events: none; width: 0; height: 0;">
+          <span id="btnToday" class="badge-status" style="cursor: pointer;" aria-label="Vai alla data odierna">Oggi</span>
+        </div>
+        <button id="btnNextWeek" class="week-nav-btn" aria-label="Settimana successiva" style="display:inline-flex; align-items:center; justify-content:center; gap:3px;">Next<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><polyline points="9 18 15 12 9 6"/></svg></button>
+      </div>
+
+      <!-- Day Tabs (Horizontal Scroll on Mobile) -->
+      <div id="daysTabBar" class="days-tab-bar">
+        <!-- Rendered dynamically by app.js -->
+      </div>
+
+      <!-- Main Timetable Content -->
+      <main>
+        <div id="spinnerContainer" class="spinner-container" style="display:none">
+          <div class="spinner"></div>
+          <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom: 8px;">Carico l'orario…</p>
+          <div class="skeleton-container">
+            <div class="skeleton-card">
+              <div class="skeleton-shimmer"></div>
+              <div class="skeleton-line" style="width: 38%; height: 16px;"></div>
+              <div class="skeleton-line" style="width: 75%; height: 18px; margin-top: 10px;"></div>
+              <div class="skeleton-line" style="width: 50%; height: 14px; margin-top: 10px;"></div>
+            </div>
+            <div class="skeleton-card">
+              <div class="skeleton-shimmer"></div>
+              <div class="skeleton-line" style="width: 32%; height: 16px;"></div>
+              <div class="skeleton-line" style="width: 82%; height: 18px; margin-top: 10px;"></div>
+              <div class="skeleton-line" style="width: 55%; height: 14px; margin-top: 10px;"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="eventsContainer" class="events-container" style="display: none;">
+          <!-- Events rendered dynamically by app.js -->
+        </div>
+      </main>
+    </div>
   </section>
 
   <!-- 2. Teachers Calendar View (Calendario Docenti) -->
   <section id="viewTeachers" class="app-view hidden">
-    <!-- Controls: Academic Year, Search Docente, Favorites, Course Filter -->
-    <div class="control-card">
+    <!-- Professor Management Section (Presentation card, Semester schedule grouped by Month & Week, Co-docenza, Public Notes, .ics export) -->
+    <div id="professorTimetableSection" style="display: none;">
+      <!-- Teacher Presentation Card -->
+      <div id="professorHeaderCard" class="professor-profile-card">
+        <div class="prof-card-main">
+          <div id="profAvatarCircle" class="profile-avatar-circle professor" style="width:54px; height:54px; font-size:1.35rem; flex-shrink:0;">M</div>
+          <div class="prof-info-block" style="flex:1; min-width:0;">
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <h2 id="profHeaderName" style="font-size:1.1rem; font-weight:700; margin:0; color:var(--text-primary);">Prof. Mario Rossi</h2>
+              <span class="profile-role-badge professor" style="font-size:0.72rem;">🏛️ Docente UNIMIB</span>
+            </div>
+            <div id="profHeaderEmail" style="font-size:0.78rem; color:var(--text-secondary); margin-top:2px; word-break:break-all;">mario.rossi@unimib.it</div>
+            <div class="prof-meta-tags" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;">
+              <span class="badge-status" style="font-size:0.7rem; background:rgba(16,185,129,0.12); color:#34D399; border:1px solid rgba(16,185,129,0.3);">
+                <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline-block; vertical-align:-1px; margin-right:3px;"><polyline points="20 6 9 17 4 12"/></svg>Cattedra Istituzionale
+              </span>
+              <span id="profLessonsCountBadge" class="badge-status" style="font-size:0.7rem; background:rgba(255,255,255,0.06); color:var(--text-secondary);">
+                Lezioni caricate
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Actions Bar for Professor -->
+        <div class="prof-actions-bar" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.08);">
+          <button type="button" id="btnProfExportIcs" class="btn-primary" style="flex:1; min-width:180px; padding:9px 14px; font-size:0.82rem; background:linear-gradient(135deg, #A71E3B, #881337); display:flex; align-items:center; justify-content:center; gap:6px;">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Esporta Calendario Docente (.ics)
+          </button>
+          <button type="button" id="btnProfRefreshSchedule" class="btn-secondary" style="width:auto; padding:9px 12px; font-size:0.82rem;" title="Ricarica lezioni">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          </button>
+          <button type="button" id="btnProfChangeTeacher" class="btn-secondary" style="width:auto; padding:9px 12px; font-size:0.82rem;" title="Associa o cambia nominativo docente UNIMIB">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            Docente
+          </button>
+          <button type="button" id="btnProfToggleColleagueSearch" class="btn-secondary" style="width:auto; padding:9px 12px; font-size:0.82rem;" title="Cerca orario di altri colleghi docenti">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            Cerca colleghi
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Search Bar in Unified Lessons List -->
+      <div class="search-input-wrapper" style="margin:12px 0;">
+        <input type="text" id="profLessonSearchInput" placeholder="Filtra le tue lezioni per materia, aula o data..."
+               style="width: 100%; padding: 10px 36px 10px 14px; border-radius: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: var(--text-primary); font-size: 0.85rem; outline: none;" autocomplete="off">
+        <button id="btnClearProfLessonSearch" class="search-clear-btn" style="display:none;" title="Cancella filtro"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+
+      <!-- Hero Next Lesson Container -->
+      <div id="profHeroContainer"></div>
+
+      <!-- Controls Toolbar (Upcoming/All/Past, Month Pills, Expand All) -->
+      <div id="profControlsContainer"></div>
+
+      <!-- Spinner for Professor Schedule -->
+      <div id="profSpinnerContainer" class="spinner-container" style="display:none">
+        <div class="spinner"></div>
+        <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom: 8px;">Caricamento lezioni docente...</p>
+      </div>
+
+      <!-- Unified Lessons Container (Grouped by Month & Week) -->
+      <div id="profUnifiedLessonsContainer" class="professor-unified-list">
+        <!-- Rendered dynamically grouped by month and week -->
+      </div>
+    </div>
+
+    <!-- Standard Teacher Search Section -->
+    <div id="teachersStandardSearchSection">
+      <!-- Controls: Academic Year, Search Docente, Favorites, Course Filter -->
+      <div class="control-card">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
         <label for="teachersSearchInput" style="font-size:0.75rem; font-weight:700; color:var(--text-secondary); text-transform:uppercase; margin:0;"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Cerca Docente</label>
         <div style="display: flex; align-items: center; gap: 6px;">
@@ -304,6 +384,7 @@
         <!-- Teacher events rendered dynamically -->
       </div>
     </main>
+    </div>
   </section>
 
   <!-- 3. Classroom Occupancy View -->
@@ -762,65 +843,6 @@
     </div>
   </div>
 
-  <!-- Add External Course Modal (Corso Esterno da altro CdL) -->
-  <div id="addExternalCourseModal" class="modal-overlay">
-    <div class="modal-content setup-content" style="max-width: 492px;">
-      <div class="modal-header">
-        <h3 style="font-size:1.15rem; display:flex; align-items:center; gap:6px;">
-          <span><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span> Aggiungi corso esterno
-        </h3>
-        <button id="btnCloseAddExternalCourse" class="btn-icon" style="width:30px; height:30px;" title="Chiudi"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-      </div>
-      <p style="font-size:0.82rem; color:var(--text-secondary); margin-bottom:14px; line-height:1.45;">
-        Seleziona un insegnamento erogato da un altro corso di laurea dell'Ateneo per aggiungerlo al tuo calendario.
-      </p>
-
-      <div class="form-field">
-        <label for="extCourseYear">Anno accademico</label>
-        <select id="extCourseYear"></select>
-      </div>
-
-      <div class="form-field">
-        <label for="extCourseArea">Area didattica</label>
-        <select id="extCourseArea">
-          <option value="">Caricamento aree...</option>
-        </select>
-      </div>
-
-      <div class="form-field">
-        <label for="extCourseSelect">Corso di studio esterno</label>
-        <select id="extCourseSelect" disabled>
-          <option value="">Seleziona prima l'area</option>
-        </select>
-      </div>
-
-      <div class="form-field">
-        <label for="extCourseStudyYear">Anno di studio</label>
-        <select id="extCourseStudyYear" disabled>
-          <option value="">Seleziona prima il corso</option>
-        </select>
-      </div>
-
-      <div class="form-field">
-        <label for="extCourseTeaching">Insegnamento / Materia</label>
-        <select id="extCourseTeaching" disabled>
-          <option value="">Seleziona prima l'anno di studio</option>
-        </select>
-      </div>
-
-      <div id="extCourseTeachingSearchBox" style="display:none; margin-bottom:10px;">
-        <input type="text" id="extCourseTeachingSearch" placeholder="Filtra materie per nome o docente..." 
-               style="width: 100%; padding: 8px 12px; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: var(--text-primary); font-size: 0.82rem; outline: none;">
-      </div>
-
-      <div id="extCourseStatusHint" style="display:none; font-size:0.8rem; color:var(--accent-cyan); margin-bottom:8px; text-align:center;">
-        Caricamento materie da UNIMIB...
-      </div>
-
-      <button id="btnConfirmAddExternalCourse" class="btn-primary" style="margin-top:10px;" disabled>Aggiungi ai Miei Corsi</button>
-    </div>
-  </div>
-
   <!-- Course of Study Setup Modal -->
   <div id="setupModal" class="modal-overlay">
     <div class="modal-content setup-content">
@@ -876,6 +898,75 @@
     </div>
   </div>
 
+  <!-- Add External Course Modal (Corso Esterno da altro CdL) -->
+  <div id="addExternalCourseModal" class="modal-overlay">
+    <div class="modal-content setup-content" style="max-width: 492px;">
+      <div class="modal-header">
+        <h3 style="font-size:1.15rem; display:flex; align-items:center; gap:6px;">
+          <span><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span> Aggiungi corsi esterni
+        </h3>
+        <button id="btnCloseAddExternalCourse" class="btn-icon" style="width:30px; height:30px;" title="Chiudi"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+      <p style="font-size:0.82rem; color:var(--text-secondary); margin-bottom:14px; line-height:1.45;">
+        Seleziona uno o più insegnamenti erogati da un altro corso di laurea dell'Ateneo per aggiungerli al tuo piano di studi.
+      </p>
+
+      <div class="form-field">
+        <label for="extCourseYear">Anno accademico</label>
+        <select id="extCourseYear"></select>
+      </div>
+
+      <div class="form-field">
+        <label for="extCourseArea">Area didattica</label>
+        <select id="extCourseArea">
+          <option value="">Caricamento aree...</option>
+        </select>
+      </div>
+
+      <div class="form-field">
+        <label for="extCourseSelect">Corso di studio esterno</label>
+        <select id="extCourseSelect" disabled>
+          <option value="">Seleziona prima l'area</option>
+        </select>
+      </div>
+
+      <div class="form-field">
+        <label for="extCourseStudyYear">Anno di studio</label>
+        <select id="extCourseStudyYear" disabled>
+          <option value="">Seleziona prima il corso</option>
+        </select>
+      </div>
+
+      <div class="form-field">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <label style="margin:0;">Insegnamenti / Materie <span class="field-hint">(seleziona una o più)</span></label>
+          <div id="extCourseSelectAllBox" style="display:none; font-size:0.75rem;">
+            <button id="btnExtSelectAll" type="button" class="btn-link" style="background:none; border:none; color:var(--accent-cyan); cursor:pointer; padding:0; margin-right:8px; font-size:0.75rem;">Tutti</button>
+            <button id="btnExtDeselectAll" type="button" class="btn-link" style="background:none; border:none; color:var(--text-secondary); cursor:pointer; padding:0; font-size:0.75rem;">Nessuno</button>
+          </div>
+        </div>
+
+        <div id="extCourseTeachingSearchBox" style="display:none; margin-bottom:8px;">
+          <input type="text" id="extCourseTeachingSearch" placeholder="Filtra materie per nome o docente..." 
+                 style="width: 100%; padding: 8px 12px; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: var(--text-primary); font-size: 0.82rem; outline: none;">
+        </div>
+
+        <div id="extCourseStatusHint" style="display:none; font-size:0.8rem; color:var(--accent-cyan); margin-bottom:8px; text-align:center;">
+          Caricamento materie da UNIMIB...
+        </div>
+
+        <div id="extCourseTeachingsList" class="choice-list" style="max-height: 190px; overflow-y: auto;">
+          <p class="field-hint">Seleziona prima il corso di studio.</p>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:8px; margin-top:12px;">
+        <button id="btnAddAndContinueExternalCourse" type="button" class="btn-secondary" style="display:none; width:auto; padding:10px 14px; font-size:0.82rem; white-space:nowrap;">+ Aggiungi altri</button>
+        <button id="btnConfirmAddExternalCourse" class="btn-primary" style="flex:1;" disabled>Aggiungi ai Miei Corsi</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Bottom Navigation Bar -->
   <nav class="bottom-nav" role="tablist" aria-label="Navigazione principale" x-data>
     <button id="tabTimetable" class="nav-tab active" role="tab" aria-selected="true" aria-controls="viewTimetable" @click="$store.app.setTab('timetable')">
@@ -903,15 +994,19 @@
   <!-- Welcome / Onboarding Modal (shown on first visit) -->
   <div id="onboardingModal" class="modal-overlay">
     <div class="modal-content setup-content" style="max-width: 470px; text-align: center;">
-      <div style="display:flex; justify-content:center; margin-bottom: 8px;"><svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--accent-red)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></div>
+      <div style="display:flex; justify-content:center; margin-bottom: 8px;"><svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--bicocca-primary)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></div>
       <h2 style="font-size: 1.35rem; color: var(--text-primary); margin-bottom: 8px;">Benvenuto su UNIMIB Orari</h2>
-      <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 20px; line-height: 1.5;">
+      <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.5;">
         Visualizza l'orario delle lezioni, l'occupazione delle aule in tempo reale e il calendario degli esami.
       </p>
 
+      <div style="display:inline-flex; align-items:center; gap:6px; padding:6px 12px; background:rgba(6, 182, 212, 0.12); border:1px solid rgba(6, 182, 212, 0.3); border-radius:9999px; color:var(--accent-cyan); font-size:0.78rem; font-weight:600; margin-bottom:14px;">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Riservato a studenti @campus.unimib.it
+      </div>
+
       <div style="display: flex; flex-direction: column; gap: 10px;">
         <button id="btnOnboardingCreate" class="btn-primary" style="padding: 12px; font-size: 0.95rem; font-weight: 600;">
-          Crea il tuo profilo
+          Accedi con Google Campus
         </button>
         <button id="btnOnboardingLogin" class="btn-secondary" style="padding: 12px; font-size: 0.95rem; font-weight: 600;">
           Ho già un profilo (Accedi)
@@ -922,7 +1017,7 @@
       </div>
 
       <p style="font-size: 0.72rem; color: var(--text-muted); margin-top: 16px; line-height: 1.4;">
-        Il profilo ti permette di sincronizzare il tuo piano di studi su più dispositivi e condividere il calendario con gli amici. Nessuna email o password richiesta.
+        Sessione permanente: accedi una volta sola per sincronizzare il calendario su tutti i tuoi dispositivi senza disconnessioni periodiche.
       </p>
     </div>
   </div>
@@ -931,112 +1026,194 @@
   <div id="profileModal" class="modal-overlay">
     <div class="modal-content setup-content" style="max-width: 470px;">
       <div class="modal-header">
-        <h3><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-2px; margin-right:6px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Il tuo profilo</h3>
+        <h3><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-2px; margin-right:6px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Il tuo profilo Campus</h3>
         <button id="btnCloseProfile" class="btn-icon" style="width:30px; height:30px;" title="Chiudi"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
 
       <!-- Not logged in state -->
       <div id="profileLoggedOut">
-        <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:16px;">
-          Crea il tuo profilo per sincronizzare il piano di studi su più dispositivi e condividere il calendario con gli amici.
+        <!-- Dual Role Info Cards -->
+        <div class="auth-roles-info" style="display:flex; flex-direction:column; gap:8px; margin-bottom:14px; text-align:left;">
+          <div class="role-hint-card student" style="display:flex; align-items:center; gap:10px; padding:8px 12px; background:rgba(6, 182, 212, 0.08); border:1px solid rgba(6, 182, 212, 0.25); border-radius:10px;">
+            <span style="font-size:1.15rem;">🎓</span>
+            <div style="min-width:0; flex:1;">
+              <strong style="color:var(--accent-cyan); font-size:0.8rem; display:block;">Studenti (Alunni)</strong>
+              <span style="color:var(--text-secondary); font-size:0.75rem;">Email <code>i.cognome@campus.unimib.it</code></span>
+            </div>
+          </div>
+          <div class="role-hint-card professor" style="display:flex; align-items:center; gap:10px; padding:8px 12px; background:rgba(167, 30, 59, 0.1); border:1px solid rgba(167, 30, 59, 0.3); border-radius:10px;">
+            <span style="font-size:1.15rem;">🏛️</span>
+            <div style="min-width:0; flex:1;">
+              <strong style="color:#FDA4AF; font-size:0.8rem; display:block;">Docenti (Professori)</strong>
+              <span style="color:var(--text-secondary); font-size:0.75rem;">Email <code>nome.cognome@unimib.it</code></span>
+            </div>
+          </div>
+        </div>
+
+        <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:14px; text-align:center;">
+          Accedi con il tuo account istituzionale Google (Studente o Docente) per gestire il tuo calendario.
         </p>
 
-        <!-- Tabs: Crea / Accedi -->
-        <div class="toggle-group" style="margin-bottom:16px;">
-          <button id="profileTabCreate" class="toggle-btn active" onclick="showProfileTab('create')">Crea profilo</button>
-          <button id="profileTabLogin" class="toggle-btn" onclick="showProfileTab('login')">Accedi</button>
-        </div>
+        <!-- Google One-Tap / Sign-In Container -->
+        <div id="g_id_signin_container" class="google-auth-container" style="min-height:44px;"></div>
 
-        <!-- Create Form -->
-        <div id="profileCreateForm">
-          <div class="form-field">
-            <label for="profileNickname">Soprannome <span class="field-hint">(come ti vedranno gli amici)</span></label>
-            <input type="text" id="profileNickname" placeholder="es. Mario, Ele, Prof..." maxlength="30"
-                   style="width:100%; padding:10px 12px; border-radius:10px; background:rgba(0,0,0,0.3); border:1px solid var(--border-color); color:var(--text-primary); font-size:0.9rem; outline:none;">
+        <!-- [OPZIONE TEST TEMPORANEA - Eliminare questa sezione prima della messa in produzione] -->
+        <details id="testMockLoginAccordion" style="margin:12px 0; text-align:left; background:rgba(255,255,255,0.03); border:1px dashed rgba(255,255,255,0.22); border-radius:10px; padding:10px 12px; font-size:0.78rem;">
+          <summary style="cursor:pointer; color:var(--text-secondary); font-weight:600; display:flex; align-items:center; gap:6px; user-select:none;">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v7.31"/><path d="M14 9.3V2"/><path d="M8.5 2h7"/><path d="M14 9.3a6.5 6.5 0 1 1-4 0"/><path d="M5.52 16h12.96"/></svg>
+            Opzione Test (email simulate - da rimuovere dopo)
+          </summary>
+          <div style="margin-top:10px; display:flex; flex-direction:column; gap:8px;">
+            <label for="mockAccountSelect" style="font-size:0.75rem; color:var(--text-secondary);">Seleziona email istituzionale simulata:</label>
+            <div style="display:flex; gap:8px;">
+              <select id="mockAccountSelect" style="flex:1; padding:7px 10px; border-radius:8px; background:rgba(0,0,0,0.3); border:1px solid var(--border-color); color:var(--text-primary); font-size:0.8rem; outline:none;">
+                <option value="student">🎓 m.rossi@campus.unimib.it (Studente)</option>
+                <option value="professor">🏛️ mario.rossi@unimib.it (Docente)</option>
+              </select>
+              <button type="button" id="btnExecuteMockLogin" class="btn-primary" style="width:auto; padding:7px 16px; font-size:0.8rem; font-weight:600; white-space:nowrap;">Entra</button>
+            </div>
+            <span style="font-size:0.7rem; color:var(--text-muted);">Simula l'autenticazione per verificare la grafica e le funzioni dei due ruoli.</span>
           </div>
-          <div class="form-field">
-            <label for="profilePin">PIN <span class="field-hint">(4-8 cifre, per accedere su altri dispositivi)</span></label>
-            <input type="password" id="profilePin" placeholder="••••" maxlength="8" inputmode="numeric" pattern="[0-9]*"
-                   style="width:100%; padding:10px 12px; border-radius:10px; background:rgba(0,0,0,0.3); border:1px solid var(--border-color); color:var(--text-primary); font-size:0.9rem; outline:none; letter-spacing:0.2em;">
-          </div>
-          <div class="form-field">
-            <label for="profilePinConfirm">Conferma PIN</label>
-            <input type="password" id="profilePinConfirm" placeholder="••••" maxlength="8" inputmode="numeric" pattern="[0-9]*"
-                   style="width:100%; padding:10px 12px; border-radius:10px; background:rgba(0,0,0,0.3); border:1px solid var(--border-color); color:var(--text-primary); font-size:0.9rem; outline:none; letter-spacing:0.2em;">
-          </div>
+        </details>
+        <!-- [FINE OPZIONE TEST TEMPORANEA] -->
 
-          <!-- Existing Course info box (shown if state.config is already set) -->
-          <div id="profileCurrentConfigBox" style="display:none; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:10px 12px; margin:12px 0;">
-            <span style="font-size:0.75rem; color:var(--text-muted); display:block; text-transform:uppercase; letter-spacing:0.04em;">Corso attualmente selezionato:</span>
-            <strong id="profileCurrentConfigTitle" style="color:var(--text-primary); font-size:0.9rem; display:block; margin:2px 0;"></strong>
-            <span id="profileCurrentConfigFavs" style="font-size:0.8rem; color:var(--accent-purple);"></span>
-          </div>
+        <p id="googleAuthError" style="color:#EF4444; font-size:0.82rem; display:none; margin:8px 0; text-align:center; line-height:1.4;"></p>
 
-          <p id="profileCreateError" style="color:#EF4444; font-size:0.8rem; display:none; margin-bottom:8px;"></p>
-          <button id="btnCreateProfile" class="btn-primary" style="width:100%; margin-top:4px;">Continua: Scegli i tuoi corsi</button>
-          <button id="btnCreateWithExistingConfig" class="btn-secondary" style="width:100%; margin-top:8px; display:none;">Salva profilo con questo corso</button>
-        </div>
-
-        <!-- Login Form -->
-        <div id="profileLoginForm" style="display:none;">
-          <p style="font-size:0.82rem; color:var(--text-secondary); margin-bottom:12px;">Inserisci il tuo Soprannome e il tuo PIN per accedere.</p>
-          <div class="form-field">
-            <label for="profileLoginNickname">Soprannome</label>
-            <input type="text" id="profileLoginNickname" placeholder="es. Mario" maxlength="30"
-                   style="width:100%; padding:10px 12px; border-radius:10px; background:rgba(0,0,0,0.3); border:1px solid var(--border-color); color:var(--text-primary); font-size:0.9rem; outline:none;">
-          </div>
-          <div class="form-field">
-            <label for="profileLoginPin">PIN</label>
-            <input type="password" id="profileLoginPin" placeholder="••••" maxlength="8" inputmode="numeric"
-                   style="width:100%; padding:10px 12px; border-radius:10px; background:rgba(0,0,0,0.3); border:1px solid var(--border-color); color:var(--text-primary); font-size:0.9rem; outline:none; letter-spacing:0.2em;">
-          </div>
-          <p id="profileLoginError" style="color:#EF4444; font-size:0.8rem; display:none; margin-bottom:8px;"></p>
-          <button id="btnLoginProfile" class="btn-primary" style="width:100%; margin-top:4px;">Accedi</button>
-          <div style="text-align:center; margin-top:10px;">
-            <button type="button" id="btnShowRecoverForm" style="background:none; border:none; color:var(--accent-purple); font-size:0.78rem; text-decoration:underline; cursor:pointer;">Hai dimenticato il PIN? Recupera con codice</button>
+        <!-- Legal & Privacy Card -->
+        <div class="legal-card" style="margin-top:14px;">
+          <div style="display:flex; align-items:flex-start; gap:8px;">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0; margin-top:2px; color:var(--accent-cyan);"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <div>
+              <strong>Nota Legale e Trasparenza:</strong> UNIMIB Orari è un progetto autonomo open-source realizzato da studenti. Non è affiliato né gestito dall'Università degli Studi di Milano-Bicocca. I dati non vengono ceduti a terzi.
+              <div style="margin-top:6px;">
+                <button type="button" id="btnOpenPrivacyModal" style="background:none; border:none; color:var(--accent-cyan); font-size:0.75rem; text-decoration:underline; cursor:pointer; padding:0;">Informativa Privacy e Diritti GDPR (Art. 17)</button>
+              </div>
+            </div>
           </div>
         </div>
 
-        <!-- Recovery Form -->
-        <div id="profileRecoverForm" style="display:none;">
-          <p style="font-size:0.82rem; color:var(--text-secondary); margin-bottom:12px;">
-            Inserisci il tuo Soprannome e il <strong>Codice di Recupero</strong> (es. <code>REC-XXXX-XXXX</code>) ricevuto alla registrazione per impostare un nuovo PIN.
-          </p>
-          <div class="form-field">
-            <label for="profileRecoverNickname">Soprannome</label>
-            <input type="text" id="profileRecoverNickname" placeholder="es. Mario" maxlength="30"
-                   style="width:100%; padding:10px 12px; border-radius:10px; background:rgba(0,0,0,0.3); border:1px solid var(--border-color); color:var(--text-primary); font-size:0.9rem; outline:none;">
+        <!-- Legacy PIN Accordion (collapsible fallback) -->
+        <details id="legacyPinDetails" style="margin-top:16px; text-align:left; font-size:0.78rem; border-top:1px solid var(--border-color); padding-top:10px;">
+          <summary style="cursor:pointer; color:var(--text-secondary); font-weight:600; padding:4px 0;">Accesso alternativo con Soprannome e PIN (legacy)</summary>
+
+          <!-- Tabs: Crea / Accedi -->
+          <div class="toggle-group" style="margin:12px 0;">
+            <button id="profileTabCreate" class="toggle-btn active" onclick="showProfileTab('create')">Crea profilo</button>
+            <button id="profileTabLogin" class="toggle-btn" onclick="showProfileTab('login')">Accedi</button>
           </div>
-          <div class="form-field">
-            <label for="profileRecoverCode">Codice di Recupero</label>
-            <input type="text" id="profileRecoverCode" placeholder="REC-XXXX-XXXX" maxlength="20"
-                   style="width:100%; padding:10px 12px; border-radius:10px; background:rgba(0,0,0,0.3); border:1px solid var(--border-color); color:var(--text-primary); font-size:0.9rem; outline:none; font-family:monospace; text-transform:uppercase;">
+
+          <!-- Create Form -->
+          <div id="profileCreateForm">
+            <div class="form-field">
+              <label for="profileNickname">Soprannome <span class="field-hint">(come ti vedranno gli amici)</span></label>
+              <input type="text" id="profileNickname" placeholder="es. Mario, Ele, Prof..." maxlength="30"
+                     style="width:100%; padding:10px 12px; border-radius:10px; background:rgba(0,0,0,0.3); border:1px solid var(--border-color); color:var(--text-primary); font-size:0.9rem; outline:none;">
+            </div>
+            <div class="form-field">
+              <label for="profilePin">PIN <span class="field-hint">(4-8 cifre, per accedere su altri dispositivi)</span></label>
+              <input type="password" id="profilePin" placeholder="••••" maxlength="8" inputmode="numeric" pattern="[0-9]*"
+                     style="width:100%; padding:10px 12px; border-radius:10px; background:rgba(0,0,0,0.3); border:1px solid var(--border-color); color:var(--text-primary); font-size:0.9rem; outline:none; letter-spacing:0.2em;">
+            </div>
+            <div class="form-field">
+              <label for="profilePinConfirm">Conferma PIN</label>
+              <input type="password" id="profilePinConfirm" placeholder="••••" maxlength="8" inputmode="numeric" pattern="[0-9]*"
+                     style="width:100%; padding:10px 12px; border-radius:10px; background:rgba(0,0,0,0.3); border:1px solid var(--border-color); color:var(--text-primary); font-size:0.9rem; outline:none; letter-spacing:0.2em;">
+            </div>
+
+            <!-- Existing Course info box -->
+            <div id="profileCurrentConfigBox" style="display:none; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:10px 12px; margin:12px 0;">
+              <span style="font-size:0.75rem; color:var(--text-muted); display:block; text-transform:uppercase; letter-spacing:0.04em;">Corso attualmente selezionato:</span>
+              <strong id="profileCurrentConfigTitle" style="color:var(--text-primary); font-size:0.9rem; display:block; margin:2px 0;"></strong>
+              <span id="profileCurrentConfigFavs" style="font-size:0.8rem; color:var(--accent-purple);"></span>
+            </div>
+
+            <p id="profileCreateError" style="color:#EF4444; font-size:0.8rem; display:none; margin-bottom:8px;"></p>
+            <button id="btnCreateProfile" class="btn-primary" style="width:100%; margin-top:4px;">Continua: Scegli i tuoi corsi</button>
+            <button id="btnCreateWithExistingConfig" class="btn-secondary" style="width:100%; margin-top:8px; display:none;">Salva profilo con questo corso</button>
           </div>
-          <div class="form-field">
-            <label for="profileRecoverNewPin">Nuovo PIN <span class="field-hint">(4-8 cifre)</span></label>
-            <input type="password" id="profileRecoverNewPin" placeholder="••••" maxlength="8" inputmode="numeric" pattern="[0-9]*"
-                   style="width:100%; padding:10px 12px; border-radius:10px; background:rgba(0,0,0,0.3); border:1px solid var(--border-color); color:var(--text-primary); font-size:0.9rem; outline:none; letter-spacing:0.2em;">
+
+          <!-- Login Form -->
+          <div id="profileLoginForm" style="display:none;">
+            <p style="font-size:0.82rem; color:var(--text-secondary); margin-bottom:12px;">Inserisci il tuo Soprannome e il tuo PIN per accedere.</p>
+            <div class="form-field">
+              <label for="profileLoginNickname">Soprannome</label>
+              <input type="text" id="profileLoginNickname" placeholder="es. Mario" maxlength="30"
+                     style="width:100%; padding:10px 12px; border-radius:10px; background:rgba(0,0,0,0.3); border:1px solid var(--border-color); color:var(--text-primary); font-size:0.9rem; outline:none;">
+            </div>
+            <div class="form-field">
+              <label for="profileLoginPin">PIN</label>
+              <input type="password" id="profileLoginPin" placeholder="••••" maxlength="8" inputmode="numeric"
+                     style="width:100%; padding:10px 12px; border-radius:10px; background:rgba(0,0,0,0.3); border:1px solid var(--border-color); color:var(--text-primary); font-size:0.9rem; outline:none; letter-spacing:0.2em;">
+            </div>
+            <p id="profileLoginError" style="color:#EF4444; font-size:0.8rem; display:none; margin-bottom:8px;"></p>
+            <button id="btnLoginProfile" class="btn-primary" style="width:100%; margin-top:4px;">Accedi</button>
+            <div style="text-align:center; margin-top:10px;">
+              <button type="button" id="btnShowRecoverForm" style="background:none; border:none; color:var(--accent-purple); font-size:0.78rem; text-decoration:underline; cursor:pointer;">Hai dimenticato il PIN? Recupera con codice</button>
+            </div>
           </div>
-          <div class="form-field">
-            <label for="profileRecoverNewPinConfirm">Conferma Nuovo PIN</label>
-            <input type="password" id="profileRecoverNewPinConfirm" placeholder="••••" maxlength="8" inputmode="numeric" pattern="[0-9]*"
-                   style="width:100%; padding:10px 12px; border-radius:10px; background:rgba(0,0,0,0.3); border:1px solid var(--border-color); color:var(--text-primary); font-size:0.9rem; outline:none; letter-spacing:0.2em;">
+
+          <!-- Recovery Form -->
+          <div id="profileRecoverForm" style="display:none;">
+            <p style="font-size:0.82rem; color:var(--text-secondary); margin-bottom:12px;">
+              Inserisci il tuo Soprannome e il <strong>Codice di Recupero</strong> (es. <code>REC-XXXX-XXXX</code>) ricevuto alla registrazione per impostare un nuovo PIN.
+            </p>
+            <div class="form-field">
+              <label for="profileRecoverNickname">Soprannome</label>
+              <input type="text" id="profileRecoverNickname" placeholder="es. Mario" maxlength="30"
+                     style="width:100%; padding:10px 12px; border-radius:10px; background:rgba(0,0,0,0.3); border:1px solid var(--border-color); color:var(--text-primary); font-size:0.9rem; outline:none;">
+            </div>
+            <div class="form-field">
+              <label for="profileRecoverCode">Codice di Recupero</label>
+              <input type="text" id="profileRecoverCode" placeholder="REC-XXXX-XXXX" maxlength="20"
+                     style="width:100%; padding:10px 12px; border-radius:10px; background:rgba(0,0,0,0.3); border:1px solid var(--border-color); color:var(--text-primary); font-size:0.9rem; outline:none; font-family:monospace; text-transform:uppercase;">
+            </div>
+            <div class="form-field">
+              <label for="profileRecoverNewPin">Nuovo PIN <span class="field-hint">(4-8 cifre)</span></label>
+              <input type="password" id="profileRecoverNewPin" placeholder="••••" maxlength="8" inputmode="numeric" pattern="[0-9]*"
+                     style="width:100%; padding:10px 12px; border-radius:10px; background:rgba(0,0,0,0.3); border:1px solid var(--border-color); color:var(--text-primary); font-size:0.9rem; outline:none; letter-spacing:0.2em;">
+            </div>
+            <div class="form-field">
+              <label for="profileRecoverNewPinConfirm">Conferma Nuovo PIN</label>
+              <input type="password" id="profileRecoverNewPinConfirm" placeholder="••••" maxlength="8" inputmode="numeric" pattern="[0-9]*"
+                     style="width:100%; padding:10px 12px; border-radius:10px; background:rgba(0,0,0,0.3); border:1px solid var(--border-color); color:var(--text-primary); font-size:0.9rem; outline:none; letter-spacing:0.2em;">
+            </div>
+            <p id="profileRecoverError" style="color:#EF4444; font-size:0.8rem; display:none; margin-bottom:8px;"></p>
+            <button id="btnSubmitRecoverPin" class="btn-primary" style="width:100%; margin-top:4px;">Reimposta PIN e Accedi</button>
+            <div style="text-align:center; margin-top:10px;">
+              <button type="button" id="btnBackToLoginFromRecover" style="background:none; border:none; color:var(--text-secondary); font-size:0.78rem; text-decoration:underline; cursor:pointer;">Torna all'accesso con PIN</button>
+            </div>
           </div>
-          <p id="profileRecoverError" style="color:#EF4444; font-size:0.8rem; display:none; margin-bottom:8px;"></p>
-          <button id="btnSubmitRecoverPin" class="btn-primary" style="width:100%; margin-top:4px;">Reimposta PIN e Accedi</button>
-          <div style="text-align:center; margin-top:10px;">
-            <button type="button" id="btnBackToLoginFromRecover" style="background:none; border:none; color:var(--text-secondary); font-size:0.78rem; text-decoration:underline; cursor:pointer;">Torna all'accesso con PIN</button>
-          </div>
-        </div>
+        </details>
       </div>
 
       <!-- Logged in state -->
       <div id="profileLoggedIn" style="display:none;">
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px; width:100%;">
+          <div id="profileAvatar" class="profile-avatar-circle student">M</div>
+          <div style="text-align:left; min-width:0; flex:1;">
+            <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+              <span class="profile-nickname" id="profileDisplayNickname" style="font-size:1.05rem; font-weight:700;">Mario</span>
+              <span id="profileRoleBadge" class="profile-role-badge student">🎓 Studente</span>
+            </div>
+            <span id="profileDisplayEmail" style="font-size:0.78rem; color:var(--text-secondary); word-break:break-all; display:block; margin-top:2px;"></span>
+            <span class="persistent-session-badge" style="font-size:0.7rem; padding:2px 8px; margin-top:4px;">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              Sessione permanente attiva
+            </span>
+          </div>
+        </div>
+
+        <!-- Teacher Schedule Quick Shortcut (visible only when logged in as professor) -->
+        <div id="profileTeacherQuickBox" style="display:none; margin-bottom:12px;">
+          <button type="button" id="btnProfileTeacherSchedule" class="btn-primary" style="width:100%; padding:10px 12px; font-size:0.84rem; background:linear-gradient(135deg, #A71E3B, #881337); display:flex; align-items:center; justify-content:center; gap:6px;">
+            <span>🏛️</span> I miei corsi e lezioni Docente
+          </button>
+        </div>
+
         <div class="profile-id-box" style="flex-direction: column; align-items: flex-start; gap: 8px;">
           <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
             <div>
-              <span class="profile-nickname" id="profileDisplayNickname">Mario</span>
-              <span style="font-size:0.75rem; color:var(--text-secondary); display:block; margin-top:2px;">Codice Calendario Amici:</span>
+              <span style="font-size:0.75rem; color:var(--text-secondary); display:block;">Codice Calendario Amici:</span>
               <span class="profile-id-code" id="profileDisplayId">K9X2P4</span>
             </div>
             <button id="btnCopyProfileId" class="btn-secondary" style="width:auto; padding:6px 12px; font-size:0.8rem;" title="Copia codice">Copia</button>
@@ -1046,7 +1223,7 @@
           </button>
         </div>
 
-        <!-- Recovery Code Box -->
+        <!-- Recovery Code Box (legacy accounts) -->
         <div id="profileRecoveryCodeBox" style="display:none; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.3); border-radius:10px; padding:10px 12px; margin-top:12px;">
           <span style="font-size:0.75rem; color:var(--text-secondary); display:block;">Codice di Recupero (conservalo per reimpostare il PIN):</span>
           <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
@@ -1055,13 +1232,8 @@
           </div>
         </div>
 
-        <p style="font-size:0.78rem; color:var(--text-muted); margin:12px 0 16px; line-height:1.45;">
-          <strong>Le tue credenziali restano private:</strong> per accedere sui tuoi dispositivi usa solo il tuo Soprannome e PIN.<br>
-          <strong>Per gli amici:</strong> condividi il tuo <strong>Codice Calendario</strong> o il <strong>Link</strong>. Possono solo visualizzare l'orario senza mai vedere il tuo PIN.
-        </p>
-
         <!-- Sync status -->
-        <div id="profileSyncStatus" class="profile-sync-row" style="margin-bottom:12px;">
+        <div id="profileSyncStatus" class="profile-sync-row" style="margin:12px 0;">
           <span id="profileSyncIcon" style="display:inline-flex; align-items:center;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#10B981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
           <span id="profileSyncText" style="font-size:0.82rem; color:var(--text-secondary);">Profilo sincronizzato</span>
           <button id="btnSyncNow" class="btn-secondary" style="width:auto; padding:4px 10px; font-size:0.75rem; margin-left:auto;"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-1px; margin-right:3px;"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>Sincronizza</button>
@@ -1070,6 +1242,7 @@
         <hr style="border-color:rgba(255,255,255,0.08); margin-bottom:12px;">
 
         <button id="btnLogoutProfile" class="btn-secondary" style="width:100%; font-size:0.85rem;"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Esci dal profilo</button>
+        <button id="btnWipeAccount" class="btn-secondary" style="width:100%; font-size:0.8rem; margin-top:8px; color:#EF4444; border-color:rgba(239, 68, 68, 0.35);"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Elimina account e tutti i dati (GDPR Art. 17)</button>
         <p style="font-size:0.72rem; color:var(--text-muted); margin-top:8px; text-align:center;">Le tue impostazioni rimangono salvate localmente sul dispositivo.</p>
       </div>
 
@@ -1191,6 +1364,100 @@
         <button id="btnAckScheduleChanges" class="btn-primary" style="flex: 1; padding: 12px; font-weight: 600;" type="button">
           Ho capito
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Privacy & Legal Modal (GDPR) -->
+  <div id="privacyModal" class="modal-overlay">
+    <div class="modal-content setup-content" style="max-width: 520px; text-align: left;">
+      <div class="modal-header">
+        <h3><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-2px; margin-right:6px;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Privacy & Note Legali</h3>
+        <button id="btnClosePrivacy" class="btn-icon" style="width:30px; height:30px;" title="Chiudi"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+
+      <div style="font-size:0.82rem; color:var(--text-secondary); line-height:1.55; display:flex; flex-direction:column; gap:12px; margin-top:8px; max-height:60vh; overflow-y:auto; padding-right:4px;">
+        <div>
+          <strong style="color:var(--text-primary); display:block; margin-bottom:2px;">1. Indipendenza e Non Affiliazione</strong>
+          UNIMIB Orari è un progetto autonomo open-source realizzato da studenti per facilitare la vita universitaria. Non è affiliato, autorizzato, sponsorizzato né gestito dall'Università degli Studi di Milano-Bicocca. I marchi registrati appartengono ai rispettivi proprietari.
+        </div>
+        <div>
+          <strong style="color:var(--text-primary); display:block; margin-bottom:2px;">2. Dati Trattati e Finalità</strong>
+          L'accesso con account Google istituzionale (@campus.unimib.it) acquisisce esclusivamente: nome visualizzato, indirizzo email @campus.unimib.it, identificativo account e immagine profilo pubblica. Questi dati, insieme alle preferenze di corso salvate, servono unicamente a memorizzare il tuo piano di studi nel cloud e consentire la condivisione facoltativa del calendario con altri studenti.
+        </div>
+        <div>
+          <strong style="color:var(--text-primary); display:block; margin-bottom:2px;">3. Nessuna Profilazione né Cessione a Terzi</strong>
+          I dati non vengono in alcun caso venduti, ceduti a terzi o utilizzati a scopo pubblicitario, commerciale o di profilazione comportamentale. Nessun cookie di profilazione o tracciatore invasivo viene utilizzato.
+        </div>
+        <div>
+          <strong style="color:var(--text-primary); display:block; margin-bottom:2px;">4. Sessione Persistente</strong>
+          A differenza di altri portali universitari che impongono frequenti disconnessioni, la sessione di accesso viene rinnovata automaticamente per 365 giorni ad ogni visita, così da non richiedere continui re-login.
+        </div>
+        <div>
+          <strong style="color:var(--text-primary); display:block; margin-bottom:2px;">5. Diritto all'Oblio (Art. 17 GDPR)</strong>
+          In piena conformità con il Regolamento Generale sulla Protezione dei Dati (GDPR), puoi richiedere la cancellazione totale e istantanea di tutti i tuoi dati, dell'account e delle sincronizzazioni associate in qualsiasi momento premendo il tasto "Elimina account e tutti i dati" nel tuo profilo.
+        </div>
+      </div>
+
+      <div style="margin-top:16px;">
+        <button id="btnAckPrivacy" class="btn-primary" style="width:100%;">Ho capito</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Teacher Note Modal (visible for adding/editing notes to course/lesson) -->
+  <div id="teacherNoteModal" class="modal-overlay">
+    <div class="modal-content setup-content" style="max-width: 480px; text-align: left;">
+      <div class="modal-header">
+        <h3 style="display:flex; align-items:center; gap:6px; font-size:1.05rem;">
+          <span>📢</span> <span id="teacherNoteModalTitle">Nota per studenti e colleghi</span>
+        </h3>
+        <button id="btnCloseTeacherNote" class="btn-icon" style="width:30px; height:30px;" type="button" title="Chiudi"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+      <div style="padding:14px 18px;">
+        <div style="background:rgba(255,255,255,0.04); border:1px solid var(--border-color); border-radius:10px; padding:10px 12px; margin-bottom:12px;">
+          <div id="teacherNoteCourseName" style="font-weight:700; font-size:0.95rem; color:var(--text-primary);">Materia</div>
+          <div id="teacherNoteLessonMeta" style="font-size:0.78rem; color:var(--text-secondary); margin-top:2px;">Data ed aula</div>
+        </div>
+
+        <label for="teacherNoteTextInput" style="font-size:0.8rem; font-weight:600; color:var(--text-secondary); display:block; margin-bottom:6px;">
+          Testo della nota pubblica:
+        </label>
+        <textarea id="teacherNoteTextInput" rows="4" maxlength="500" placeholder="Es. Lezione in laboratorio informatico. Portare laptop personale con Python 3 installato..."
+                  style="width:100%; padding:10px 12px; border-radius:10px; background:rgba(0,0,0,0.3); border:1px solid var(--border-color); color:var(--text-primary); font-size:0.88rem; outline:none; resize:vertical; font-family:inherit; line-height:1.45;"></textarea>
+        
+        <p style="font-size:0.75rem; color:var(--text-muted); margin:8px 0 16px; line-height:1.4;">
+          ℹ️ Questa nota sarà visibile a tutti gli studenti e professori che hanno selezionato questo corso nel loro orario e sarà inclusa nei calendari esportati.
+        </p>
+
+        <div style="display:flex; gap:8px; justify-content:flex-end;">
+          <button type="button" id="btnDeleteTeacherNote" class="btn-secondary" style="color:#EF4444; width:auto; padding:8px 14px; font-size:0.82rem; display:none;">Elimina nota</button>
+          <button type="button" id="btnSaveTeacherNote" class="btn-primary" style="width:auto; padding:8px 18px; font-size:0.85rem; font-weight:600;">Salva per tutti</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Teacher Association Modal (Select official UNIMIB teacher name) -->
+  <div id="teacherAssociateModal" class="modal-overlay">
+    <div class="modal-content setup-content" style="max-width: 460px; text-align: left;">
+      <div class="modal-header">
+        <h3 style="display:flex; align-items:center; gap:6px; font-size:1.05rem;">
+          <span>🔍</span> Associa nominativo Docente UNIMIB
+        </h3>
+        <button id="btnCloseTeacherAssociate" class="btn-icon" style="width:30px; height:30px;" type="button" title="Chiudi"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+      <div style="padding:14px 18px;">
+        <p style="font-size:0.82rem; color:var(--text-secondary); margin-bottom:12px;">
+          Seleziona il tuo nome docente dall'elenco ufficiale dell'Università per caricare automaticamente tutti i tuoi corsi e lezioni in programma.
+        </p>
+        <div class="search-input-wrapper" style="margin-bottom:12px;">
+          <input type="text" id="teacherAssociateSearchInput" placeholder="Cerca cognome docente (es. Rossi, Arcelli)..."
+                 style="width: 100%; padding: 10px 14px; border-radius: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: var(--text-primary); font-size: 0.88rem; outline: none;" autocomplete="off">
+        </div>
+        <div id="teacherAssociateResultsList" style="max-height:220px; overflow-y:auto; display:flex; flex-direction:column; gap:6px; margin-bottom:14px;">
+          <!-- Populated dynamically -->
+        </div>
       </div>
     </div>
   </div>

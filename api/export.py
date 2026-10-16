@@ -82,7 +82,7 @@ def _fetch_unimib_grid(anno: str, corso: str, anni_tuple: tuple, monday_str: str
 def _escape_ical(text: str) -> str:
     if not text:
         return ""
-    return str(text).replace("\\", "\\\\").replace(";", r"\;").replace(",", r"\,").replace("\n", r"\n")
+    return str(text).replace("\r\n", "\n").replace("\r", "\n").replace("\\", "\\\\").replace(";", r"\;").replace(",", r"\,").replace("\n", r"\n")
 
 
 def _fold_ical_line(line: str) -> str:
@@ -126,6 +126,14 @@ def _format_csv_date(day_date: str) -> str:
         elif len(parts[0]) == 4:
             return f"{parts[0]}-{parts[1]}-{parts[2]}"
     return clean
+
+
+def _sanitize_csv_cell(val: Any) -> str:
+    """Neutralize spreadsheet formula injection (CWE-1236)."""
+    s = str(val if val is not None else "")
+    if s and s[0] in ("=", "+", "-", "@", "\t", "\r"):
+        return "'" + s
+    return s
 
 
 class handler(BaseApiHandler):
@@ -294,6 +302,18 @@ class handler(BaseApiHandler):
 
         events.sort(key=_sort_key)
 
+        # Check if requester is an authenticated professor (confidentiality requirement)
+        is_prof_auth = False
+        auth_header = self.headers.get("Authorization", "")
+        token = auth_header.replace("Bearer ", "").strip() if "Bearer " in auth_header else qs.get("token", [""])[0].strip()
+        if token:
+            sess = _redis_get(f"session:{token}")
+            if sess and isinstance(sess, dict):
+                clean_nick = sess.get("clean_nick", "")
+                acc = _redis_get(f"account:{clean_nick}")
+                if acc and isinstance(acc, dict) and acc.get("role") == "professor":
+                    is_prof_auth = True
+
         # 4. Format Output
         if export_format == "csv":
             output = io.StringIO()
@@ -305,17 +325,24 @@ class handler(BaseApiHandler):
             for ev in events:
                 iso_date = _format_csv_date(ev["date"])
                 desc = f"Docente: {ev['docente']}\nInsegnamento: {ev['course_code']}\nTipo: {ev['type']}"
+                if is_prof_auth:
+                    dt_info = _redis_get(f"lesson_teacher:{ev['id']}")
+                    if dt_info and isinstance(dt_info, dict) and dt_info.get("designated_teacher"):
+                        desc += f"\nDocente per questa lezione: {dt_info['designated_teacher']}"
+                    c_note = _redis_get(f"course_note:{ev.get('course_code', '').upper()}") or _redis_get(f"lesson_note:{ev['id']}")
+                    if c_note and isinstance(c_note, dict) and c_note.get("note"):
+                        desc += f"\nNota Docente: {c_note['note']}"
                 if ev["is_canceled"]:
                     desc += "\n[ANNULLATO]"
                 writer.writerow([
-                    ev["course"],
-                    iso_date,
-                    ev["start_time"],
-                    iso_date,
-                    ev["end_time"],
+                    _sanitize_csv_cell(ev["course"]),
+                    _sanitize_csv_cell(iso_date),
+                    _sanitize_csv_cell(ev["start_time"]),
+                    _sanitize_csv_cell(iso_date),
+                    _sanitize_csv_cell(ev["end_time"]),
                     "False",
-                    desc,
-                    ev["aula"] or "UNIMIB"
+                    _sanitize_csv_cell(desc),
+                    _sanitize_csv_cell(ev["aula"] or "UNIMIB")
                 ])
 
             data_bytes = output.getvalue().encode("utf-8-sig")
@@ -392,6 +419,13 @@ class handler(BaseApiHandler):
                     summary = f"[ANNULLATO] {summary}"
                 location = ev["aula"] or "UNIMIB"
                 description = f"Docente: {ev['docente']}\nInsegnamento: {ev['course_code']}\nTipo: {ev['type']}"
+                if is_prof_auth:
+                    dt_info = _redis_get(f"lesson_teacher:{ev['id']}")
+                    if dt_info and isinstance(dt_info, dict) and dt_info.get("designated_teacher"):
+                        description += f"\nDocente per questa lezione: {dt_info['designated_teacher']}"
+                    c_note = _redis_get(f"course_note:{ev.get('course_code', '').upper()}") or _redis_get(f"lesson_note:{ev['id']}")
+                    if c_note and isinstance(c_note, dict) and c_note.get("note"):
+                        description += f"\nNota Docente: {c_note['note']}"
 
                 vcalendar_lines.extend([
                     "BEGIN:VEVENT",

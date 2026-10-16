@@ -1416,6 +1416,7 @@ body {
 .days-tab-bar {
   display: flex;
   gap: 8px;
+  margin-top: 2px;
   padding: 0 16px 12px 16px;
   overflow-x: auto;
   scrollbar-width: none;
@@ -1768,6 +1769,11 @@ body {
 .modal-overlay.active {
   opacity: 1;
   pointer-events: auto;
+}
+
+/* Ensure nested/sub-modals appear in front of parent modals (e.g. setup modal) */
+#addExternalCourseModal {
+  z-index: 1100;
 }
 
 .modal-content {
@@ -4221,3 +4227,763 @@ body {
   white-space: nowrap;
   border-width: 0;
 }
+
+/* Google Authentication & Campus Account Badge */
+.google-auth-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  margin: 14px 0;
+}
+
+.google-auth-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: rgba(6, 182, 212, 0.12);
+  border: 1px solid rgba(6, 182, 212, 0.3);
+  border-radius: 9999px;
+  color: var(--accent-cyan);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.persistent-session-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 9999px;
+  color: var(--status-live);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.legal-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 12px 14px;
+  text-align: left;
+  font-size: 0.76rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.profile-avatar-circle {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 2px solid var(--accent-cyan);
+  object-fit: cover;
+  background: rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  flex-shrink: 0;
+  transition: all 0.25s ease;
+}
+
+.profile-avatar-circle.student {
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 12px rgba(6, 182, 212, 0.3);
+}
+
+.profile-avatar-circle.professor {
+  border-color: #E11D48;
+  box-shadow: 0 0 14px rgba(225, 29, 72, 0.45);
+  background: linear-gradient(135deg, rgba(167, 30, 59, 0.3), rgba(20, 20, 30, 0.8));
+}
+
+/* Role Badges & Visual Distinction: Student vs Professor */
+.profile-role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 4px;
+}
+
+.profile-role-badge.student {
+  background: rgba(6, 182, 212, 0.16);
+  border: 1px solid rgba(6, 182, 212, 0.4);
+  color: var(--accent-cyan);
+}
+
+.profile-role-badge.professor {
+  background: linear-gradient(135deg, rgba(167, 30, 59, 0.25), rgba(225, 29, 72, 0.15));
+  border: 1px solid rgba(225, 29, 72, 0.5);
+  color: #FDA4AF;
+  box-shadow: 0 0 10px rgba(167, 30, 59, 0.25);
+}
+
+#btnProfile.is-student {
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+  box-shadow: 0 0 8px rgba(6, 182, 212, 0.25);
+}
+
+#btnProfile.is-professor {
+  border-color: #E11D48;
+  color: #FDA4AF;
+  box-shadow: 0 0 10px rgba(225, 29, 72, 0.35);
+}
+
+.role-hint-card {
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.role-hint-card:hover {
+  transform: translateY(-1px);
+}
+
+.role-hint-card.student {
+  background: rgba(6, 182, 212, 0.08);
+  border: 1px solid rgba(6, 182, 212, 0.25);
+}
+
+.role-hint-card.professor {
+  background: rgba(167, 30, 59, 0.1);
+  border: 1px solid rgba(167, 30, 59, 0.3);
+}
+
+/* ── Professor Presentation Card & Unified Timetable ─────────────────────── */
+.professor-profile-card {
+  background: linear-gradient(135deg, rgba(167, 30, 59, 0.18) 0%, rgba(30, 15, 22, 0.7) 100%);
+  border: 1px solid rgba(225, 29, 72, 0.35);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 14px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(10px);
+}
+
+.prof-card-main {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.prof-actions-bar button {
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+.prof-actions-bar button:hover {
+  transform: translateY(-1px);
+}
+
+.professor-unified-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 10px;
+}
+
+/* ── Professor Month & Week Grouping in Teachers Tab ────────────────────── */
+.prof-month-section {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 6px;
+}
+
+.prof-month-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.prof-month-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-primary);
+}
+
+.prof-month-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0;
+  text-transform: capitalize;
+  letter-spacing: 0.3px;
+}
+
+.prof-month-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 12px;
+  background: rgba(225, 29, 72, 0.15);
+  color: #FDA4AF;
+  border: 1px solid rgba(225, 29, 72, 0.3);
+}
+
+/* ── Professor Timeline Hero Card ────────────────────────────── */
+.prof-hero-card {
+  background: linear-gradient(135deg, rgba(167, 30, 59, 0.28) 0%, rgba(20, 20, 25, 0.7) 100%);
+  border: 1px solid rgba(225, 29, 72, 0.45);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 14px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(167, 30, 59, 0.15);
+}
+
+.prof-hero-card::before {
+  content: '';
+  position: absolute;
+  top: -30px;
+  right: -30px;
+  width: 100px;
+  height: 100px;
+  background: radial-gradient(circle, rgba(225, 29, 72, 0.3) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.prof-hero-tag {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: #FDA4AF;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.prof-hero-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10B981;
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  animation: profPulse 2s infinite;
+}
+
+@keyframes profPulse {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+.prof-hero-badge-date {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #FFF;
+  font-weight: 600;
+  text-transform: none;
+}
+
+.prof-hero-body {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.prof-hero-main {
+  flex: 1;
+  min-width: 220px;
+}
+
+.prof-hero-course {
+  font-size: 1.12rem;
+  font-weight: 700;
+  margin: 0 0 6px 0;
+  color: var(--text-primary);
+}
+
+.prof-hero-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  flex-wrap: wrap;
+}
+
+.prof-hero-note {
+  margin-top: 10px;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.78rem;
+  color: #FDE68A;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.prof-hero-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* ── Professor Controls Toolbar ──────────────────────────────── */
+.prof-controls-toolbar {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+}
+
+.prof-toolbar-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.prof-scope-group {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.prof-scope-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.2s ease;
+}
+
+.prof-scope-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+.prof-scope-btn.active {
+  background: rgba(225, 29, 72, 0.22);
+  border-color: rgba(225, 29, 72, 0.55);
+  color: #FDA4AF;
+}
+
+.prof-expand-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.prof-month-pills-bar {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-top: 10px;
+  margin-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  scrollbar-width: thin;
+}
+
+.prof-month-pill {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 16px;
+  padding: 4px 12px;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.prof-month-pill:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+}
+
+.prof-month-pill.active {
+  background: var(--bicocca-primary);
+  border-color: var(--bicocca-primary);
+  color: #FFF;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(167, 30, 59, 0.35);
+}
+
+/* ── Interactive Week Accordion ──────────────────────────────── */
+.prof-week-card {
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 12px;
+  transition: border-color 0.2s ease;
+}
+
+.prof-week-card:last-child {
+  margin-bottom: 0;
+}
+
+.prof-week-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  margin: -12px -12px 10px -12px;
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 9px 9px 0 0;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s ease;
+}
+
+.prof-week-header:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.prof-week-chevron {
+  color: var(--text-secondary);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.prof-week-chevron.expanded {
+  transform: rotate(180deg);
+}
+
+.prof-current-week-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #34D399;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 8px;
+  padding: 1px 6px;
+  margin-left: 6px;
+}
+
+.prof-live-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #34D399;
+  box-shadow: 0 0 5px #34D399;
+}
+
+/* ── Day Divider in Week ──────────────────────────────────────── */
+.prof-day-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0 4px;
+}
+
+.prof-day-divider-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #38BDF8;
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 6px;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+
+.prof-day-divider.is-today .prof-day-divider-pill {
+  color: #FBBF24;
+  background: rgba(245, 158, 11, 0.15);
+  border-color: rgba(245, 158, 11, 0.45);
+}
+
+.prof-today-tag {
+  font-size: 0.62rem;
+  background: #E11D48;
+  color: #FFF;
+  border-radius: 4px;
+  padding: 1px 4px;
+  font-weight: 800;
+  margin-left: 3px;
+}
+
+.prof-day-divider-line {
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.prof-week-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #38BDF8;
+}
+
+.prof-week-count {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.prof-week-lessons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.prof-lesson-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-color);
+  border-left: 4px solid #E11D48;
+  border-radius: 12px;
+  padding: 14px;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.prof-lesson-card:hover {
+  border-color: rgba(225, 29, 72, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+}
+
+.prof-lesson-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.prof-lesson-date-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #FDA4AF;
+  background: rgba(167, 30, 59, 0.2);
+  border: 1px solid rgba(225, 29, 72, 0.3);
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.prof-co-teacher-section {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-top: 10px;
+}
+
+.prof-co-teacher-select {
+  width: 100%;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(20, 20, 25, 0.8);
+  border: 1px solid rgba(225, 29, 72, 0.4);
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  outline: none;
+  margin-top: 4px;
+}
+
+.prof-note-section {
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-top: 10px;
+}
+
+.prof-note-text {
+  font-size: 0.82rem;
+  color: #FDE68A;
+  margin-top: 4px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ── Student View Alerts for Teacher Notes & Designated Teacher ──────────── */
+.event-teacher-note-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.14), rgba(217, 119, 6, 0.08));
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin: 8px 0;
+  font-size: 0.8rem;
+  color: #FEF3C7;
+  line-height: 1.35;
+}
+
+.event-teacher-note-banner .note-author {
+  font-size: 0.72rem;
+  color: #FDE68A;
+  opacity: 0.85;
+  margin-top: 2px;
+}
+
+.event-designated-teacher-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(167, 30, 59, 0.15);
+  border: 1px solid rgba(225, 29, 72, 0.3);
+  color: #FDA4AF;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+  margin: 4px 0 6px;
+}
+
+[data-theme="light"] .event-teacher-note-banner {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(217, 119, 6, 0.35);
+  color: #92400e;
+}
+
+[data-theme="light"] .event-teacher-note-banner .note-author {
+  color: #b45309;
+}
+
+[data-theme="light"] .event-designated-teacher-banner {
+  background: rgba(225, 29, 72, 0.1);
+  border-color: rgba(225, 29, 72, 0.3);
+  color: #be123c;
+}
+
+[data-theme="light"] .prof-hero-card {
+  background: linear-gradient(135deg, rgba(225, 29, 72, 0.12) 0%, rgba(255, 255, 255, 0.95) 100%);
+  border-color: rgba(225, 29, 72, 0.35);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .prof-hero-tag {
+  color: #BE123C;
+}
+
+[data-theme="light"] .prof-hero-badge-date {
+  background: #FFF;
+  color: #374151;
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+[data-theme="light"] .prof-hero-note {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(217, 119, 6, 0.3);
+  color: #92400E;
+}
+
+[data-theme="light"] .prof-controls-toolbar {
+  background: #F9FAFB;
+  border-color: #E5E7EB;
+}
+
+[data-theme="light"] .prof-scope-btn {
+  background: #FFF;
+  border-color: #E5E7EB;
+  color: #4B5563;
+}
+
+[data-theme="light"] .prof-scope-btn:hover {
+  background: #F3F4F6;
+  color: #111827;
+}
+
+[data-theme="light"] .prof-scope-btn.active {
+  background: rgba(225, 29, 72, 0.12);
+  border-color: rgba(225, 29, 72, 0.4);
+  color: #BE123C;
+}
+
+[data-theme="light"] .prof-month-pill {
+  background: #FFF;
+  border-color: #E5E7EB;
+  color: #4B5563;
+}
+
+[data-theme="light"] .prof-month-pill:hover {
+  background: #F3F4F6;
+  color: #111827;
+}
+
+[data-theme="light"] .prof-month-pill.active {
+  background: var(--bicocca-primary);
+  border-color: var(--bicocca-primary);
+  color: #FFF;
+}
+
+[data-theme="light"] .prof-week-card {
+  background: #FFFFFF;
+  border-color: #E5E7EB;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .prof-week-header {
+  background: #F9FAFB;
+  border-color: #E5E7EB;
+}
+
+[data-theme="light"] .prof-week-header:hover {
+  background: #F3F4F6;
+}
+
+[data-theme="light"] .prof-week-title {
+  color: #0284C7;
+}
+
+[data-theme="light"] .prof-day-divider-line {
+  background: #E5E7EB;
+}
+
+[data-theme="light"] .prof-day-divider-pill {
+  background: rgba(2, 132, 199, 0.08);
+  border-color: rgba(2, 132, 199, 0.25);
+  color: #0369A1;
+}
+
+[data-theme="light"] .prof-day-divider.is-today .prof-day-divider-pill {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.4);
+  color: #B45309;
+}
+
+
+
+
+

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'unimib-calendar-v24';
+const CACHE_NAME = 'unimib-calendar-v25';
 const FONTS_CACHE_NAME = 'unimib-fonts-v1';
 const MAX_API_ENTRIES = 50;
 

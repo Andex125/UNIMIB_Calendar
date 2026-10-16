@@ -22,6 +22,7 @@ import api.profile
 import api.shared_calendar
 import api.group
 import api.teachers
+import api.teacher_notes
 import api.export
 
 API_ROUTES = {
@@ -34,6 +35,7 @@ API_ROUTES = {
     '/api/group': api.group.handler,
     '/api/teachers': api.teachers.handler,
     '/api/teacher_calendar': api.teachers.handler,
+    '/api/teacher_notes': api.teacher_notes.handler,
     '/api/export': api.export.handler,
 }
 

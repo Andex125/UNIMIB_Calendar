@@ -283,21 +283,48 @@ let teachersState = {
   requestId: 0
 };
 
-// Profile state: private credentials (nickname + PIN) & public shareCode
+// Profile state: Google Campus / Docenti auth & public shareCode
 let profileState = {
   nickname:     '',
+  email:        '',     // @campus.unimib.it (studenti) o @unimib.it (docenti)
+  picture:      '',     // avatar url if available
+  role:         'student', // 'student' | 'professor'
+  authType:     'google_campus',
   shareCode:    null,   // public unique calendar code (e.g. K9X2P4)
-  sessionToken: null,   // opaque session token st_...
+  sessionToken: null,   // opaque session token st_... (365 days sliding TTL)
   recoveryCode: null,   // one-time recovery code REC-XXXX-XXXX
   syncing:      false,
   lastSync:     null,
-  _pin:         null    // in-memory session only
+  _pin:         null    // in-memory session only (legacy)
 };
 // Property alias so profileState.id maps to profileState.shareCode
 Object.defineProperty(profileState, 'id', {
   get() { return this.shareCode; },
   set(v) { this.shareCode = v; }
 });
+
+const TEACHER_NOTES_STORAGE_KEY = 'unimib_teacher_notes';
+const DESIGNATED_TEACHERS_STORAGE_KEY = 'unimib_designated_teachers';
+const PROF_ASSOCIATED_TEACHER_KEY = 'unimib_prof_associated_teacher';
+
+let teacherNotesState = {
+  courseNotes: {},       // course_code -> { note, author, updated_at }
+  lessonNotes: {},       // lesson_id -> { note, author, updated_at }
+  designatedTeachers: {} // lesson_id -> teacher_name
+};
+
+let professorScheduleState = {
+  lessons: [],
+  courses: [],
+  selectedTeacher: null, // { code, name }
+  searchQuery: '',
+  isLoading: false,
+  activeEditingLesson: null,
+  showColleagueSearch: false,
+  timeScope: 'upcoming', // 'upcoming' (da oggi in poi) | 'all' | 'past'
+  selectedMonth: 'all',  // 'all' | 'YYYY-MM'
+  expandedWeeks: {}      // weekKey -> boolean
+};
 
 // Friends/shared calendar state supporting multiple groups
 let friendsState = {
@@ -409,55 +436,77 @@ function closeModal(modalId) {
 document.addEventListener('alpine:init', () => {
   Alpine.store('modals', {
     active: null,
+    stack: [],
     _trapKeydownHandler: null,
+    _bindTrap(modalId) {
+      const el = document.getElementById(modalId);
+      if (!el) return;
+      const focusable = el.querySelectorAll('input:not([type="hidden"]), select, button:not([disabled]), textarea, [tabindex="0"]');
+      if (focusable.length) {
+        setTimeout(() => focusable[0].focus(), 60);
+      }
+      if (this._trapKeydownHandler) {
+        document.removeEventListener('keydown', this._trapKeydownHandler);
+      }
+      this._trapKeydownHandler = (e) => {
+        if (e.key === 'Escape') {
+          const currentTop = this.stack && this.stack.length > 0 ? this.stack[this.stack.length - 1] : this.active;
+          if (currentTop) closeModal(currentTop);
+          return;
+        }
+        if (e.key === 'Tab' && focusable.length > 0) {
+          const first = focusable[0];
+          const last = focusable[focusable.length - 1];
+          if (e.shiftKey && document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+          } else if (!e.shiftKey && document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
+      };
+      document.addEventListener('keydown', this._trapKeydownHandler);
+    },
     open(modalId) {
+      if (!this.stack) this.stack = [];
+      if (!this.stack.includes(modalId)) {
+        this.stack.push(modalId);
+      }
       this.active = modalId;
       const el = document.getElementById(modalId);
       if (el) {
         el.classList.add('active');
-        const focusable = el.querySelectorAll('input:not([type="hidden"]), select, button:not([disabled]), textarea, [tabindex="0"]');
-        if (focusable.length) {
-          setTimeout(() => focusable[0].focus(), 60);
+        if (this.stack.length > 1) {
+          el.style.zIndex = (1000 + this.stack.length * 50).toString();
         }
-
-        // Focus trap
-        if (this._trapKeydownHandler) {
-          document.removeEventListener('keydown', this._trapKeydownHandler);
-        }
-        this._trapKeydownHandler = (e) => {
-          if (e.key === 'Escape') {
-            closeModal(modalId);
-            return;
-          }
-          if (e.key === 'Tab' && focusable.length > 0) {
-            const first = focusable[0];
-            const last = focusable[focusable.length - 1];
-            if (e.shiftKey && document.activeElement === first) {
-              e.preventDefault();
-              last.focus();
-            } else if (!e.shiftKey && document.activeElement === last) {
-              e.preventDefault();
-              first.focus();
-            }
-          }
-        };
-        document.addEventListener('keydown', this._trapKeydownHandler);
+        this._bindTrap(modalId);
       }
     },
     close(modalId) {
       const targetId = modalId || this.active;
       if (targetId) {
         const el = document.getElementById(targetId);
-        if (el) el.classList.remove('active');
-        if (this.active === targetId) this.active = null;
+        if (el) {
+          el.classList.remove('active');
+          el.style.zIndex = '';
+        }
+        if (this.stack) {
+          this.stack = this.stack.filter(id => id !== targetId);
+          this.active = this.stack.length > 0 ? this.stack[this.stack.length - 1] : null;
+        } else {
+          if (this.active === targetId) this.active = null;
+        }
       }
-      if (this._trapKeydownHandler) {
+      if (this.active) {
+        this._bindTrap(this.active);
+      } else if (this._trapKeydownHandler) {
         document.removeEventListener('keydown', this._trapKeydownHandler);
         this._trapKeydownHandler = null;
       }
     },
     isOpen(modalId) {
-      return this.active === modalId;
+      return this.active === modalId || (this.stack && this.stack.includes(modalId));
     }
   });
 
@@ -524,6 +573,7 @@ function initApp() {
 
   // Load profile + friends from localStorage
   initProfile();
+  initTeacherNotes();
   friendsState.friends = loadFriends();
   friendsState.currentMonday = formatFormattedDate(getMonday(new Date()));
   teachersState.favoriteTeachers = loadFavoriteTeachers();
@@ -535,14 +585,31 @@ function initApp() {
   syncGroupCloud();
 
   state.currentMonday = formatFormattedDate(getMonday(new Date()));
-  state.config = loadConfig();
 
-  const shared = readSharedConfig();
   const urlParams = new URLSearchParams(window.location.search);
   const friendParam = urlParams.get('friend') || urlParams.get('share_cal');
   const groupParam = urlParams.get('group');
   const teacherParam = urlParams.get('teacher') || urlParams.get('docente');
   const tabParam = urlParams.get('tab');
+
+  if (profileState.role === 'professor') {
+    updateTimetableForRole();
+    loadProfessorSchedule().catch(() => {});
+    if (tabParam === 'docenti' || tabParam === 'teachers') {
+      switchTab('teachers');
+    } else if (tabParam === 'rooms' || tabParam === 'aule') {
+      switchTab('rooms');
+    } else if (tabParam === 'exams' || tabParam === 'esami') {
+      switchTab('exams');
+    } else if (tabParam === 'friends' || tabParam === 'amici') {
+      switchTab('friends');
+    } else {
+      loadCalendar(state.currentMonday);
+    }
+    return;
+  }
+
+  state.config = loadConfig();
 
   if (shared) {
     enterPreview(shared);
@@ -577,6 +644,27 @@ function initApp() {
       showWelcome();
     }
     switchTab('teachers');
+  } else if (tabParam === 'rooms' || tabParam === 'aule') {
+    if (state.config) {
+      applyConfig();
+    } else {
+      showWelcome();
+    }
+    switchTab('rooms');
+  } else if (tabParam === 'exams' || tabParam === 'esami') {
+    if (state.config) {
+      applyConfig();
+    } else {
+      showWelcome();
+    }
+    switchTab('exams');
+  } else if (tabParam === 'friends' || tabParam === 'amici') {
+    if (state.config) {
+      applyConfig();
+    } else {
+      showWelcome();
+    }
+    switchTab('friends');
   } else if (state.config) {
     applyConfig();
     loadCalendar(state.currentMonday);
@@ -609,6 +697,7 @@ function setupEventListeners() {
   document.getElementById('tabFriends').addEventListener('click', () => switchTab('friends'));
 
   setupTeachersEventListeners();
+  setupProfessorEventListeners();
 
   // Theme toggle button
   const btnTheme = document.getElementById('btnThemeToggle');
@@ -633,6 +722,35 @@ function setupEventListeners() {
   const btnShareMyCal = document.getElementById('btnShareMyCalLink');
   if (btnShareMyCal) btnShareMyCal.addEventListener('click', shareMyCalendarLink);
   document.getElementById('btnSyncNow').addEventListener('click', syncProfileNow);
+
+  const btnWipe = document.getElementById('btnWipeAccount');
+  if (btnWipe) btnWipe.addEventListener('click', handleWipeAccount);
+  const btnMockStudent = document.getElementById('btnMockStudentLogin');
+  if (btnMockStudent) btnMockStudent.addEventListener('click', handleMockStudentLogin);
+  const btnMockProf = document.getElementById('btnMockProfessorLogin');
+  if (btnMockProf) btnMockProf.addEventListener('click', handleMockProfessorLogin);
+  const btnMockGoogle = document.getElementById('btnMockGoogleLogin');
+  if (btnMockGoogle) btnMockGoogle.addEventListener('click', handleMockGoogleLogin);
+  const btnExecMock = document.getElementById('btnExecuteMockLogin');
+  if (btnExecMock) {
+    btnExecMock.addEventListener('click', () => {
+      const select = document.getElementById('mockAccountSelect');
+      const val = select ? select.value : 'student';
+      if (val === 'professor') {
+        handleMockProfessorLogin();
+      } else {
+        handleMockStudentLogin();
+      }
+    });
+  }
+  const btnTeacherSched = document.getElementById('btnProfileTeacherSchedule');
+  if (btnTeacherSched) btnTeacherSched.addEventListener('click', handleOpenTeacherSchedule);
+  const btnOpenPrivacy = document.getElementById('btnOpenPrivacyModal');
+  if (btnOpenPrivacy) btnOpenPrivacy.addEventListener('click', () => openModal('privacyModal'));
+  const btnClosePrivacy = document.getElementById('btnClosePrivacy');
+  if (btnClosePrivacy) btnClosePrivacy.addEventListener('click', () => closeModal('privacyModal'));
+  const btnAckPrivacy = document.getElementById('btnAckPrivacy');
+  if (btnAckPrivacy) btnAckPrivacy.addEventListener('click', () => closeModal('privacyModal'));
 
   // Enter key support for quick profile submit
   ['profileNickname', 'profilePin', 'profilePinConfirm'].forEach(id => {
@@ -1457,8 +1575,13 @@ function setupEventListeners() {
   // Global ESC key listener to close top active modal
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' || e.key === 'Esc') {
-      const activeModals = document.querySelectorAll('.modal-overlay.active');
+      const activeModals = Array.from(document.querySelectorAll('.modal-overlay.active'));
       if (!activeModals.length) return;
+      activeModals.sort((a, b) => {
+        const za = parseInt(window.getComputedStyle(a).zIndex, 10) || 0;
+        const zb = parseInt(window.getComputedStyle(b).zIndex, 10) || 0;
+        return za - zb;
+      });
       const topModal = activeModals[activeModals.length - 1];
       if (topModal.id === 'onboardingModal') return;
       if (topModal.id === 'setupModal' && (!state.config || setup._pendingProfile)) return;
@@ -1538,7 +1661,13 @@ function setupEventListeners() {
   const btnCloseExt = document.getElementById('btnCloseAddExternalCourse');
   if (btnCloseExt) btnCloseExt.addEventListener('click', closeAddExternalCourseModal);
   const btnConfirmExt = document.getElementById('btnConfirmAddExternalCourse');
-  if (btnConfirmExt) btnConfirmExt.addEventListener('click', confirmAddExternalCourse);
+  if (btnConfirmExt) btnConfirmExt.addEventListener('click', () => confirmAddExternalCourse(false));
+  const btnAddContinueExt = document.getElementById('btnAddAndContinueExternalCourse');
+  if (btnAddContinueExt) btnAddContinueExt.addEventListener('click', () => confirmAddExternalCourse(true));
+  const btnExtSelectAll = document.getElementById('btnExtSelectAll');
+  if (btnExtSelectAll) btnExtSelectAll.addEventListener('click', onExtSelectAll);
+  const btnExtDeselectAll = document.getElementById('btnExtDeselectAll');
+  if (btnExtDeselectAll) btnExtDeselectAll.addEventListener('click', onExtDeselectAll);
 
   const extYear = document.getElementById('extCourseYear');
   if (extYear) extYear.addEventListener('change', onExtYearChange);
@@ -1548,8 +1677,6 @@ function setupEventListeners() {
   if (extCourse) extCourse.addEventListener('change', onExtCourseChange);
   const extStudyYear = document.getElementById('extCourseStudyYear');
   if (extStudyYear) extStudyYear.addEventListener('change', onExtStudyYearChange);
-  const extTeaching = document.getElementById('extCourseTeaching');
-  if (extTeaching) extTeaching.addEventListener('change', onExtTeachingChange);
   const extSearch = document.getElementById('extCourseTeachingSearch');
   if (extSearch) extSearch.addEventListener('input', onExtTeachingSearch);
 
@@ -2102,7 +2229,13 @@ function addHoursToTime(timeStr, hours) {
 
 function generateIcs(events, calendarName = 'UNIMIB Orari') {
   const nowStamp = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-  const escapeIcs = (str) => (str || '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
+  const escapeIcs = (str) => String(str || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .replace(/\\/g, '\\\\')
+    .replace(/;/g, '\\;')
+    .replace(/,/g, '\\,')
+    .replace(/\n/g, '\\n');
 
   const vEvents = events.map(ev => {
     const rawDate = (ev.date || '').replace(/\//g, '-').trim();
@@ -2118,6 +2251,16 @@ function generateIcs(events, calendarName = 'UNIMIB Orari') {
 
     let desc = [];
     if (ev.docente || ev.professore) desc.push(`Docente: ${ev.docente || ev.professore}`);
+    const isAuthorized = typeof isCourseTaughtByCurrentProfessor === 'function'
+      ? isCourseTaughtByCurrentProfessor(ev.course_code, ev.course || ev.name, ev.id)
+      : false;
+    const canIncludeTeacherInfo = isAuthorized || (profileState && profileState.role === 'professor' && (ev.designated_teacher || ev.teacher_note)) || (!profileState.role && (ev.designated_teacher || ev.teacher_note));
+    const noteData = isAuthorized && typeof getTeacherNoteFor === 'function' ? getTeacherNoteFor(ev.course_code, ev.id) : null;
+    const desTeacher = isAuthorized && typeof getDesignatedTeacherFor === 'function' ? getDesignatedTeacherFor(ev.id) : null;
+    const designated = (canIncludeTeacherInfo && ev.designated_teacher) ? ev.designated_teacher : desTeacher;
+    const note = (canIncludeTeacherInfo && ev.teacher_note) ? ev.teacher_note : (noteData ? noteData.note : null);
+    if (designated) desc.push(`Docente per questa lezione: ${designated}`);
+    if (note) desc.push(`Nota Docente: ${note}`);
     if (ev.course_code) desc.push(`Codice: ${ev.course_code}`);
     if (ev.type) desc.push(`Tipo: ${ev.type}`);
     if (ev.notes) desc.push(`Note: ${ev.notes}`);
@@ -2165,6 +2308,16 @@ function generateCsv(events) {
     }
     let desc = [];
     if (ev.docente || ev.professore) desc.push(`Docente: ${ev.docente || ev.professore}`);
+    const isAuthorizedCsv = typeof isCourseTaughtByCurrentProfessor === 'function'
+      ? isCourseTaughtByCurrentProfessor(ev.course_code, ev.course || ev.name, ev.id)
+      : false;
+    const canIncludeTeacherInfoCsv = isAuthorizedCsv || (profileState && profileState.role === 'professor' && (ev.designated_teacher || ev.teacher_note)) || (!profileState.role && (ev.designated_teacher || ev.teacher_note));
+    const noteDataCsv = isAuthorizedCsv && typeof getTeacherNoteFor === 'function' ? getTeacherNoteFor(ev.course_code, ev.id) : null;
+    const desTeacherCsv = isAuthorizedCsv && typeof getDesignatedTeacherFor === 'function' ? getDesignatedTeacherFor(ev.id) : null;
+    const designatedCsv = (canIncludeTeacherInfoCsv && ev.designated_teacher) ? ev.designated_teacher : desTeacherCsv;
+    const noteCsv = (canIncludeTeacherInfoCsv && ev.teacher_note) ? ev.teacher_note : (noteDataCsv ? noteDataCsv.note : null);
+    if (designatedCsv) desc.push(`Docente per questa lezione: ${designatedCsv}`);
+    if (noteCsv) desc.push(`Nota Docente: ${noteCsv}`);
     if (ev.course_code) desc.push(`Codice: ${ev.course_code}`);
     if (ev.type) desc.push(`Tipo: ${ev.type}`);
     if (ev.notes) desc.push(`Note: ${ev.notes}`);
@@ -2181,7 +2334,14 @@ function generateCsv(events) {
       ev.aula || ev.classroom || 'UNIMIB'
     ]);
   });
-  return '\uFEFF' + rows.map(r => r.map(f => `"${String(f || '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
+  const sanitizeCsvCell = (f) => {
+    const s = String(f ?? '');
+    if (s && ['=', '+', '-', '@', '\t', '\r'].includes(s.charAt(0))) {
+      return "'" + s;
+    }
+    return s;
+  };
+  return '\uFEFF' + rows.map(r => r.map(f => `"${sanitizeCsvCell(f).replace(/"/g, '""')}"`).join(',')).join('\r\n');
 }
 
 function downloadFile(content, mimeType, filename) {
@@ -2570,23 +2730,44 @@ function removeExternalCourse(code) {
 
 async function openAddExternalCourseModal() {
   if (!state.config) {
-    showToast('Configura prima il tuo corso principale.');
-    openSetup();
-    return;
+    const isSetupOpen = document.getElementById('setupModal')?.classList.contains('active');
+    if (isSetupOpen) {
+      state.config = {
+        anno: document.getElementById('cfgYear')?.value || '',
+        corso: document.getElementById('cfgCourse')?.value || '',
+        externalCourses: []
+      };
+    } else {
+      showToast('Configura prima il tuo corso principale.');
+      openSetup();
+      return;
+    }
   }
+  if (!state.config.externalCourses) {
+    state.config.externalCourses = [];
+  }
+
   openModal('addExternalCourseModal');
   const yearSelect = document.getElementById('extCourseYear');
   const areaSelect = document.getElementById('extCourseArea');
   const degreeSelect = document.getElementById('extCourseSelect');
   const studyYearSelect = document.getElementById('extCourseStudyYear');
-  const teachingSelect = document.getElementById('extCourseTeaching');
+  const listContainer = document.getElementById('extCourseTeachingsList');
   const confirmBtn = document.getElementById('btnConfirmAddExternalCourse');
+  const addContinueBtn = document.getElementById('btnAddAndContinueExternalCourse');
   const searchBox = document.getElementById('extCourseTeachingSearchBox');
   const searchInput = document.getElementById('extCourseTeachingSearch');
+  const selectAllBox = document.getElementById('extCourseSelectAllBox');
 
   if (searchInput) searchInput.value = '';
   if (searchBox) searchBox.style.display = 'none';
-  if (confirmBtn) confirmBtn.disabled = true;
+  if (selectAllBox) selectAllBox.style.display = 'none';
+  if (confirmBtn) {
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Aggiungi ai Miei Corsi';
+  }
+  if (addContinueBtn) addContinueBtn.style.display = 'none';
+  if (listContainer) listContainer.innerHTML = '<p class="field-hint">Seleziona prima il corso di studio.</p>';
 
   fillSelect(yearSelect, [], 'Caricamento...');
   fillSelect(areaSelect, [], 'Caricamento aree...');
@@ -2594,8 +2775,6 @@ async function openAddExternalCourseModal() {
   degreeSelect.disabled = true;
   fillSelect(studyYearSelect, [], 'Seleziona prima il corso');
   studyYearSelect.disabled = true;
-  fillSelect(teachingSelect, [], 'Seleziona prima l\'anno di studio');
-  teachingSelect.disabled = true;
 
   try {
     const data = await fetchJson('/api/options');
@@ -2621,18 +2800,27 @@ async function onExtYearChange() {
   const areaSelect = document.getElementById('extCourseArea');
   const degreeSelect = document.getElementById('extCourseSelect');
   const studyYearSelect = document.getElementById('extCourseStudyYear');
-  const teachingSelect = document.getElementById('extCourseTeaching');
+  const listContainer = document.getElementById('extCourseTeachingsList');
   const confirmBtn = document.getElementById('btnConfirmAddExternalCourse');
+  const addContinueBtn = document.getElementById('btnAddAndContinueExternalCourse');
+  const searchBox = document.getElementById('extCourseTeachingSearchBox');
+  const selectAllBox = document.getElementById('extCourseSelectAllBox');
 
-  if (confirmBtn) confirmBtn.disabled = true;
+  if (confirmBtn) {
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Aggiungi ai Miei Corsi';
+  }
+  if (addContinueBtn) addContinueBtn.style.display = 'none';
+  if (searchBox) searchBox.style.display = 'none';
+  if (selectAllBox) selectAllBox.style.display = 'none';
+  if (listContainer) listContainer.innerHTML = '<p class="field-hint">Seleziona prima l\'area e il corso di studio.</p>';
+
   fillSelect(areaSelect, [], 'Caricamento aree...');
   areaSelect.disabled = true;
   fillSelect(degreeSelect, [], 'Seleziona prima l\'area');
   degreeSelect.disabled = true;
   fillSelect(studyYearSelect, [], 'Seleziona prima il corso');
   studyYearSelect.disabled = true;
-  fillSelect(teachingSelect, [], 'Seleziona prima l\'anno di studio');
-  teachingSelect.disabled = true;
 
   try {
     const anno = document.getElementById('extCourseYear').value;
@@ -2652,14 +2840,23 @@ function onExtAreaChange() {
   const areaSelect = document.getElementById('extCourseArea');
   const degreeSelect = document.getElementById('extCourseSelect');
   const studyYearSelect = document.getElementById('extCourseStudyYear');
-  const teachingSelect = document.getElementById('extCourseTeaching');
+  const listContainer = document.getElementById('extCourseTeachingsList');
   const confirmBtn = document.getElementById('btnConfirmAddExternalCourse');
+  const addContinueBtn = document.getElementById('btnAddAndContinueExternalCourse');
+  const searchBox = document.getElementById('extCourseTeachingSearchBox');
+  const selectAllBox = document.getElementById('extCourseSelectAllBox');
 
-  if (confirmBtn) confirmBtn.disabled = true;
+  if (confirmBtn) {
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Aggiungi ai Miei Corsi';
+  }
+  if (addContinueBtn) addContinueBtn.style.display = 'none';
+  if (searchBox) searchBox.style.display = 'none';
+  if (selectAllBox) selectAllBox.style.display = 'none';
+
   fillSelect(studyYearSelect, [], 'Seleziona prima il corso');
   studyYearSelect.disabled = true;
-  fillSelect(teachingSelect, [], 'Seleziona prima l\'anno di studio');
-  teachingSelect.disabled = true;
+  if (listContainer) listContainer.innerHTML = '<p class="field-hint">Seleziona prima il corso di studio.</p>';
 
   const area = areaSelect.value;
   if (!area) {
@@ -2679,20 +2876,26 @@ async function onExtCourseChange() {
   const seq = ++extSetup.seq;
   const degreeSelect = document.getElementById('extCourseSelect');
   const studyYearSelect = document.getElementById('extCourseStudyYear');
-  const teachingSelect = document.getElementById('extCourseTeaching');
+  const listContainer = document.getElementById('extCourseTeachingsList');
   const confirmBtn = document.getElementById('btnConfirmAddExternalCourse');
+  const addContinueBtn = document.getElementById('btnAddAndContinueExternalCourse');
   const searchBox = document.getElementById('extCourseTeachingSearchBox');
+  const selectAllBox = document.getElementById('extCourseSelectAllBox');
   const statusHint = document.getElementById('extCourseStatusHint');
 
-  if (confirmBtn) confirmBtn.disabled = true;
+  if (confirmBtn) {
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Aggiungi ai Miei Corsi';
+  }
+  if (addContinueBtn) addContinueBtn.style.display = 'none';
   if (searchBox) searchBox.style.display = 'none';
+  if (selectAllBox) selectAllBox.style.display = 'none';
 
   const corso = degreeSelect.value;
   if (!corso) {
     fillSelect(studyYearSelect, [], 'Seleziona prima il corso');
     studyYearSelect.disabled = true;
-    fillSelect(teachingSelect, [], 'Seleziona prima l\'anno di studio');
-    teachingSelect.disabled = true;
+    if (listContainer) listContainer.innerHTML = '<p class="field-hint">Seleziona prima il corso di studio.</p>';
     return;
   }
 
@@ -2700,14 +2903,19 @@ async function onExtCourseChange() {
   if (!courseObj || !courseObj.years.length) {
     fillSelect(studyYearSelect, [], 'Nessun anno disponibile');
     studyYearSelect.disabled = true;
+    if (listContainer) listContainer.innerHTML = '<p class="field-hint">Nessun anno di studio disponibile.</p>';
     return;
   }
 
-  const yearOptions = courseObj.years.map(y => ({ value: y.value, label: y.label }));
-  fillSelect(studyYearSelect, yearOptions, 'Seleziona anno di studio...');
+  const yearOptions = [
+    { value: '__ALL__', label: 'Tutti gli anni di studio' },
+    ...courseObj.years.map(y => ({ value: y.value, label: y.label }))
+  ];
+  fillSelect(studyYearSelect, yearOptions, null);
   studyYearSelect.disabled = false;
-  fillSelect(teachingSelect, [], 'Caricamento insegnamenti...');
-  teachingSelect.disabled = true;
+  studyYearSelect.value = '__ALL__';
+
+  if (listContainer) listContainer.innerHTML = '<p class="field-hint">Caricamento insegnamenti...</p>';
   if (statusHint) statusHint.style.display = 'block';
 
   try {
@@ -2715,15 +2923,10 @@ async function onExtCourseChange() {
     const data = await fetchJson(`/api/options?anno=${encodeURIComponent(anno)}&corso=${encodeURIComponent(corso)}`);
     if (seq !== extSetup.seq) return;
     extSetup.teachings = data.years || [];
-    if (yearOptions.length === 1) {
-      studyYearSelect.value = yearOptions[0].value;
-      onExtStudyYearChange();
-    } else {
-      fillSelect(teachingSelect, [], 'Seleziona prima l\'anno di studio');
-    }
+    onExtStudyYearChange();
   } catch (err) {
     console.error('Teachings error:', err);
-    fillSelect(teachingSelect, [], 'Errore caricamento');
+    if (listContainer) listContainer.innerHTML = '<p class="field-hint">Errore caricamento insegnamenti.</p>';
   } finally {
     if (statusHint) statusHint.style.display = 'none';
   }
@@ -2731,105 +2934,252 @@ async function onExtCourseChange() {
 
 function onExtStudyYearChange() {
   const studyYearSelect = document.getElementById('extCourseStudyYear');
-  const teachingSelect = document.getElementById('extCourseTeaching');
-  const confirmBtn = document.getElementById('btnConfirmAddExternalCourse');
-  const searchBox = document.getElementById('extCourseTeachingSearchBox');
   const searchInput = document.getElementById('extCourseTeachingSearch');
+  if (searchInput) searchInput.value = '';
 
-  if (confirmBtn) confirmBtn.disabled = true;
-  const anno2 = studyYearSelect.value;
-  if (!anno2) {
-    fillSelect(teachingSelect, [], 'Seleziona prima l\'anno di studio');
-    teachingSelect.disabled = true;
-    if (searchBox) searchBox.style.display = 'none';
+  const selectedYear = studyYearSelect.value;
+  let items = [];
+  if (selectedYear === '__ALL__') {
+    (extSetup.teachings || []).forEach(y => {
+      (y.teachings || []).forEach(t => {
+        items.push({
+          ...t,
+          anno2: y.value,
+          anno2Label: y.label,
+          yearGroup: y.year ? `Anno ${y.year}` : y.label
+        });
+      });
+    });
+  } else {
+    const yearData = (extSetup.teachings || []).find(y => y.value === selectedYear);
+    if (yearData) {
+      (yearData.teachings || []).forEach(t => {
+        items.push({
+          ...t,
+          anno2: yearData.value,
+          anno2Label: yearData.label,
+          yearGroup: yearData.label
+        });
+      });
+    }
+  }
+
+  // Deduplicate by code if any
+  const seenCodes = new Set();
+  const deduped = [];
+  for (const item of items) {
+    if (!seenCodes.has(item.code)) {
+      seenCodes.add(item.code);
+      deduped.push(item);
+    }
+  }
+
+  extSetup.allTeachings = deduped;
+  renderExtTeachingsList(deduped);
+}
+
+function renderExtTeachingsList(teachingsList) {
+  const listContainer = document.getElementById('extCourseTeachingsList');
+  const searchBox = document.getElementById('extCourseTeachingSearchBox');
+  const selectAllBox = document.getElementById('extCourseSelectAllBox');
+  const studyYearSelect = document.getElementById('extCourseStudyYear');
+
+  if (!listContainer) return;
+
+  if (extSetup.allTeachings.length > 4 && searchBox) {
+    searchBox.style.display = 'block';
+  }
+
+  if (!teachingsList.length) {
+    listContainer.innerHTML = '<p class="field-hint">Nessun insegnamento trovato con questi filtri.</p>';
+    if (selectAllBox) selectAllBox.style.display = 'none';
+    updateExtActionButtons();
     return;
   }
 
-  const yearData = extSetup.teachings.find(y => y.value === anno2);
-  const teachings = (yearData && yearData.teachings) || [];
-  extSetup.allTeachings = teachings;
+  const existingExt = (state.config && state.config.externalCourses) || [];
+  const existingCodes = new Set(existingExt.map(e => e.code));
 
-  renderExtTeachingsSelect(teachings);
-  teachingSelect.disabled = false;
-  if (teachings.length > 5 && searchBox) {
-    searchBox.style.display = 'block';
-    if (searchInput) searchInput.value = '';
-  } else if (searchBox) {
-    searchBox.style.display = 'none';
+  let html = '';
+  let lastGroup = null;
+  const isAllYears = studyYearSelect.value === '__ALL__';
+
+  teachingsList.forEach(t => {
+    if (isAllYears && t.yearGroup && t.yearGroup !== lastGroup) {
+      html += `<div class="choice-group-title" style="margin-top:8px; margin-bottom:4px; font-weight:700; color:var(--accent-cyan); font-size:0.75rem;">${escapeHtml(t.yearGroup)}</div>`;
+      lastGroup = t.yearGroup;
+    }
+    const alreadyAdded = existingCodes.has(t.code);
+    if (alreadyAdded) {
+      html += `
+        <label class="choice-item" style="opacity:0.6; cursor:not-allowed;">
+          <input type="checkbox" checked disabled>
+          <span style="flex:1; min-width:0;">
+            <strong style="color:var(--text-primary); font-size:0.83rem; display:block;">${escapeHtml(t.label)}</strong>
+            ${t.docente ? `<small style="color:var(--text-secondary); display:block;">${escapeHtml(t.docente)}</small>` : ''}
+            <small style="color:var(--accent-cyan); font-weight:600; display:block; margin-top:2px;">(già aggiunto ai tuoi corsi)</small>
+          </span>
+        </label>
+      `;
+    } else {
+      html += `
+        <label class="choice-item">
+          <input type="checkbox" class="ext-course-cb" value="${escapeHtml(t.code)}" data-anno2="${escapeHtml(t.anno2 || '')}" data-anno2-label="${escapeHtml(t.anno2Label || '')}">
+          <span style="flex:1; min-width:0;">
+            <strong style="color:var(--text-primary); font-size:0.83rem; display:block;">${escapeHtml(t.label)}</strong>
+            ${t.docente ? `<small style="color:var(--text-secondary); display:block;">${escapeHtml(t.docente)}</small>` : ''}
+          </span>
+        </label>
+      `;
+    }
+  });
+
+  listContainer.innerHTML = html;
+  if (selectAllBox) selectAllBox.style.display = 'block';
+
+  listContainer.querySelectorAll('input.ext-course-cb').forEach(cb => {
+    cb.addEventListener('change', updateExtActionButtons);
+  });
+
+  updateExtActionButtons();
+}
+
+function updateExtActionButtons() {
+  const confirmBtn = document.getElementById('btnConfirmAddExternalCourse');
+  const addContinueBtn = document.getElementById('btnAddAndContinueExternalCourse');
+  const checkedBoxes = Array.from(document.querySelectorAll('#extCourseTeachingsList input.ext-course-cb:checked:not([disabled])'));
+  const count = checkedBoxes.length;
+
+  if (count === 0) {
+    if (confirmBtn) {
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = 'Aggiungi ai Miei Corsi';
+    }
+    if (addContinueBtn) {
+      addContinueBtn.style.display = 'none';
+    }
+  } else if (count === 1) {
+    if (confirmBtn) {
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = 'Aggiungi 1 corso';
+    }
+    if (addContinueBtn) {
+      addContinueBtn.style.display = 'inline-flex';
+      addContinueBtn.textContent = '+ Aggiungi e continua';
+    }
+  } else {
+    if (confirmBtn) {
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = `Aggiungi ${count} corsi`;
+    }
+    if (addContinueBtn) {
+      addContinueBtn.style.display = 'inline-flex';
+      addContinueBtn.textContent = `+ Aggiungi (${count}) e continua`;
+    }
   }
 }
 
-function renderExtTeachingsSelect(teachingsList) {
-  const teachingSelect = document.getElementById('extCourseTeaching');
-  const opts = teachingsList.map(t => ({
-    value: t.code,
-    label: `${t.label}${t.docente ? ` (${t.docente})` : ''}`
-  }));
-  fillSelect(teachingSelect, opts, 'Seleziona insegnamento / materia...');
+function onExtSelectAll(e) {
+  if (e) e.preventDefault();
+  document.querySelectorAll('#extCourseTeachingsList input.ext-course-cb:not([disabled])').forEach(cb => {
+    cb.checked = true;
+  });
+  updateExtActionButtons();
+}
+
+function onExtDeselectAll(e) {
+  if (e) e.preventDefault();
+  document.querySelectorAll('#extCourseTeachingsList input.ext-course-cb:not([disabled])').forEach(cb => {
+    cb.checked = false;
+  });
+  updateExtActionButtons();
 }
 
 function onExtTeachingSearch() {
   const q = (document.getElementById('extCourseTeachingSearch')?.value || '').toLowerCase().trim();
   const filtered = q
-    ? extSetup.allTeachings.filter(t => t.label.toLowerCase().includes(q) || (t.docente || '').toLowerCase().includes(q) || (t.code || '').toLowerCase().includes(q))
+    ? extSetup.allTeachings.filter(t => 
+        (t.label || '').toLowerCase().includes(q) || 
+        (t.docente || '').toLowerCase().includes(q) || 
+        (t.code || '').toLowerCase().includes(q)
+      )
     : extSetup.allTeachings;
-  renderExtTeachingsSelect(filtered);
+  renderExtTeachingsList(filtered);
 }
 
-function onExtTeachingChange() {
-  const teachingSelect = document.getElementById('extCourseTeaching');
-  const confirmBtn = document.getElementById('btnConfirmAddExternalCourse');
-  if (confirmBtn) confirmBtn.disabled = !teachingSelect.value;
-}
-
-function confirmAddExternalCourse() {
+function confirmAddExternalCourse(keepOpen = false) {
   const yearSelect = document.getElementById('extCourseYear');
   const degreeSelect = document.getElementById('extCourseSelect');
-  const studyYearSelect = document.getElementById('extCourseStudyYear');
-  const teachingSelect = document.getElementById('extCourseTeaching');
+  const checkedBoxes = Array.from(document.querySelectorAll('#extCourseTeachingsList input.ext-course-cb:checked:not([disabled])'));
+
+  if (!checkedBoxes.length) return;
 
   const anno = yearSelect.value;
   const corso = degreeSelect.value;
   const courseObj = extSetup.courses.find(c => c.value === corso);
   const corsoLabel = courseObj ? courseObj.label : corso;
-  const anno2 = studyYearSelect.value;
-  const yearObj = courseObj ? courseObj.years.find(y => y.value === anno2) : null;
-  const anno2Label = yearObj ? yearObj.label : anno2;
-  const code = teachingSelect.value;
 
-  const tObj = extSetup.allTeachings.find(t => t.code === code);
-  const label = tObj ? tObj.label : code;
-  const docente = tObj ? tObj.docente : '';
-
-  if (!state.config) return;
+  if (!state.config) {
+    state.config = {
+      anno,
+      corso,
+      externalCourses: []
+    };
+  }
   if (!state.config.externalCourses) {
     state.config.externalCourses = [];
   }
 
-  // Check if already added
-  if (state.config.externalCourses.some(e => e.code === code)) {
-    showToast('Questa materia è già presente nei tuoi corsi esterni.');
-    closeAddExternalCourseModal();
-    return;
-  }
+  const addedLabels = [];
 
-  state.config.externalCourses.push({
-    anno,
-    corso,
-    corsoLabel,
-    anno2,
-    anno2Label,
-    code,
-    label,
-    docente
+  checkedBoxes.forEach(cb => {
+    const code = cb.value;
+    if (state.config.externalCourses.some(e => e.code === code)) return;
+
+    const tObj = extSetup.allTeachings.find(t => t.code === code);
+    const label = tObj ? tObj.label : code;
+    const docente = tObj ? tObj.docente : '';
+    const anno2 = cb.dataset.anno2 || (tObj ? tObj.anno2 : '');
+    const anno2Label = cb.dataset.anno2Label || (tObj ? tObj.anno2Label : anno2);
+
+    state.config.externalCourses.push({
+      anno,
+      corso,
+      corsoLabel,
+      anno2,
+      anno2Label,
+      code,
+      label,
+      docente
+    });
+    addedLabels.push(label);
   });
 
   saveConfig(state.config);
   clearCalendarCache();
-  closeAddExternalCourseModal();
   applyConfig();
   loadCalendar(state.currentMonday);
-  showToast(`Aggiunto: ${label} (${corsoLabel})!`);
+
+  const count = addedLabels.length;
+  if (count === 1) {
+    showToast(`Aggiunto: ${addedLabels[0]} (${corsoLabel})!`);
+  } else if (count > 1) {
+    showToast(`Aggiunti ${count} corsi da ${corsoLabel}!`);
+  }
+
+  if (keepOpen) {
+    const q = (document.getElementById('extCourseTeachingSearch')?.value || '').toLowerCase().trim();
+    const filtered = q
+      ? extSetup.allTeachings.filter(t => 
+          (t.label || '').toLowerCase().includes(q) || 
+          (t.docente || '').toLowerCase().includes(q) || 
+          (t.code || '').toLowerCase().includes(q)
+        )
+      : extSetup.allTeachings;
+    renderExtTeachingsList(filtered);
+  } else {
+    closeAddExternalCourseModal();
+  }
 }
 
 // ---------- Calendar ----------
@@ -3380,8 +3730,11 @@ function renderScheduleChangesModalList() {
 }
 
 function calendarUrl(mondayDateStr, forceRefresh) {
-  const params = new URLSearchParams({ anno: state.config.anno, corso: state.config.corso, date: mondayDateStr });
-  state.config.anni.forEach(a => params.append('anno2', a));
+  if (!state.config) return '';
+  const params = new URLSearchParams({ anno: state.config.anno || '', corso: state.config.corso || '', date: mondayDateStr || '' });
+  if (Array.isArray(state.config.anni)) {
+    state.config.anni.forEach(a => params.append('anno2', a));
+  }
   if (state.config.externalCourses && state.config.externalCourses.length > 0) {
     params.set('extra', JSON.stringify(state.config.externalCourses));
   }
@@ -3390,6 +3743,11 @@ function calendarUrl(mondayDateStr, forceRefresh) {
 }
 
 async function loadCalendar(mondayDateStr, forceRefresh = false) {
+  if (profileState.role === 'professor') {
+    await loadProfessorWeeklyCalendar(mondayDateStr, forceRefresh);
+    return;
+  }
+
   if (!state.config) {
     openSetup();
     return;
@@ -3466,9 +3824,9 @@ function renderCalendar() {
   const giorni = state.calendarData.giorni || [];
   const todayStr = formatFormattedDate(new Date());
   if (state.selectedDayDate !== 'all') {
-    const hasSelectedDay = giorni.some(g => g.data === state.selectedDayDate);
+    const hasSelectedDay = giorni.some(g => (g.data || g.date) === state.selectedDayDate);
     if (!hasSelectedDay) {
-      if (giorni.some(g => g.data === todayStr)) {
+      if (giorni.some(g => (g.data || g.date) === todayStr)) {
         state.selectedDayDate = todayStr;
       } else {
         state.selectedDayDate = 'all';
@@ -3494,10 +3852,11 @@ function updateNowNextWidget() {
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
   // Filtra lezioni di oggi non cancellate
+  const isProf = profileState.role === 'professor';
   const todayEvents = state.calendarData.events.filter(e => {
     if (e.date !== todayStr) return false;
     if (e.is_canceled) return false;
-    if (state.activeFilter === 'target' && !isFavorite(e)) return false;
+    if (!isProf && state.activeFilter === 'target' && !isFavorite(e)) return false;
     return true;
   });
 
@@ -3671,21 +4030,31 @@ function renderDayTabs() {
 
   const todayStr = formatFormattedDate(new Date());
 
+  const isProf = profileState.role === 'professor';
+
   giorni.forEach(g => {
     const tab = document.createElement('div');
-    const isSelected = state.selectedDayDate === g.data;
-    const isToday = g.data === todayStr;
+    const dayData = g.data || g.date;
+    const isSelected = state.selectedDayDate === dayData;
+    const isToday = dayData === todayStr;
     tab.className = `day-tab ${isSelected ? 'active' : ''} ${isToday ? 'is-today' : ''}`;
     tab.setAttribute('role', 'tab');
     tab.setAttribute('aria-selected', isSelected ? 'true' : 'false');
 
     // Short day name (lun, mar, mer...)
-    const dayShort = g.label ? g.label.split(' ')[0].substring(0, 3).toUpperCase() : 'GG';
-    const dayNum = g.data ? g.data.split('-')[0] : '';
+    const dayShort = g.name || (g.label ? g.label.split(' ')[0].substring(0, 3).toUpperCase() : 'GG');
+    const dayNum = dayData ? dayData.split('-')[0] : '';
 
-    // Count my courses for this day (only non-canceled favorite courses)
-    const dayEvents = (state.calendarData.events || []).filter(e => e.date === g.data);
-    const targetCount = dayEvents.filter(e => isFavorite(e) && !e.is_canceled).length;
+    // Count courses for this day
+    const dayEvents = (state.calendarData.events || []).filter(e => {
+      if (e.date === dayData) return true;
+      const de = parseAnyDate(e.date);
+      const ds = parseAnyDate(dayData);
+      return Boolean(de && ds && de.getTime() === ds.getTime());
+    });
+    const targetCount = isProf
+      ? dayEvents.filter(e => !e.is_canceled).length
+      : dayEvents.filter(e => isFavorite(e) && !e.is_canceled).length;
 
     let dotsHtml = '';
     if (targetCount > 0) {
@@ -3703,7 +4072,7 @@ function renderDayTabs() {
     `;
 
     tab.addEventListener('click', () => {
-      state.selectedDayDate = g.data;
+      state.selectedDayDate = dayData;
       renderDayTabs();
       renderEvents();
     });
@@ -3730,11 +4099,13 @@ function renderEvents() {
 
   if (!state.calendarData || !state.calendarData.events) return;
 
+  const isProf = profileState.role === 'professor';
+
   const hasFavorites = state.config && (
     (state.config.favorites && state.config.favorites.length > 0) ||
     (state.config.externalCourses && state.config.externalCourses.length > 0)
   );
-  if (state.activeFilter === 'target' && !hasFavorites) {
+  if (!isProf && state.activeFilter === 'target' && !hasFavorites) {
     container.innerHTML = `
       <div class="empty-state">
         <div class="empty-icon"><svg viewBox="0 0 24 24" width="36" height="36" fill="currentColor" stroke="none" style="color:var(--accent);"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
@@ -3755,11 +4126,17 @@ function renderEvents() {
     : [];
 
   let filteredRemoved = removedChanges;
-  if (state.activeFilter === 'target' && hasFavorites) {
+  if (!isProf && state.activeFilter === 'target' && hasFavorites) {
     filteredRemoved = filteredRemoved.filter(c => c.isFavorite);
   }
   if (state.selectedDayDate !== 'all') {
-    filteredRemoved = filteredRemoved.filter(c => c.date === state.selectedDayDate);
+    filteredRemoved = filteredRemoved.filter(c => {
+      if (!c.date) return false;
+      if (c.date === state.selectedDayDate) return true;
+      const de = parseAnyDate(c.date);
+      const ds = parseAnyDate(state.selectedDayDate);
+      return Boolean(de && ds && de.getTime() === ds.getTime());
+    });
   }
   if (state.searchQuery) {
     filteredRemoved = filteredRemoved.filter(c =>
@@ -3769,14 +4146,20 @@ function renderEvents() {
     );
   }
 
-  // Filter 1: My courses vs All
-  if (state.activeFilter === 'target') {
+  // Filter 1: My courses vs All (for student only; professor courses are all their own)
+  if (!isProf && state.activeFilter === 'target') {
     events = events.filter(isFavorite);
   }
 
   // Filter 2: Specific Day
   if (state.selectedDayDate !== 'all') {
-    events = events.filter(e => e.date === state.selectedDayDate);
+    events = events.filter(e => {
+      if (!e.date) return false;
+      if (e.date === state.selectedDayDate) return true;
+      const de = parseAnyDate(e.date);
+      const ds = parseAnyDate(state.selectedDayDate);
+      return Boolean(de && ds && de.getTime() === ds.getTime());
+    });
   }
 
   // Filter 3: Search Query
@@ -3789,11 +4172,14 @@ function renderEvents() {
   }
 
   if (events.length === 0 && filteredRemoved.length === 0) {
+    const emptyMsg = isProf
+      ? 'Nessuna lezione in programma per la tua cattedra docente per i filtri selezionati.'
+      : (state.activeFilter === 'target' ? 'Nessuna lezione dei tuoi corsi in questo periodo.' : 'Nessuna lezione in programma per i filtri selezionati.');
     container.innerHTML = `
       <div class="empty-state">
         <div class="empty-icon"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
         <h3>Nessuna lezione trovata</h3>
-        <p>${state.activeFilter === 'target' ? 'Nessuna lezione dei tuoi corsi in questo periodo.' : 'Nessuna lezione in programma per i filtri selezionati.'}</p>
+        <p>${escapeHtml(emptyMsg)}</p>
       </div>
     `;
     return;
@@ -3823,7 +4209,7 @@ function renderEvents() {
   });
 
   // With several years of study selected, show which one each lesson belongs to
-  const showCurriculum = state.config.anni.length > 1;
+  const showCurriculum = !isProf && Boolean(state.config && state.config.anni && state.config.anni.length > 1);
 
   const sortedDates = Object.keys(grouped).sort((a, b) => {
     const da = parseAnyDate(a);
@@ -3841,15 +4227,17 @@ function renderEvents() {
 
     group.items.forEach(e => {
       const card = document.createElement('div');
-      const color = state.favoriteColors[e.course_code];
+      const color = isProf ? 'var(--bicocca-primary)' : (state.favoriteColors ? state.favoriteColors[e.course_code] : null);
       const isCanceled = e.is_canceled;
 
-      card.className = `event-card ${color ? 'target' : ''} ${isCanceled ? 'canceled' : ''}`;
+      card.className = `event-card ${color || isProf ? 'target' : ''} ${isCanceled ? 'canceled' : ''}`;
       if (color) card.style.setProperty('--course-color', color);
 
-      const curriculum = state.config.anniLabels
-        .filter(label => (e.curricula || []).some(c => c.endsWith(label)))
-        .join(', ');
+      const curriculum = (!isProf && state.config && Array.isArray(state.config.anniLabels))
+        ? state.config.anniLabels
+            .filter(label => (e.curricula || []).some(c => c.endsWith(label)))
+            .join(', ')
+        : '';
 
       const change = getEventChange(e, state.currentMonday);
       let changeBadgeHtml = '';
@@ -3870,21 +4258,48 @@ function renderEvents() {
         }
       }
 
-      const externalBadgeHtml = e.is_external
-        ? `<span class="badge-external" title="Corso di studio esterno: ${escapeHtml(e.external_corso || '')}"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:3px; vertical-align:-1px;"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>${escapeHtml(e.external_corso || 'Corso esterno')}</span>`
+      const isAuthorizedProf = typeof isCourseTaughtByCurrentProfessor === 'function' && isCourseTaughtByCurrentProfessor(e.course_code, e.course, e.id);
+      const noteData = isAuthorizedProf && typeof getTeacherNoteFor === 'function' ? getTeacherNoteFor(e.course_code, e.id) : null;
+      const designatedTeacher = isAuthorizedProf && typeof getDesignatedTeacherFor === 'function' ? getDesignatedTeacherFor(e.id) : null;
+      let bannersHtml = '';
+      if (designatedTeacher) {
+        bannersHtml += `
+          <div class="event-designated-teacher-banner" title="Docente assegnato per questa specifica lezione (sola lettura)">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <span>Docente per questa lezione: <strong>${escapeHtml(designatedTeacher)}</strong></span>
+          </div>`;
+      }
+      if (noteData && noteData.note) {
+        bannersHtml += `
+          <div class="event-teacher-note-banner" title="Nota interna visibile solo ai docenti del corso (sola lettura)">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <div class="note-content">
+              <div class="note-author">Nota dal Docente${noteData.author ? ' (' + escapeHtml(noteData.author) + ')' : ''}:</div>
+              <div class="note-body">${escapeHtml(noteData.note)}</div>
+            </div>
+          </div>`;
+      }
+
+      const isExternal = !isProf && Boolean(state.config && (state.config.externalCourses || []).some(ext => ext.code === e.course_code));
+      const externalBadgeHtml = isExternal
+        ? '<span class="course-badge" style="background: rgba(14, 165, 233, 0.15); color: #0284c7; border: 1px solid rgba(14, 165, 233, 0.3);">Esterno</span>'
         : '';
+      const courseBadgeHtml = isProf
+        ? '<span class="course-badge" style="background: rgba(216, 52, 36, 0.12); color: var(--bicocca-primary); border: 1px solid rgba(216, 52, 36, 0.25);">La mia lezione</span>'
+        : (color ? '<span class="course-badge">Mio corso</span>' : '');
 
       card.innerHTML = `
         <div class="card-top">
           <span class="time-badge"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="margin-right:4px; vertical-align:-1px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${escapeHtml(e.start_time)} - ${escapeHtml(e.end_time)}</span>
           <div style="display:flex; align-items:center; gap:6px;">
             ${externalBadgeHtml}
-            ${color ? '<span class="course-badge">Mio corso</span>' : ''}
+            ${courseBadgeHtml}
           </div>
         </div>
         ${isCanceled ? '<div class="canceled-banner"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>LEZIONE ANNULLATA</div>' : ''}
         <div class="course-title ${isCanceled ? 'canceled-text' : ''}">${highlightMatch(e.course, state.searchQuery)}</div>
         ${changeBadgeHtml}
+        ${bannersHtml}
         <div class="card-details">
           <div class="detail-item">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon" style="flex-shrink:0;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
@@ -4082,8 +4497,10 @@ function parseAnyDate(d) {
   if (!d) return new Date();
   if (d instanceof Date) return d;
   if (typeof d === 'string') {
-    if (d.includes('T')) return new Date(d);
-    const partsHyphen = d.split('-');
+    const s = d.trim();
+    if (!s) return new Date();
+    if (s.includes('T')) return new Date(s);
+    const partsHyphen = s.split('-');
     if (partsHyphen.length === 3) {
       if (partsHyphen[0].length === 4) {
         return new Date(Number(partsHyphen[0]), Number(partsHyphen[1]) - 1, Number(partsHyphen[2]));
@@ -4091,10 +4508,15 @@ function parseAnyDate(d) {
         return new Date(Number(partsHyphen[2]), Number(partsHyphen[1]) - 1, Number(partsHyphen[0]));
       }
     }
-    const partsSlash = d.split('/');
+    const partsSlash = s.split('/');
     if (partsSlash.length === 3) {
-      return new Date(Number(partsSlash[2]), Number(partsSlash[1]) - 1, Number(partsSlash[0]));
+      if (partsSlash[0].length === 4) {
+        return new Date(Number(partsSlash[0]), Number(partsSlash[1]) - 1, Number(partsSlash[2]));
+      } else {
+        return new Date(Number(partsSlash[2]), Number(partsSlash[1]) - 1, Number(partsSlash[0]));
+      }
     }
+    return new Date(s);
   }
   return new Date(d);
 }
@@ -4145,19 +4567,38 @@ function switchTab(tabId) {
 
   // Update header subtitle
   if (tabId === 'timetable') {
-    document.getElementById('headerSubtitle').textContent = state.config 
-      ? `${state.config.corsoLabel} · ${state.config.anniLabels.join(', ')}` 
-      : 'Seleziona il tuo corso';
-    updateChangesUI(state.currentMonday);
+    if (typeof updateTimetableForRole === 'function') {
+      updateTimetableForRole();
+    }
+    if (profileState.role === 'professor') {
+      document.getElementById('headerSubtitle').textContent = `Orario lezioni · ${profileState.nickname || 'Docente UNIMIB'}`;
+      loadCalendar(state.currentMonday);
+    } else {
+      const anniStr = (state.config && Array.isArray(state.config.anniLabels) && state.config.anniLabels.length)
+        ? ` · ${state.config.anniLabels.join(', ')}`
+        : '';
+      document.getElementById('headerSubtitle').textContent = (state.config && state.config.corsoLabel)
+        ? `${state.config.corsoLabel}${anniStr}`
+        : 'Seleziona il tuo corso';
+      updateChangesUI(state.currentMonday);
+    }
   } else {
     const btnChangesNotice = document.getElementById('btnChangesNotice');
     if (btnChangesNotice) btnChangesNotice.style.display = 'none';
   }
   if (tabId === 'teachers') {
-    document.getElementById('headerSubtitle').textContent = teachersState.selectedTeacher
-      ? `Prof. ${teachersState.selectedTeacher.name}`
-      : 'Calendario docenti';
-    initTeachersView();
+    if (typeof updateTimetableForRole === 'function') {
+      updateTimetableForRole();
+    }
+    if (profileState.role === 'professor') {
+      document.getElementById('headerSubtitle').textContent = `Cattedra docente · ${profileState.nickname || 'Docente UNIMIB'}`;
+      renderProfessorTimetable();
+    } else {
+      document.getElementById('headerSubtitle').textContent = teachersState.selectedTeacher
+        ? `Prof. ${teachersState.selectedTeacher.name}`
+        : 'Calendario docenti';
+      initTeachersView();
+    }
   } else if (tabId === 'rooms') {
     document.getElementById('headerSubtitle').textContent = 'Occupazione aule in tempo reale';
     if (!roomsState.buildings.length) {
@@ -6249,6 +6690,10 @@ function initProfile() {
       const parsed = JSON.parse(stored);
       if (typeof parsed === 'object' && parsed !== null) {
         profileState.nickname     = parsed.nickname || '';
+        profileState.email        = parsed.email || '';
+        profileState.picture      = parsed.picture || '';
+        profileState.role         = parsed.role || 'student';
+        profileState.authType     = parsed.auth_type || 'google_campus';
         profileState.shareCode    = parsed.share_code || parsed.shareCode || parsed.id || null;
         profileState.recoveryCode = parsed.recovery_code || null;
       } else if (typeof parsed === 'string') {
@@ -6263,6 +6708,40 @@ function initProfile() {
   }
   profileState.sessionToken = localStorage.getItem(SESSION_TOKEN_KEY) || null;
   updateProfileButton();
+
+  // Persistent session: validate and slide 365-day session in background
+  if (profileState.sessionToken) {
+    refreshSessionInBackground();
+  }
+}
+
+async function refreshSessionInBackground() {
+  if (!profileState.sessionToken) return;
+  try {
+    const resp = await fetch('/api/profile?me=1', {
+      headers: { 'Authorization': `Bearer ${profileState.sessionToken}` }
+    });
+    if (resp.status === 401) {
+      // Session revoked or expired on server
+      profileState.sessionToken = null;
+      localStorage.removeItem(SESSION_TOKEN_KEY);
+      updateProfileButton();
+      return;
+    }
+    if (resp.ok) {
+      const data = await resp.json();
+      if (data.nickname) profileState.nickname = data.nickname;
+      if (data.email) profileState.email = data.email;
+      if (data.picture) profileState.picture = data.picture;
+      if (data.role) profileState.role = data.role;
+      if (data.auth_type) profileState.authType = data.auth_type;
+      if (data.share_code) profileState.shareCode = data.share_code;
+      profileState.lastSync = Date.now();
+      saveProfileLocally();
+    }
+  } catch (e) {
+    // Network error: maintain offline state
+  }
 }
 
 function updateProfileButton() {
@@ -6270,8 +6749,11 @@ function updateProfileButton() {
   if (!btn) return;
   const isLogged = Boolean(profileState.nickname && profileState.shareCode);
   btn.classList.toggle('profile-active', isLogged);
+  const isProf = profileState.role === 'professor';
+  btn.classList.toggle('is-professor', isLogged && isProf);
+  btn.classList.toggle('is-student', isLogged && !isProf);
   btn.title = isLogged
-    ? `${profileState.nickname} [Codice: ${profileState.shareCode}]`
+    ? `${profileState.nickname} [${isProf ? 'Docente Bicocca' : 'Studente'}] [Codice: ${profileState.shareCode}]`
     : 'Il tuo profilo';
 }
 
@@ -6279,6 +6761,10 @@ function saveProfileLocally() {
   if (profileState.shareCode) {
     localStorage.setItem(PROFILE_KEY, JSON.stringify({
       nickname:      profileState.nickname,
+      email:         profileState.email || '',
+      picture:       profileState.picture || '',
+      role:          profileState.role || 'student',
+      auth_type:     profileState.authType || 'google_campus',
       share_code:    profileState.shareCode,
       recovery_code: profileState.recoveryCode || null
     }));
@@ -6293,6 +6779,300 @@ function saveProfileLocally() {
   updateProfileButton();
 }
 
+let _googleAuthConfig = null;
+let _gisInitialized = false;
+
+async function initGoogleAuthUi() {
+  const container = document.getElementById('g_id_signin_container');
+  const fallback = document.getElementById('googleAuthDevFallback');
+  const errEl = document.getElementById('googleAuthError');
+  if (errEl) errEl.style.display = 'none';
+
+  if (!_googleAuthConfig) {
+    try {
+      const resp = await fetch('/api/profile?auth_config=1');
+      if (resp.ok) {
+        _googleAuthConfig = await resp.json();
+      }
+    } catch (e) {
+      console.warn('Could not load auth config:', e);
+    }
+  }
+
+  const clientId = _googleAuthConfig && _googleAuthConfig.google_client_id;
+
+  if (clientId && window.google && window.google.accounts && window.google.accounts.id) {
+    try {
+      if (!_gisInitialized) {
+        window.google.accounts.id.initialize({
+          client_id: clientId,
+          callback: handleGoogleAuthCredential,
+          auto_select: false,
+          cancel_on_tap_outside: true
+        });
+        _gisInitialized = true;
+      }
+      if (container) {
+        container.innerHTML = '';
+        window.google.accounts.id.renderButton(container, {
+          theme: 'outline',
+          size: 'large',
+          shape: 'pill',
+          text: 'signin_with',
+          logo_alignment: 'left',
+          locale: 'it',
+          width: 280
+        });
+        container.style.display = '';
+      }
+      return;
+    } catch (e) {
+      console.warn('GIS render error:', e);
+    }
+  }
+
+  // Definitive Google sign-in button placeholder when client ID is not configured
+  if (container) {
+    container.innerHTML = `
+      <button type="button" id="btnGoogleSignInPlaceholder" style="display:inline-flex; align-items:center; justify-content:center; gap:10px; width:100%; max-width:280px; padding:10px 18px; border-radius:24px; background:#ffffff; color:#3c4043; border:1px solid #dadce0; font-size:0.88rem; font-weight:600; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.12); transition:all 0.15s ease;">
+        <svg viewBox="0 0 24 24" width="18" height="18" style="flex-shrink:0;">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+        </svg>
+        <span>Accedi con Google</span>
+      </button>
+    `;
+    const btn = document.getElementById('btnGoogleSignInPlaceholder');
+    if (btn) {
+      btn.onclick = () => {
+        const testSection = document.getElementById('testMockLoginAccordion');
+        if (testSection) {
+          testSection.open = true;
+          testSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+        showToast('Configura GOOGLE_CLIENT_ID in .env.local, oppure usa l\'opzione test sotto.');
+      };
+    }
+    container.style.display = '';
+  }
+}
+
+async function handleGoogleAuthCredential(response) {
+  const errEl = document.getElementById('googleAuthError');
+  if (errEl) errEl.style.display = 'none';
+
+  if (!response || !response.credential) {
+    if (errEl) {
+      errEl.textContent = 'Nessuna credenziale Google ricevuta.';
+      errEl.style.display = '';
+    }
+    return;
+  }
+
+  let data = null;
+  try {
+    const resp = await fetch('/api/profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'google',
+        credential: response.credential,
+        config: state.config || null,
+        exam_courses: (examsState && examsState.extraCourses) || []
+      })
+    });
+    if (resp.ok) {
+      data = await resp.json();
+    } else {
+      let errData = null;
+      try { errData = await resp.json(); } catch(_) {}
+      if (errData && errData.error) {
+        if (errEl) {
+          errEl.textContent = errData.error;
+          errEl.style.display = '';
+        }
+        return;
+      }
+      throw new Error(`HTTP ${resp.status}`);
+    }
+  } catch (e) {
+    // If backend is not available (e.g. running basic static server), handle mock tokens locally
+    if (response.credential && typeof response.credential === 'string' && response.credential.startsWith('mock_google_token:')) {
+      const parts = response.credential.split(':');
+      const email = (parts[1] || '').trim().toLowerCase();
+      const nick = parts[3] || (email.split('@')[0]);
+      const isProf = email.endsWith('@unimib.it') && !email.endsWith('@campus.unimib.it');
+      const isStudent = email.endsWith('@campus.unimib.it');
+      if (isProf || isStudent) {
+        data = {
+          ok: true,
+          nickname: nick,
+          email: email,
+          picture: '',
+          role: isProf ? 'professor' : 'student',
+          share_code: 'DEV' + Math.random().toString(36).substring(2, 6).toUpperCase(),
+          session_token: 'st_local_' + Date.now(),
+          config: state.config || null,
+          exam_courses: (examsState && examsState.extraCourses) || []
+        };
+      } else {
+        if (errEl) {
+          errEl.textContent = 'Accesso consentito esclusivamente con email istituzionale @campus.unimib.it (studenti) o @unimib.it (docenti).';
+          errEl.style.display = '';
+        }
+        return;
+      }
+    } else {
+      if (errEl) {
+        errEl.textContent = 'Errore di connessione al backend API. Per il supporto backend locale avvia "python3 dev_server.py".';
+        errEl.style.display = '';
+      }
+      return;
+    }
+  }
+
+  if (!data) return;
+
+  profileState.nickname     = data.nickname;
+  profileState.email        = data.email || '';
+  profileState.picture      = data.picture || '';
+  profileState.role         = data.role || (data.email && data.email.endsWith('@unimib.it') && !data.email.endsWith('@campus.unimib.it') ? 'professor' : 'student');
+  profileState.shareCode    = data.share_code;
+  profileState.sessionToken = data.session_token || null;
+  profileState.authType     = 'google_campus';
+  profileState.lastSync     = Date.now();
+
+  if (data.config && (!state.config || !state.config.corso)) {
+    state.config = data.config;
+    saveConfig(state.config);
+    applyConfig();
+    if (data.config.favorites && data.config.favorites.length > 0) {
+      setFilter('target');
+    }
+    loadCalendar(state.currentMonday);
+  }
+  if (data.exam_courses && data.exam_courses.length && (!examsState || !examsState.extraCourses.length)) {
+    if (examsState) {
+      examsState.extraCourses = data.exam_courses;
+      saveExamCourses(examsState.extraCourses);
+    }
+  }
+
+  saveProfileLocally();
+  syncGroupCloud();
+  renderProfileModal();
+  updateTimetableForRole();
+  if (profileState.role === 'professor') {
+    loadProfessorSchedule(true).then(() => {
+      if (state.activeTab === 'teachers') {
+        renderProfessorTimetable();
+      } else {
+        loadCalendar(state.currentMonday);
+      }
+    });
+  } else {
+    professorScheduleState.lessons = [];
+    if (state.activeTab === 'teachers') {
+      initTeachersView();
+    } else {
+      loadCalendar(state.currentMonday);
+    }
+  }
+  const roleLabel = profileState.role === 'professor' ? 'Docente' : 'Studente';
+  showToast(`Accesso effettuato come ${roleLabel}: ${data.email || data.nickname}!`);
+}
+
+async function handleMockStudentLogin() {
+  const mockEmail = 'm.rossi@campus.unimib.it';
+  const mockToken = `mock_google_token:${mockEmail}:sub_student_${Date.now()}:Mario Rossi`;
+  await handleGoogleAuthCredential({ credential: mockToken });
+}
+
+async function handleMockProfessorLogin() {
+  const mockEmail = 'mario.rossi@unimib.it';
+  const mockToken = `mock_google_token:${mockEmail}:sub_prof_${Date.now()}:Prof. Mario Rossi`;
+  await handleGoogleAuthCredential({ credential: mockToken });
+}
+
+async function handleMockGoogleLogin() {
+  const email = prompt(
+    'Inserisci email di prova:\n• Studente: i.cognome@campus.unimib.it\n• Docente: nome.cognome@unimib.it',
+    'm.rossi@campus.unimib.it'
+  );
+  if (!email) return;
+  const cleanEmail = email.trim().toLowerCase();
+  if (!cleanEmail.endsWith('@campus.unimib.it') && !cleanEmail.endsWith('@unimib.it')) {
+    alert('Accesso consentito esclusivamente con email istituzionale @campus.unimib.it (studenti) o @unimib.it (docenti)');
+    return;
+  }
+  const isProf = cleanEmail.endsWith('@unimib.it') && !cleanEmail.endsWith('@campus.unimib.it');
+  const rawName = cleanEmail.split('@')[0].replace('.', ' ');
+  const formattedName = isProf ? `Prof. ${rawName}` : rawName;
+  const mockToken = `mock_google_token:${cleanEmail}:sub_custom_${Date.now()}:${formattedName}`;
+  await handleGoogleAuthCredential({ credential: mockToken });
+}
+
+function handleOpenTeacherSchedule() {
+  closeModal('profileModal');
+  const tabBtn = document.getElementById('tabTeachers');
+  if (tabBtn) tabBtn.click();
+  const searchInput = document.getElementById('teachersSearchInput');
+  if (searchInput && profileState.nickname) {
+    const cleanNick = profileState.nickname.replace(/^Prof\.\s*/i, '').trim();
+    searchInput.value = cleanNick;
+    searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+  showToast(`Apertura orario docenti per ${profileState.nickname}...`);
+}
+
+async function handleWipeAccount() {
+  const confirmed = confirm(
+    'Sei sicuro di voler eliminare definitivamente il tuo profilo e tutti i dati dal server?\n\n' +
+    'Diritto all\'oblio (Art. 17 GDPR):\n' +
+    '• L\'account, il codice calendario condiviso e le preferenze cloud verranno eliminati istantaneamente.\n' +
+    '• Questa azione è irreversibile.'
+  );
+  if (!confirmed) return;
+
+  if (profileState.sessionToken) {
+    try {
+      await fetch('/api/profile?wipe=1', {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${profileState.sessionToken}` }
+      });
+    } catch (e) {
+      console.warn('Wipe request failed:', e);
+    }
+  }
+
+  profileState.shareCode    = null;
+  profileState.nickname     = '';
+  profileState.email        = '';
+  profileState.picture      = '';
+  profileState.role         = 'student';
+  profileState.sessionToken = null;
+  profileState.recoveryCode = null;
+  profileState.lastSync     = null;
+  profileState._pin         = null;
+  localStorage.removeItem(SESSION_TOKEN_KEY);
+  localStorage.removeItem(ACTIVE_GROUP_KEY);
+  saveProfileLocally();
+  friendsState.groups        = [];
+  friendsState.activeGroupId = null;
+  friendsState.groupInfo     = null;
+  friendsState.friends       = [];
+  friendsState.events        = [];
+  renderProfileModal();
+  renderGroupSwitcher();
+  renderFriendChips();
+  renderFriendsView();
+  updateTimetableForRole();
+  showToast('Account e dati eliminati con successo (GDPR Art. 17)');
+  closeModal('profileModal');
+}
+
 // Open the Profile modal, showing logged-in or logged-out state
 function openProfileModal() {
   openModal('profileModal');
@@ -6301,15 +7081,58 @@ function openProfileModal() {
 
 function renderProfileModal() {
   const loggedIn = Boolean(profileState.nickname && profileState.shareCode);
-  document.getElementById('profileLoggedOut').style.display = loggedIn ? 'none' : '';
-  document.getElementById('profileLoggedIn').style.display  = loggedIn ? ''     : 'none';
+  const loggedOutEl = document.getElementById('profileLoggedOut');
+  const loggedInEl = document.getElementById('profileLoggedIn');
+  if (loggedOutEl) loggedOutEl.style.display = loggedIn ? 'none' : '';
+  if (loggedInEl) loggedInEl.style.display  = loggedIn ? ''     : 'none';
 
   if (loggedIn) {
-    document.getElementById('profileDisplayNickname').textContent = profileState.nickname;
-    document.getElementById('profileDisplayId').textContent       = profileState.shareCode;
-    document.getElementById('profileSyncText').textContent        = profileState.lastSync
-      ? `Sincronizzato il ${new Date(profileState.lastSync).toLocaleTimeString('it-IT')}`
-      : 'Non ancora sincronizzato';
+    const isProf = profileState.role === 'professor';
+
+    const nickEl = document.getElementById('profileDisplayNickname');
+    if (nickEl) nickEl.textContent = profileState.nickname;
+
+    const roleBadge = document.getElementById('profileRoleBadge');
+    if (roleBadge) {
+      roleBadge.textContent = isProf ? '🏛️ Docente' : '🎓 Studente';
+      roleBadge.className = isProf ? 'profile-role-badge professor' : 'profile-role-badge student';
+    }
+
+    const emailEl = document.getElementById('profileDisplayEmail');
+    if (emailEl) {
+      if (profileState.email) {
+        emailEl.textContent = profileState.email;
+        emailEl.style.display = 'block';
+      } else {
+        emailEl.textContent = profileState.authType === 'pin' ? 'Account PIN (legacy)' : '';
+        emailEl.style.display = profileState.authType === 'pin' ? 'block' : 'none';
+      }
+    }
+
+    const avatarEl = document.getElementById('profileAvatar');
+    if (avatarEl) {
+      avatarEl.className = isProf ? 'profile-avatar-circle professor' : 'profile-avatar-circle student';
+      if (profileState.picture) {
+        avatarEl.innerHTML = `<img src="${escapeHtml(profileState.picture)}" alt="${escapeHtml(profileState.nickname)}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">`;
+      } else {
+        const initial = (profileState.nickname || (isProf ? 'P' : 'S')).charAt(0).toUpperCase();
+        avatarEl.textContent = initial;
+      }
+    }
+
+    const teacherBox = document.getElementById('profileTeacherQuickBox');
+    if (teacherBox) {
+      teacherBox.style.display = isProf ? '' : 'none';
+    }
+
+    const idEl = document.getElementById('profileDisplayId');
+    if (idEl) idEl.textContent = profileState.shareCode;
+    const syncEl = document.getElementById('profileSyncText');
+    if (syncEl) {
+      syncEl.textContent = profileState.lastSync
+        ? `Sincronizzato il ${new Date(profileState.lastSync).toLocaleTimeString('it-IT')}`
+        : 'Non ancora sincronizzato';
+    }
 
     const recBox = document.getElementById('profileRecoveryCodeBox');
     const recDisplay = document.getElementById('profileRecoveryCodeDisplay');
@@ -6322,22 +7145,33 @@ function renderProfileModal() {
       }
     }
   } else {
+    // Logged out: initialize GIS UI
+    initGoogleAuthUi();
+
     // Reset forms
     showProfileTab('create');
-    document.getElementById('profileNickname').value    = '';
-    document.getElementById('profilePin').value         = '';
-    document.getElementById('profilePinConfirm').value  = '';
-    document.getElementById('profileCreateError').style.display = 'none';
+    const nickInput = document.getElementById('profileNickname');
+    if (nickInput) nickInput.value = '';
+    const pinInput = document.getElementById('profilePin');
+    if (pinInput) pinInput.value = '';
+    const pinConf = document.getElementById('profilePinConfirm');
+    if (pinConf) pinConf.value = '';
+    const createErr = document.getElementById('profileCreateError');
+    if (createErr) createErr.style.display = 'none';
+
     const loginNickEl = document.getElementById('profileLoginNickname');
     if (loginNickEl) loginNickEl.value = '';
-    document.getElementById('profileLoginPin').value    = '';
-    document.getElementById('profileLoginError').style.display  = 'none';
+    const loginPinEl = document.getElementById('profileLoginPin');
+    if (loginPinEl) loginPinEl.value = '';
+    const loginErr = document.getElementById('profileLoginError');
+    if (loginErr) loginErr.style.display = 'none';
 
     // Hide recovery form and show login form if user switches back
     const recForm = document.getElementById('profileRecoverForm');
     if (recForm) recForm.style.display = 'none';
     const loginForm = document.getElementById('profileLoginForm');
-    if (loginForm && document.getElementById('profileTabLogin').classList.contains('active')) {
+    const tabLogin = document.getElementById('profileTabLogin');
+    if (loginForm && tabLogin && tabLogin.classList.contains('active')) {
       loginForm.style.display = '';
     }
 
@@ -6697,6 +7531,9 @@ function handleLogoutProfile() {
   }
   profileState.shareCode    = null;
   profileState.nickname     = '';
+  profileState.email        = '';
+  profileState.picture      = '';
+  profileState.role         = 'student';
   profileState.sessionToken = null;
   profileState.recoveryCode = null;
   profileState.lastSync     = null;
@@ -6713,6 +7550,15 @@ function handleLogoutProfile() {
   renderGroupSwitcher();
   renderFriendChips();
   renderFriendsView();
+  localStorage.removeItem(PROF_ASSOCIATED_TEACHER_KEY);
+  professorScheduleState.lessons = [];
+  professorScheduleState.showColleagueSearch = false;
+  updateTimetableForRole();
+  if (state.activeTab === 'teachers') {
+    initTeachersView();
+  } else {
+    loadCalendar(state.currentMonday);
+  }
   showToast('Profilo rimosso da questo dispositivo');
 }
 
@@ -8632,3 +9478,1467 @@ document.addEventListener('visibilitychange', () => {
     loadFriendsCalendar();
   }
 });
+
+
+// ══════════════════════════════════════════════════════════════
+//  PROFESSOR TIMETABLE, TEACHER NOTES & CO-DOCENZA LOGIC
+// ══════════════════════════════════════════════════════════════
+
+function initTeacherNotes() {
+  try {
+    const rawNotes = localStorage.getItem(TEACHER_NOTES_STORAGE_KEY);
+    if (rawNotes) {
+      const parsed = JSON.parse(rawNotes);
+      if (parsed && typeof parsed === 'object') {
+        teacherNotesState.courseNotes = parsed.courseNotes || {};
+        teacherNotesState.lessonNotes = parsed.lessonNotes || {};
+      }
+    }
+    const rawTeachers = localStorage.getItem(DESIGNATED_TEACHERS_STORAGE_KEY);
+    if (rawTeachers) {
+      const parsed = JSON.parse(rawTeachers);
+      if (parsed && typeof parsed === 'object') {
+        teacherNotesState.designatedTeachers = parsed || {};
+      }
+    }
+  } catch (e) {
+    console.warn('Error reading local teacher notes:', e);
+  }
+
+  // Sync with backend API in background
+  syncTeacherNotesFromApi();
+}
+
+async function syncTeacherNotesFromApi() {
+  try {
+    const resp = await fetch('/api/teacher_notes?all=1');
+    if (!resp.ok) return;
+    const data = await resp.json();
+    if (data && data.notes) {
+      Object.keys(data.notes).forEach(k => {
+        const item = data.notes[k];
+        if (k.startsWith('course_note:')) {
+          const code = k.replace('course_note:', '');
+          teacherNotesState.courseNotes[code] = item;
+        } else if (k.startsWith('lesson_note:')) {
+          const id = k.replace('lesson_note:', '');
+          teacherNotesState.lessonNotes[id] = item;
+        }
+      });
+    }
+    if (data && data.designated_teachers) {
+      teacherNotesState.designatedTeachers = {
+        ...teacherNotesState.designatedTeachers,
+        ...data.designated_teachers
+      };
+    }
+    saveTeacherNotesLocally();
+    if (state.activeTab === 'timetable') {
+      if (profileState.role === 'professor') {
+        renderProfessorTimetable();
+      } else {
+        renderEvents();
+      }
+    }
+  } catch (e) {
+    // Offline / fallback to local storage
+  }
+}
+
+function saveTeacherNotesLocally() {
+  try {
+    localStorage.setItem(TEACHER_NOTES_STORAGE_KEY, JSON.stringify({
+      courseNotes: teacherNotesState.courseNotes,
+      lessonNotes: teacherNotesState.lessonNotes
+    }));
+    localStorage.setItem(DESIGNATED_TEACHERS_STORAGE_KEY, JSON.stringify(
+      teacherNotesState.designatedTeachers
+    ));
+  } catch (e) {
+    console.warn('Error saving local teacher notes:', e);
+  }
+}
+
+function cleanCourseCode(code) {
+  if (!code) return '';
+  return String(code).trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+function isCourseTaughtByCurrentProfessor(courseCode, courseTitle, lessonId) {
+  if (!profileState || profileState.role !== 'professor') {
+    return false;
+  }
+
+  const cleanTargetCode = cleanCourseCode(courseCode);
+  const normTargetTitle = typeof normalizeSearchText === 'function' ? normalizeSearchText(courseTitle) : (courseTitle || '').toLowerCase().trim();
+  const targetId = lessonId ? String(lessonId).trim() : '';
+
+  // 1. Check in professorScheduleState.lessons (all lessons assigned to current professor)
+  const profLessons = professorScheduleState.lessons || [];
+  if (profLessons.length > 0) {
+    const match = profLessons.some(l => {
+      if (targetId && String(l.id).trim() === targetId) return true;
+      if (cleanTargetCode && cleanCourseCode(l.course_code) === cleanTargetCode) return true;
+      if (normTargetTitle) {
+        const lTitle = typeof normalizeSearchText === 'function' ? normalizeSearchText(l.course || l.name || '') : (l.course || l.name || '').toLowerCase().trim();
+        if (lTitle && (lTitle === normTargetTitle || (normTargetTitle.length > 5 && (lTitle.includes(normTargetTitle) || normTargetTitle.includes(lTitle))))) {
+          return true;
+        }
+      }
+      return false;
+    });
+    if (match) return true;
+  }
+
+  // 2. Check in professor's associated teacher courses
+  const teacherCode = localStorage.getItem(PROF_ASSOCIATED_TEACHER_KEY);
+  if (teacherCode && teachersState.allTeachers && teachersState.allTeachers.length) {
+    const teacher = teachersState.allTeachers.find(t => t.code === teacherCode);
+    if (teacher && Array.isArray(teacher.courses)) {
+      const match = teacher.courses.some(c => {
+        if (cleanTargetCode && cleanCourseCode(c.code) === cleanTargetCode) return true;
+        if (normTargetTitle) {
+          const cTitle = typeof normalizeSearchText === 'function' ? normalizeSearchText(c.name || '') : (c.name || '').toLowerCase().trim();
+          if (cTitle && (cTitle === normTargetTitle || (normTargetTitle.length > 5 && (cTitle.includes(normTargetTitle) || normTargetTitle.includes(cTitle))))) {
+            return true;
+          }
+        }
+        return false;
+      });
+      if (match) return true;
+    }
+  }
+
+  return false;
+}
+
+function getTeacherNoteFor(courseCode, lessonId) {
+  if (lessonId && teacherNotesState.lessonNotes[lessonId]) {
+    return teacherNotesState.lessonNotes[lessonId];
+  }
+  const clean = cleanCourseCode(courseCode);
+  if (clean && teacherNotesState.courseNotes[clean]) {
+    return teacherNotesState.courseNotes[clean];
+  }
+  return null;
+}
+
+function getDesignatedTeacherFor(lessonId) {
+  if (!lessonId) return null;
+  return teacherNotesState.designatedTeachers[lessonId] || null;
+}
+
+function getVisibleTeacherNoteFor(courseCode, lessonId, courseTitle) {
+  if (!isCourseTaughtByCurrentProfessor(courseCode, courseTitle, lessonId)) {
+    return null;
+  }
+  return getTeacherNoteFor(courseCode, lessonId);
+}
+
+function getVisibleDesignatedTeacherFor(lessonId, courseCode, courseTitle) {
+  if (!isCourseTaughtByCurrentProfessor(courseCode, courseTitle, lessonId)) {
+    return null;
+  }
+  return getDesignatedTeacherFor(lessonId);
+}
+
+async function saveTeacherNote({ courseCode, lessonId, note, authorName, authorEmail, forEntireCourse }) {
+  const clean = cleanCourseCode(courseCode);
+  const noteObj = {
+    note: (note || '').trim(),
+    author: authorName || profileState.nickname || 'Docente',
+    email: authorEmail || profileState.email || '',
+    updated_at: new Date().toISOString()
+  };
+
+  if (lessonId && !forEntireCourse) {
+    teacherNotesState.lessonNotes[lessonId] = noteObj;
+  } else if (clean) {
+    teacherNotesState.courseNotes[clean] = noteObj;
+  }
+
+  saveTeacherNotesLocally();
+
+  try {
+    await fetch('/api/teacher_notes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'set_note',
+        course_code: courseCode || '',
+        lesson_id: lessonId || '',
+        note: (note || '').trim(),
+        author_name: authorName || profileState.nickname || 'Docente',
+        author_email: authorEmail || profileState.email || ''
+      })
+    });
+  } catch (e) {
+    // offline
+  }
+}
+
+async function deleteTeacherNote({ courseCode, lessonId, forEntireCourse }) {
+  const clean = cleanCourseCode(courseCode);
+  if (lessonId) {
+    delete teacherNotesState.lessonNotes[lessonId];
+  }
+  if (clean && (forEntireCourse || !lessonId)) {
+    delete teacherNotesState.courseNotes[clean];
+  }
+  saveTeacherNotesLocally();
+
+  try {
+    await fetch('/api/teacher_notes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'delete_note',
+        course_code: courseCode || '',
+        lesson_id: lessonId || ''
+      })
+    });
+  } catch (e) {
+    // offline
+  }
+}
+
+async function saveDesignatedTeacher({ lessonId, teacherName, authorName }) {
+  if (!lessonId) return;
+  if (!teacherName) {
+    delete teacherNotesState.designatedTeachers[lessonId];
+  } else {
+    teacherNotesState.designatedTeachers[lessonId] = teacherName;
+  }
+  saveTeacherNotesLocally();
+
+  try {
+    await fetch('/api/teacher_notes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'set_designated_teacher',
+        lesson_id: lessonId,
+        teacher_name: teacherName || '',
+        author_name: authorName || profileState.nickname || 'Docente'
+      })
+    });
+  } catch (e) {
+    // offline
+  }
+}
+
+function parseTeachersList(docenteStr) {
+  if (!docenteStr) return [];
+  const parts = docenteStr.split(/[,;]|\s+(?:e|ed|and)\s+/i)
+    .map(s => s.trim())
+    .filter(s => s.length > 1 && !/^(docente|non specificato|nd|tbd)$/i.test(s));
+  return Array.from(new Set(parts));
+}
+
+function getMockProfessorLessons(profName, centerDate) {
+  const teacherName = profName || (profileState && profileState.nickname) || 'Prof. Mario Rossi';
+  const refDate = centerDate ? parseAnyDate(centerDate) : new Date();
+  const monday = getMonday(refDate || new Date());
+
+  const dates = [];
+  // Spanning -8 to +16 weeks (25 weeks of academic semester)
+  for (let week = -8; week <= 16; week++) {
+    for (let day = 0; day < 5; day++) {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + (week * 7) + day);
+      dates.push({
+        dateStr: formatFormattedDate(d),
+        dayIndex: day,
+        dayName: ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì'][day]
+      });
+    }
+  }
+
+  const templates = [
+    {
+      course: 'Programmazione I',
+      course_code: 'F1001',
+      aula: 'U1-01',
+      start_time: '09:30',
+      end_time: '11:30',
+      dayIndex: 0,
+      docente: `${teacherName}, Prof.ssa Laura Bianchi`
+    },
+    {
+      course: 'Ingegneria del Software',
+      course_code: 'F1004',
+      aula: 'U14-02',
+      start_time: '14:30',
+      end_time: '16:30',
+      dayIndex: 0,
+      docente: teacherName
+    },
+    {
+      course: 'Algoritmi e Strutture Dati',
+      course_code: 'F1002',
+      aula: 'U2-04',
+      start_time: '11:30',
+      end_time: '13:30',
+      dayIndex: 1,
+      docente: `${teacherName}, Prof. Giuseppe Verdi`
+    },
+    {
+      course: 'Ingegneria del Software',
+      course_code: 'F1004',
+      aula: 'U14-02',
+      start_time: '09:30',
+      end_time: '11:30',
+      dayIndex: 2,
+      docente: teacherName
+    },
+    {
+      course: 'Basi di Dati',
+      course_code: 'F1003',
+      aula: 'U6-01',
+      start_time: '14:30',
+      end_time: '16:30',
+      dayIndex: 2,
+      docente: teacherName
+    },
+    {
+      course: 'Algoritmi e Strutture Dati',
+      course_code: 'F1002',
+      aula: 'U2-04',
+      start_time: '09:30',
+      end_time: '11:30',
+      dayIndex: 3,
+      docente: `${teacherName}, Prof. Giuseppe Verdi`
+    },
+    {
+      course: 'Programmazione I',
+      course_code: 'F1001',
+      aula: 'U1-02 (Lab)',
+      start_time: '09:30',
+      end_time: '12:30',
+      dayIndex: 4,
+      docente: `${teacherName}, Prof.ssa Laura Bianchi`
+    },
+    {
+      course: 'Laboratorio Avanzato',
+      course_code: 'F1005',
+      aula: 'U1-03 (Lab)',
+      start_time: '14:00',
+      end_time: '17:00',
+      dayIndex: 4,
+      docente: teacherName
+    }
+  ];
+
+  const lessons = [];
+  let idCounter = 1;
+
+  dates.forEach(({ dateStr, dayIndex, dayName }) => {
+    const matching = templates.filter(t => t.dayIndex === dayIndex);
+    matching.forEach(t => {
+      lessons.push({
+        id: `mock_prof_lesson_${idCounter++}`,
+        date: dateStr,
+        day_name: dayName,
+        start_time: t.start_time,
+        end_time: t.end_time,
+        course: t.course,
+        course_code: t.course_code,
+        aula: t.aula,
+        docente: t.docente,
+        type: 'Lezione'
+      });
+    });
+  });
+
+  return lessons;
+}
+
+function formatWeekRangeLabel(mondayDateStr) {
+  if (!mondayDateStr) return '';
+  const dtMon = parseAnyDate(mondayDateStr);
+  if (!dtMon || isNaN(dtMon.getTime())) return '';
+  const dtFri = new Date(dtMon);
+  dtFri.setDate(dtMon.getDate() + 4);
+  const mMon = MONTHS_NAMES_IT[dtMon.getMonth()];
+  const mFri = MONTHS_NAMES_IT[dtFri.getMonth()];
+  if (dtMon.getMonth() === dtFri.getMonth()) {
+    return `${dtMon.getDate()} - ${dtFri.getDate()} ${mMon} ${dtMon.getFullYear()}`;
+  } else {
+    return `${dtMon.getDate()} ${mMon} - ${dtFri.getDate()} ${mFri} ${dtFri.getFullYear()}`;
+  }
+}
+
+function getLessonsForWeek(allLessons, mondayDateStr) {
+  if (!mondayDateStr || !Array.isArray(allLessons)) return [];
+  const dtMon = parseAnyDate(mondayDateStr);
+  if (!dtMon || isNaN(dtMon.getTime())) return [];
+  const weekIsoSet = new Set();
+  const weekFormattedSet = new Set();
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(dtMon);
+    d.setDate(dtMon.getDate() + i);
+    weekFormattedSet.add(formatFormattedDate(d));
+    weekIsoSet.add(formatDateIso(d));
+  }
+  return allLessons.filter(l => {
+    const d = parseAnyDate(l.date);
+    if (!d || isNaN(d.getTime())) return false;
+    const fDate = formatFormattedDate(d);
+    const iDate = formatDateIso(d);
+    return weekFormattedSet.has(fDate) || weekIsoSet.has(iDate);
+  });
+}
+
+async function loadProfessorWeeklyCalendar(mondayDateStr, forceRefresh = false) {
+  const requestId = ++state.requestId;
+  showLoading(true);
+
+  if (!professorScheduleState.lessons || !professorScheduleState.lessons.length || forceRefresh) {
+    await loadProfessorSchedule(forceRefresh);
+  }
+
+  const dtMon = parseAnyDate(mondayDateStr);
+  if (!dtMon || isNaN(dtMon.getTime())) {
+    showLoading(false);
+    return;
+  }
+
+  const dayNames = ['LUN', 'MAR', 'MER', 'GIO', 'VEN'];
+  const dayLabels = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì'];
+  const giorni = [];
+  for (let i = 0; i < 5; i++) {
+    const d = new Date(dtMon);
+    d.setDate(dtMon.getDate() + i);
+    const dStr = formatFormattedDate(d);
+    giorni.push({
+      label: `${dayLabels[i]} ${d.getDate()}`,
+      data: dStr,
+      name: dayNames[i],
+      date: dStr
+    });
+  }
+
+  let weekEvents = getLessonsForWeek(professorScheduleState.lessons || [], mondayDateStr);
+  if (!weekEvents.length) {
+    const extra = getMockProfessorLessons(profileState.nickname, mondayDateStr);
+    professorScheduleState.lessons = (professorScheduleState.lessons || []).concat(extra);
+    weekEvents = getLessonsForWeek(professorScheduleState.lessons, mondayDateStr);
+  }
+  const weekLabel = formatWeekRangeLabel(mondayDateStr);
+
+  state.currentMonday = mondayDateStr;
+  state.calendarData = {
+    events: weekEvents,
+    giorni: giorni,
+    week_label: weekLabel
+  };
+
+  renderCalendar();
+  if (requestId === state.requestId) {
+    showLoading(false);
+  }
+}
+
+function updateTimetableForRole() {
+  const isProf = profileState.role === 'professor';
+  const profSection = document.getElementById('professorTimetableSection');
+  const stdSearchSection = document.getElementById('teachersStandardSearchSection');
+  const quickExternalBtn = document.getElementById('btnQuickAddExternal');
+  const filterToggleGroup = document.getElementById('timetableFilterToggleGroup');
+  const profBanner = document.getElementById('profTimetableInfoBanner');
+  const searchInput = document.getElementById('searchInput');
+
+  if (quickExternalBtn) {
+    quickExternalBtn.style.display = isProf ? 'none' : '';
+  }
+  if (filterToggleGroup) {
+    filterToggleGroup.style.display = isProf ? 'none' : 'flex';
+  }
+  if (profBanner) {
+    profBanner.style.display = isProf ? 'flex' : 'none';
+  }
+  if (searchInput) {
+    searchInput.placeholder = isProf
+      ? 'Cerca tra i tuoi corsi o aule...'
+      : 'Cerca per corso, docente o aula...';
+  }
+
+  if (profSection) {
+    profSection.style.display = isProf ? 'block' : 'none';
+  }
+  if (stdSearchSection) {
+    if (isProf) {
+      stdSearchSection.style.display = professorScheduleState.showColleagueSearch ? 'block' : 'none';
+    } else {
+      stdSearchSection.style.display = 'block';
+    }
+  }
+
+  const btnToggleColleague = document.getElementById('btnProfToggleColleagueSearch');
+  if (btnToggleColleague && isProf) {
+    btnToggleColleague.innerHTML = professorScheduleState.showColleagueSearch
+      ? `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Chiudi ricerca`
+      : `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Cerca colleghi`;
+  }
+
+  if (isProf) {
+    renderProfessorPresentationCard();
+    if (state.activeTab === 'teachers') {
+      renderProfessorTimetable();
+    }
+  }
+
+  if (state.activeTab === 'timetable') {
+    const subtitle = document.getElementById('headerSubtitle');
+    if (subtitle) {
+      if (isProf) {
+        subtitle.textContent = `Orario lezioni · ${profileState.nickname || 'Docente UNIMIB'}`;
+      } else {
+        const anniStr = (state.config && Array.isArray(state.config.anniLabels) && state.config.anniLabels.length)
+          ? ` · ${state.config.anniLabels.join(', ')}`
+          : '';
+        subtitle.textContent = (state.config && state.config.corsoLabel)
+          ? `${state.config.corsoLabel}${anniStr}`
+          : 'Seleziona il tuo corso';
+      }
+    }
+  } else if (state.activeTab === 'teachers') {
+    const subtitle = document.getElementById('headerSubtitle');
+    if (subtitle) {
+      if (isProf) {
+        subtitle.textContent = `Cattedra docente · ${profileState.nickname || 'Docente UNIMIB'}`;
+      } else {
+        subtitle.textContent = teachersState.selectedTeacher
+          ? `Prof. ${teachersState.selectedTeacher.name}`
+          : 'Calendario docenti';
+      }
+    }
+  }
+}
+
+function renderProfessorPresentationCard() {
+  const nameEl = document.getElementById('profHeaderName');
+  const emailEl = document.getElementById('profHeaderEmail');
+  const avatarEl = document.getElementById('profAvatarCircle');
+  const badgeCount = document.getElementById('profLessonsCountBadge');
+
+  const displayName = profileState.nickname || 'Professore UNIMIB';
+  if (nameEl) nameEl.textContent = displayName;
+  if (emailEl) emailEl.textContent = profileState.email || 'docente@unimib.it';
+
+  if (avatarEl) {
+    if (profileState.picture) {
+      avatarEl.innerHTML = `<img src="${escapeHtml(profileState.picture)}" alt="${escapeHtml(displayName)}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">`;
+    } else {
+      const clean = displayName.replace(/^Prof\.\s*/i, '').trim();
+      avatarEl.textContent = clean ? clean.charAt(0).toUpperCase() : 'P';
+    }
+  }
+
+  if (badgeCount) {
+    const count = (professorScheduleState.lessons || []).length;
+    badgeCount.textContent = `${count} ${count === 1 ? 'lezione' : 'lezioni'} in cattedra`;
+  }
+}
+
+async function loadProfessorSchedule(forceRefresh = false) {
+  const spinner = document.getElementById('profSpinnerContainer');
+  const container = document.getElementById('profUnifiedLessonsContainer');
+  const heroContainer = document.getElementById('profHeroContainer');
+  const controlsContainer = document.getElementById('profControlsContainer');
+  if (spinner) spinner.style.display = 'flex';
+  if (container) container.style.display = 'none';
+  if (heroContainer) heroContainer.style.display = 'none';
+  if (controlsContainer) controlsContainer.style.display = 'none';
+
+  try {
+    let teacherCode = localStorage.getItem(PROF_ASSOCIATED_TEACHER_KEY);
+    if (!teacherCode && teachersState.allTeachers && teachersState.allTeachers.length) {
+      const myName = (profileState.nickname || '').replace(/^Prof\.\s*/i, '').toLowerCase().trim();
+      const match = teachersState.allTeachers.find(t => {
+        const tName = (t.name || '').toLowerCase();
+        return (myName && tName.includes(myName)) || (myName && myName.includes(tName));
+      });
+      if (match) {
+        teacherCode = match.code;
+        localStorage.setItem(PROF_ASSOCIATED_TEACHER_KEY, teacherCode);
+      }
+    }
+
+    if (teacherCode) {
+      try {
+        const resp = await fetchJson(`/api/teachers?docente=${encodeURIComponent(teacherCode)}&all_events=1${forceRefresh ? '&refresh=1' : ''}`);
+        if (resp && resp.events && resp.events.length) {
+          professorScheduleState.lessons = resp.events;
+        } else {
+          professorScheduleState.lessons = getMockProfessorLessons(profileState.nickname);
+        }
+      } catch (e) {
+        professorScheduleState.lessons = getMockProfessorLessons(profileState.nickname);
+      }
+    } else {
+      professorScheduleState.lessons = getMockProfessorLessons(profileState.nickname);
+    }
+
+    // Sort chronologically by date and time
+    professorScheduleState.lessons.sort((a, b) => {
+      const da = parseAnyDate(a.date);
+      const db = parseAnyDate(b.date);
+      if (da - db !== 0) return da - db;
+      return (a.start_time || '').localeCompare(b.start_time || '');
+    });
+
+    renderProfessorPresentationCard();
+    renderProfessorTimetable();
+  } catch (err) {
+    console.error('Error loading professor schedule:', err);
+    professorScheduleState.lessons = getMockProfessorLessons(profileState.nickname);
+    renderProfessorPresentationCard();
+    renderProfessorTimetable();
+  } finally {
+    if (spinner) spinner.style.display = 'none';
+    if (container) container.style.display = '';
+    if (heroContainer) heroContainer.style.display = '';
+    if (controlsContainer) controlsContainer.style.display = '';
+  }
+}
+
+function createProfessorLessonCard(l) {
+  const card = document.createElement('div');
+  card.className = 'prof-lesson-card';
+
+  const noteData = getTeacherNoteFor(l.course_code, l.id);
+  const designatedTeacher = getDesignatedTeacherFor(l.id);
+  const teachersList = parseTeachersList(l.docente);
+  const hasMultipleTeachers = teachersList.length > 1;
+
+  let coTeacherSectionHtml = '';
+  if (hasMultipleTeachers || teachersList.length > 0) {
+    const optionsHtml = [
+      `<option value="">Tutti i docenti del corso (Co-docenza)</option>`,
+      ...teachersList.map(t => `<option value="${escapeHtml(t)}" ${designatedTeacher === t ? 'selected' : ''}>${escapeHtml(t)}</option>`)
+    ].join('');
+
+    coTeacherSectionHtml = `
+      <div class="prof-co-teacher-section">
+        <label style="font-size:0.75rem; font-weight:600; color:var(--text-secondary); display:flex; align-items:center; gap:4px; margin-bottom:4px;">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Assegna docente a questa specifica lezione:
+        </label>
+        <select class="prof-co-teacher-select" data-lesson-id="${escapeHtml(l.id)}">
+          ${optionsHtml}
+        </select>
+        ${designatedTeacher ? `
+          <div style="font-size:0.75rem; color:#34D399; margin-top:4px; font-weight:600; display:flex; align-items:center; gap:4px;">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            Incaricato per questa data: ${escapeHtml(designatedTeacher)}
+          </div>` : ''}
+      </div>
+    `;
+  }
+
+  let noteSectionHtml = '';
+  if (noteData && noteData.note) {
+    noteSectionHtml = `
+      <div class="prof-note-section has-note">
+        <div class="prof-note-header">
+          <span class="prof-note-label">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="display:inline-block; vertical-align:-1px; margin-right:3px;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            Nota pubblica (${escapeHtml(noteData.author || 'Docente')}):
+          </span>
+          <button type="button" class="btn-text-action btn-edit-note" data-lesson-id="${escapeHtml(l.id)}" data-course-code="${escapeHtml(l.course_code || '')}" data-course="${escapeHtml(l.course || '')}" data-meta="${escapeHtml(l.date + ' ' + l.start_time)}">
+            Modifica
+          </button>
+        </div>
+        <div class="prof-note-text">${escapeHtml(noteData.note)}</div>
+      </div>
+    `;
+  } else {
+    noteSectionHtml = `
+      <div class="prof-note-section no-note">
+        <button type="button" class="btn-secondary btn-add-note" data-lesson-id="${escapeHtml(l.id)}" data-course-code="${escapeHtml(l.course_code || '')}" data-course="${escapeHtml(l.course || '')}" data-meta="${escapeHtml(l.date + ' ' + l.start_time)}" style="width:100%; font-size:0.78rem; padding:6px 10px; display:flex; align-items:center; justify-content:center; gap:5px;">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Aggiungi nota visibile agli studenti
+        </button>
+      </div>
+    `;
+  }
+
+  const itDate = formatDateItalianLong(l.date);
+
+  card.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; flex-wrap:wrap;">
+      <div class="prof-lesson-date-badge">
+        <span style="font-weight:700;">${escapeHtml(itDate)}</span>
+        <span style="color:var(--text-secondary); font-size:0.78rem;">${escapeHtml(l.start_time)} - ${escapeHtml(l.end_time)}</span>
+      </div>
+      <button type="button" class="btn-secondary btn-export-single-ics" data-lesson-id="${escapeHtml(l.id)}" title="Esporta solo questa lezione in calendario" style="font-size:0.74rem; padding:4px 9px; width:auto; display:flex; align-items:center; gap:4px;">
+        <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        .ics
+      </button>
+    </div>
+
+    <h3 style="font-size:1.02rem; font-weight:700; margin:8px 0 4px; color:var(--text-primary);">
+      ${highlightMatch(l.course || 'Lezione', professorScheduleState.searchQuery)}
+    </h3>
+
+    <div style="display:flex; flex-direction:column; gap:4px; font-size:0.8rem; color:var(--text-secondary); margin-bottom:10px;">
+      <div>
+        <span style="font-weight:600;">Aula:</span> <strong style="color:var(--text-primary);">${highlightMatch(l.aula || 'Non specificata', professorScheduleState.searchQuery)}</strong> ${renderBuildingBadgeHtml(l.aula)}
+      </div>
+      <div>
+        <span style="font-weight:600;">Docenti del corso:</span> ${highlightMatch(l.docente || 'Non specificato', professorScheduleState.searchQuery)}
+      </div>
+    </div>
+
+    ${coTeacherSectionHtml}
+    ${noteSectionHtml}
+  `;
+
+  // Bind co-teacher change listener
+  const selectEl = card.querySelector ? card.querySelector('.prof-co-teacher-select') : null;
+  if (selectEl) {
+    selectEl.addEventListener('change', async (e) => {
+      const val = e.target.value;
+      const lessonId = e.target.getAttribute('data-lesson-id');
+      await saveDesignatedTeacher({
+        lessonId,
+        teacherName: val,
+        authorName: profileState.nickname
+      });
+      renderProfessorTimetable();
+      renderEvents();
+      showToast(val ? `Docente assegnato per la lezione: ${val}` : 'Lezione riassegnata a tutti i docenti');
+    });
+  }
+
+  // Bind note button listeners
+  const addNoteBtn = card.querySelector ? card.querySelector('.btn-add-note') : null;
+  if (addNoteBtn) {
+    addNoteBtn.addEventListener('click', () => {
+      const cCode = addNoteBtn.getAttribute('data-course-code');
+      const lId = addNoteBtn.getAttribute('data-lesson-id');
+      const cName = addNoteBtn.getAttribute('data-course');
+      const lMeta = addNoteBtn.getAttribute('data-meta');
+      openTeacherNoteModal(cCode, lId, cName, lMeta);
+    });
+  }
+
+  const editNoteBtn = card.querySelector ? card.querySelector('.btn-edit-note') : null;
+  if (editNoteBtn) {
+    editNoteBtn.addEventListener('click', () => {
+      const cCode = editNoteBtn.getAttribute('data-course-code');
+      const lId = editNoteBtn.getAttribute('data-lesson-id');
+      const cName = editNoteBtn.getAttribute('data-course');
+      const lMeta = editNoteBtn.getAttribute('data-meta');
+      openTeacherNoteModal(cCode, lId, cName, lMeta);
+    });
+  }
+
+  // Bind single ICS export
+  const exportBtn = card.querySelector ? card.querySelector('.btn-export-single-ics') : null;
+  if (exportBtn) {
+    exportBtn.addEventListener('click', () => {
+      exportSingleLessonIcs(l);
+    });
+  }
+
+  return card;
+}
+
+function createProfessorHeroCard(nextLesson) {
+  if (!nextLesson) return null;
+
+  const card = document.createElement('div');
+  card.className = 'prof-hero-card';
+
+  const dObj = parseAnyDate(nextLesson.date);
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  let dateTag = '';
+  if (dObj) {
+    const dMid = new Date(dObj);
+    dMid.setHours(0, 0, 0, 0);
+    const diffDays = Math.round((dMid - now) / (1000 * 60 * 60 * 24));
+    if (diffDays === 0) {
+      dateTag = 'OGGI';
+    } else if (diffDays === 1) {
+      dateTag = 'DOMANI';
+    } else {
+      dateTag = formatDateItalianLong(nextLesson.date);
+    }
+  } else {
+    dateTag = nextLesson.date;
+  }
+
+  const noteData = getTeacherNoteFor(nextLesson.course_code, nextLesson.id);
+  const designatedTeacher = getDesignatedTeacherFor(nextLesson.id);
+
+  card.innerHTML = `
+    <div class="prof-hero-tag">
+      <span class="prof-hero-pulse"></span>
+      <span>Prossima Lezione in Cattedra</span>
+      <span class="prof-hero-badge-date">${escapeHtml(dateTag)} · ${escapeHtml(nextLesson.start_time)} - ${escapeHtml(nextLesson.end_time)}</span>
+    </div>
+    <div class="prof-hero-body">
+      <div class="prof-hero-main">
+        <h3 class="prof-hero-course">${escapeHtml(nextLesson.course || 'Lezione')}</h3>
+        <div class="prof-hero-meta">
+          <span>Aula: <strong class="room-pill">${escapeHtml(nextLesson.aula || 'Non specificata')}</strong>${renderBuildingBadgeHtml(nextLesson.aula)}</span>
+          ${designatedTeacher ? `<span>Docente designato: <strong style="color:#FDA4AF;">${escapeHtml(designatedTeacher)}</strong></span>` : ''}
+        </div>
+        ${noteData && noteData.note ? `
+          <div class="prof-hero-note">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span><strong>Nota docenti:</strong> ${escapeHtml(noteData.note)}</span>
+          </div>` : ''}
+      </div>
+      <div class="prof-hero-actions">
+        <button type="button" class="btn-primary btn-hero-note" style="padding:6px 12px; font-size:0.78rem; width:auto; display:flex; align-items:center; gap:4px;">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          ${noteData && noteData.note ? 'Modifica nota' : 'Aggiungi nota'}
+        </button>
+        <button type="button" class="btn-secondary btn-hero-ics" style="padding:6px 10px; font-size:0.78rem; width:auto; display:flex; align-items:center; gap:4px;" title="Esporta promemoria .ics">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          .ics
+        </button>
+      </div>
+    </div>
+  `;
+
+  const btnNote = card.querySelector ? card.querySelector('.btn-hero-note') : null;
+  if (btnNote && btnNote.addEventListener) {
+    btnNote.addEventListener('click', () => {
+      openTeacherNoteModal(nextLesson.course_code, nextLesson.id, nextLesson.course, nextLesson.date + ' ' + nextLesson.start_time);
+    });
+  }
+
+  const btnIcs = card.querySelector ? card.querySelector('.btn-hero-ics') : null;
+  if (btnIcs && btnIcs.addEventListener) {
+    btnIcs.addEventListener('click', () => {
+      exportSingleLessonIcs(nextLesson);
+    });
+  }
+
+  return card;
+}
+
+function createProfessorControlsToolbar({ upcomingCount, totalCount, pastCount, sortedMonthKeys, monthGroups }) {
+  const toolbar = document.createElement('div');
+  toolbar.className = 'prof-controls-toolbar';
+
+  const currentScope = professorScheduleState.timeScope || 'upcoming';
+  const selectedMonth = professorScheduleState.selectedMonth || 'all';
+
+  toolbar.innerHTML = `
+    <div class="prof-toolbar-row">
+      <div class="prof-scope-group">
+        <button type="button" class="prof-scope-btn ${currentScope === 'upcoming' ? 'active' : ''}" data-scope="upcoming" title="Mostra lezioni a partire da oggi">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Da oggi in poi (${upcomingCount})
+        </button>
+        <button type="button" class="prof-scope-btn ${currentScope === 'all' ? 'active' : ''}" data-scope="all" title="Mostra tutte le lezioni del semestre">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/><path d="M6 6h10"/><path d="M6 10h10"/></svg>
+          Tutte (${totalCount})
+        </button>
+        ${pastCount > 0 ? `
+          <button type="button" class="prof-scope-btn ${currentScope === 'past' ? 'active' : ''}" data-scope="past" title="Mostra solo le lezioni già passate">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Passate (${pastCount})
+          </button>` : ''}
+      </div>
+      <div class="prof-expand-actions">
+        <button type="button" class="btn-text-action btn-expand-all" style="font-size:0.75rem; color:var(--text-secondary); background:none; border:none; cursor:pointer; padding:4px 6px; display:inline-flex; align-items:center; gap:4px;" title="Espandi tutte le settimane">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><polyline points="7 13 12 18 17 13"/><polyline points="7 6 12 11 17 6"/></svg>
+          Espandi
+        </button>
+        <button type="button" class="btn-text-action btn-collapse-all" style="font-size:0.75rem; color:var(--text-secondary); background:none; border:none; cursor:pointer; padding:4px 6px; display:inline-flex; align-items:center; gap:4px;" title="Comprimi tutte le settimane">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 11 12 6 7 11"/><polyline points="17 18 12 13 7 18"/></svg>
+          Comprimi
+        </button>
+      </div>
+    </div>
+    ${sortedMonthKeys.length > 1 ? `
+      <div class="prof-month-pills-bar">
+        <button type="button" class="prof-month-pill ${selectedMonth === 'all' ? 'active' : ''}" data-month="all">
+          Tutti i mesi
+        </button>
+        ${sortedMonthKeys.map(k => `
+          <button type="button" class="prof-month-pill ${selectedMonth === k ? 'active' : ''}" data-month="${escapeHtml(k)}">
+            ${escapeHtml(monthGroups[k].label)} (${monthGroups[k].lessons.length})
+          </button>
+        `).join('')}
+      </div>` : ''}
+  `;
+
+  if (toolbar.querySelectorAll) {
+    toolbar.querySelectorAll('.prof-scope-btn').forEach(btn => {
+      if (btn.addEventListener) {
+        btn.addEventListener('click', () => {
+          const scope = btn.getAttribute('data-scope');
+          professorScheduleState.timeScope = scope;
+          renderProfessorTimetable();
+        });
+      }
+    });
+
+    toolbar.querySelectorAll('.prof-month-pill').forEach(btn => {
+      if (btn.addEventListener) {
+        btn.addEventListener('click', () => {
+          const month = btn.getAttribute('data-month');
+          professorScheduleState.selectedMonth = month;
+          renderProfessorTimetable();
+        });
+      }
+    });
+
+    const btnExpandAll = toolbar.querySelector('.btn-expand-all');
+    if (btnExpandAll && btnExpandAll.addEventListener) {
+      btnExpandAll.addEventListener('click', () => {
+        Object.keys(professorScheduleState.expandedWeeks).forEach(k => {
+          professorScheduleState.expandedWeeks[k] = true;
+        });
+        const container = document.getElementById('profUnifiedLessonsContainer');
+        if (container && container.querySelectorAll) {
+          container.querySelectorAll('.prof-week-card').forEach(card => {
+            const lessons = card.querySelector ? card.querySelector('.prof-week-lessons') : null;
+            const chevron = card.querySelector ? card.querySelector('.prof-week-chevron') : null;
+            if (lessons) lessons.style.display = 'flex';
+            if (chevron && chevron.classList) chevron.classList.add('expanded');
+          });
+        }
+      });
+    }
+
+    const btnCollapseAll = toolbar.querySelector('.btn-collapse-all');
+    if (btnCollapseAll && btnCollapseAll.addEventListener) {
+      btnCollapseAll.addEventListener('click', () => {
+        Object.keys(professorScheduleState.expandedWeeks).forEach(k => {
+          professorScheduleState.expandedWeeks[k] = false;
+        });
+        const container = document.getElementById('profUnifiedLessonsContainer');
+        if (container && container.querySelectorAll) {
+          container.querySelectorAll('.prof-week-card').forEach(card => {
+            const lessons = card.querySelector ? card.querySelector('.prof-week-lessons') : null;
+            const chevron = card.querySelector ? card.querySelector('.prof-week-chevron') : null;
+            if (lessons) lessons.style.display = 'none';
+            if (chevron && chevron.classList) chevron.classList.remove('expanded');
+          });
+        }
+      });
+    }
+  }
+
+  return toolbar;
+}
+
+function renderProfessorTimetable() {
+  const container = document.getElementById('profUnifiedLessonsContainer');
+  if (!container) return;
+
+  const heroContainer = document.getElementById('profHeroContainer');
+  const controlsContainer = document.getElementById('profControlsContainer');
+
+  if (heroContainer) heroContainer.innerHTML = '';
+  if (controlsContainer) controlsContainer.innerHTML = '';
+  container.innerHTML = '';
+
+  const allLessons = professorScheduleState.lessons || [];
+  if (allLessons.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+        <h3>Nessuna lezione caricata</h3>
+        <p>Non ci sono lezioni caricate per il tuo profilo docente.</p>
+      </div>
+    `;
+    return;
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Compute counts for scope bar
+  const upcomingCount = allLessons.filter(l => {
+    const dt = parseAnyDate(l.date);
+    if (!dt || isNaN(dt.getTime())) return true;
+    dt.setHours(0, 0, 0, 0);
+    return dt.getTime() >= today.getTime();
+  }).length;
+  const pastCount = allLessons.length - upcomingCount;
+
+  // Filter lessons based on timeScope
+  let lessons = allLessons;
+  const scope = professorScheduleState.timeScope || 'upcoming';
+  if (scope === 'upcoming') {
+    if (upcomingCount > 0) {
+      lessons = lessons.filter(l => {
+        const dt = parseAnyDate(l.date);
+        if (!dt || isNaN(dt.getTime())) return true;
+        dt.setHours(0, 0, 0, 0);
+        return dt.getTime() >= today.getTime();
+      });
+    }
+  } else if (scope === 'past') {
+    lessons = lessons.filter(l => {
+      const dt = parseAnyDate(l.date);
+      if (!dt || isNaN(dt.getTime())) return false;
+      dt.setHours(0, 0, 0, 0);
+      return dt.getTime() < today.getTime();
+    });
+  }
+
+  // Filter by search query if any
+  if (professorScheduleState.searchQuery) {
+    const norm = typeof normalizeSearchText === 'function' ? normalizeSearchText : (s) => (s || '').toLowerCase().trim();
+    const q = norm(professorScheduleState.searchQuery);
+    lessons = lessons.filter(l =>
+      norm(l.course).includes(q) ||
+      norm(l.aula).includes(q) ||
+      norm(l.docente).includes(q) ||
+      norm(l.date).includes(q) ||
+      norm(l.day_name).includes(q)
+    );
+  }
+
+  // Next lesson for Hero Card (first upcoming from today)
+  const nextLesson = allLessons.find(l => {
+    const dt = parseAnyDate(l.date);
+    if (!dt || isNaN(dt.getTime())) return false;
+    dt.setHours(0, 0, 0, 0);
+    return dt.getTime() >= today.getTime();
+  });
+
+  if (nextLesson && scope !== 'past' && !professorScheduleState.searchQuery) {
+    const heroCard = createProfessorHeroCard(nextLesson);
+    if (heroCard && heroContainer) heroContainer.appendChild(heroCard);
+  }
+
+  // 1. Group lessons by Month (key: YYYY-MM)
+  const monthGroups = {};
+  lessons.forEach(l => {
+    const dt = parseAnyDate(l.date);
+    if (!dt || isNaN(dt.getTime())) return;
+    const year = dt.getFullYear();
+    const month = dt.getMonth();
+    const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`;
+    const monthName = MONTHS_NAMES_IT[month];
+
+    if (!monthGroups[monthKey]) {
+      monthGroups[monthKey] = {
+        key: monthKey,
+        label: `${monthName} ${year}`,
+        dateObj: dt,
+        lessons: [],
+        weeks: {}
+      };
+    }
+    monthGroups[monthKey].lessons.push(l);
+
+    // Group inside month by Week (Monday)
+    const monday = getMonday(dt);
+    const mondayKey = formatFormattedDate(monday);
+    if (!monthGroups[monthKey].weeks[mondayKey]) {
+      const dtFri = new Date(monday);
+      dtFri.setDate(monday.getDate() + 4);
+      const mMon = MONTHS_NAMES_IT[monday.getMonth()];
+      const mFri = MONTHS_NAMES_IT[dtFri.getMonth()];
+      const weekLabel = (monday.getMonth() === dtFri.getMonth())
+        ? `Settimana dal ${monday.getDate()} al ${dtFri.getDate()} ${mMon}`
+        : `Settimana dal ${monday.getDate()} ${mMon} al ${dtFri.getDate()} ${mFri}`;
+
+      monthGroups[monthKey].weeks[mondayKey] = {
+        mondayKey,
+        label: weekLabel,
+        mondayDate: monday,
+        lessons: []
+      };
+    }
+    monthGroups[monthKey].weeks[mondayKey].lessons.push(l);
+  });
+
+  const sortedMonthKeys = Object.keys(monthGroups).sort();
+
+  // Controls toolbar
+  const toolbar = createProfessorControlsToolbar({
+    upcomingCount,
+    totalCount: allLessons.length,
+    pastCount,
+    sortedMonthKeys,
+    monthGroups
+  });
+  if (toolbar && controlsContainer) controlsContainer.appendChild(toolbar);
+
+  if (lessons.length === 0) {
+    const emptyNotice = document.createElement('div');
+    emptyNotice.className = 'empty-state';
+    emptyNotice.style.padding = '30px 16px';
+    emptyNotice.innerHTML = `
+      <div class="empty-icon"><svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+      <h3>Nessuna lezione in questo filtro</h3>
+      <p style="font-size:0.85rem; color:var(--text-secondary);">${scope === 'past' ? 'Non ci sono lezioni passate registrate.' : 'Non ci sono lezioni in programma per il periodo o filtro selezionato.'}</p>
+    `;
+    container.appendChild(emptyNotice);
+    return;
+  }
+
+  // Filter months if a specific month is selected
+  const activeMonth = professorScheduleState.selectedMonth || 'all';
+  const monthsToRender = (activeMonth !== 'all' && monthGroups[activeMonth])
+    ? [activeMonth]
+    : sortedMonthKeys;
+
+  const nowMonday = getMonday(new Date());
+  nowMonday.setHours(0, 0, 0, 0);
+
+  let firstWeekHandled = false;
+
+  monthsToRender.forEach(mKey => {
+    const mGroup = monthGroups[mKey];
+    const monthSection = document.createElement('div');
+    monthSection.className = 'prof-month-section';
+
+    monthSection.innerHTML = `
+      <div class="prof-month-header">
+        <div class="prof-month-title-wrap">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" style="color:#FDA4AF;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <h3 class="prof-month-title">${escapeHtml(mGroup.label)}</h3>
+        </div>
+        <span class="prof-month-badge">${mGroup.lessons.length} ${mGroup.lessons.length === 1 ? 'lezione' : 'lezioni'}</span>
+      </div>
+      <div class="prof-month-weeks-container"></div>
+    `;
+
+    const weeksContainer = monthSection.querySelector ? monthSection.querySelector('.prof-month-weeks-container') : null;
+
+    // Sort weeks inside this month
+    const sortedWeekKeys = Object.keys(mGroup.weeks).sort((a, b) => {
+      const da = parseAnyDate(a);
+      const db = parseAnyDate(b);
+      return da - db;
+    });
+
+    sortedWeekKeys.forEach(wKey => {
+      const wGroup = mGroup.weeks[wKey];
+      const isCurrentWeek = wGroup.mondayDate.getTime() === nowMonday.getTime();
+
+      let isExpanded = professorScheduleState.expandedWeeks[wKey];
+      if (isExpanded === undefined) {
+        // Expand current week or first upcoming week
+        isExpanded = isCurrentWeek || (!firstWeekHandled && scope === 'upcoming');
+        if (isExpanded) firstWeekHandled = true;
+        professorScheduleState.expandedWeeks[wKey] = isExpanded;
+      }
+
+      const weekCard = document.createElement('div');
+      weekCard.className = 'prof-week-card';
+
+      weekCard.innerHTML = `
+        <div class="prof-week-header" role="button" tabindex="0" title="Clicca per espandere o comprimere">
+          <div class="prof-week-title">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span>${escapeHtml(wGroup.label)}</span>
+            ${isCurrentWeek ? '<span class="prof-current-week-pill"><span class="prof-live-dot"></span>In corso</span>' : ''}
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span class="prof-week-count">${wGroup.lessons.length} ${wGroup.lessons.length === 1 ? 'lezione' : 'lezioni'}</span>
+            <svg class="prof-week-chevron ${isExpanded ? 'expanded' : ''}" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+        </div>
+        <div class="prof-week-lessons" style="display: ${isExpanded ? 'flex' : 'none'};"></div>
+      `;
+
+      const weekHeader = weekCard.querySelector ? weekCard.querySelector('.prof-week-header') : null;
+      const lessonsList = weekCard.querySelector ? weekCard.querySelector('.prof-week-lessons') : null;
+      const chevron = weekCard.querySelector ? weekCard.querySelector('.prof-week-chevron') : null;
+
+      if (weekHeader && weekHeader.addEventListener && lessonsList) {
+        weekHeader.addEventListener('click', () => {
+          const currentlyVisible = lessonsList.style.display !== 'none';
+          const nextVisible = !currentlyVisible;
+          lessonsList.style.display = nextVisible ? 'flex' : 'none';
+          if (chevron && chevron.classList) {
+            chevron.classList.toggle('expanded', nextVisible);
+          }
+          professorScheduleState.expandedWeeks[wKey] = nextVisible;
+        });
+      }
+
+      // Group lessons by date inside week
+      const dayGroups = {};
+      wGroup.lessons.forEach(l => {
+        if (!dayGroups[l.date]) dayGroups[l.date] = [];
+        dayGroups[l.date].push(l);
+      });
+
+      Object.keys(dayGroups).forEach(dKey => {
+        const dayLessons = dayGroups[dKey];
+        const dObj = parseAnyDate(dKey);
+        const dayName = dObj ? DAYS_NAMES_IT[dObj.getDay()] : (dayLessons[0].day_name || '');
+        const isToday = dObj && dObj.getTime() === today.getTime();
+
+        const dayDivider = document.createElement('div');
+        dayDivider.className = `prof-day-divider ${isToday ? 'is-today' : ''}`;
+        dayDivider.innerHTML = `
+          <div class="prof-day-divider-pill">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <span>${escapeHtml(dayName)} ${dObj ? dObj.getDate() : ''}</span>
+            ${isToday ? '<span class="prof-today-tag">OGGI</span>' : ''}
+          </div>
+          <div class="prof-day-divider-line"></div>
+        `;
+
+        if (lessonsList && lessonsList.appendChild) {
+          lessonsList.appendChild(dayDivider);
+        } else {
+          weekCard.appendChild(dayDivider);
+        }
+
+        dayLessons.forEach(l => {
+          const card = createProfessorLessonCard(l);
+          if (lessonsList && lessonsList.appendChild) {
+            lessonsList.appendChild(card);
+          } else {
+            weekCard.appendChild(card);
+          }
+        });
+      });
+
+      if (weeksContainer && weeksContainer.appendChild) {
+        weeksContainer.appendChild(weekCard);
+      } else {
+        monthSection.appendChild(weekCard);
+      }
+    });
+
+    container.appendChild(monthSection);
+  });
+}
+
+function openTeacherNoteModal(courseCode, lessonId, courseTitle, lessonMeta) {
+  professorScheduleState.activeEditingLesson = {
+    courseCode: courseCode || '',
+    lessonId: lessonId || '',
+    courseTitle: courseTitle || 'Corso'
+  };
+
+  const modal = document.getElementById('teacherNoteModal');
+  if (!modal) return;
+
+  const titleEl = document.getElementById('teacherNoteCourseName');
+  if (titleEl) titleEl.textContent = courseTitle || 'Corso';
+
+  const metaEl = document.getElementById('teacherNoteLessonMeta');
+  if (metaEl) metaEl.textContent = lessonMeta || '';
+
+  const inputEl = document.getElementById('teacherNoteTextInput');
+  const existing = getTeacherNoteFor(courseCode, lessonId);
+  if (inputEl) inputEl.value = existing ? existing.note : '';
+
+  const delBtn = document.getElementById('btnDeleteTeacherNote');
+  if (delBtn) delBtn.style.display = existing ? 'inline-block' : 'none';
+
+  openModal('teacherNoteModal');
+  if (inputEl) inputEl.focus();
+}
+
+async function handleSaveTeacherNote() {
+  const current = professorScheduleState.activeEditingLesson;
+  if (!current) return;
+
+  const inputEl = document.getElementById('teacherNoteTextInput');
+  const text = (inputEl ? inputEl.value : '').trim();
+
+  if (!text) {
+    showToast('Inserisci il testo della nota prima di salvare');
+    return;
+  }
+
+  await saveTeacherNote({
+    courseCode: current.courseCode,
+    lessonId: current.lessonId,
+    note: text,
+    authorName: profileState.nickname || 'Docente UNIMIB',
+    authorEmail: profileState.email || ''
+  });
+
+  closeModal('teacherNoteModal');
+  renderProfessorTimetable();
+  renderEvents();
+  showToast('Nota salvata! Ora è visibile a tutti gli studenti.');
+}
+
+async function handleDeleteTeacherNote() {
+  const current = professorScheduleState.activeEditingLesson;
+  if (!current) return;
+
+  await deleteTeacherNote({
+    courseCode: current.courseCode,
+    lessonId: current.lessonId
+  });
+
+  closeModal('teacherNoteModal');
+  renderProfessorTimetable();
+  renderEvents();
+  showToast('Nota docente rimossa');
+}
+
+function exportProfessorScheduleIcs() {
+  const lessons = professorScheduleState.lessons || [];
+  if (!lessons.length) {
+    showToast('Nessuna lezione trovata da esportare');
+    return;
+  }
+
+  const enriched = lessons.map(l => {
+    const noteData = getTeacherNoteFor(l.course_code, l.id);
+    const designated = getDesignatedTeacherFor(l.id);
+    return {
+      ...l,
+      designated_teacher: designated || undefined,
+      teacher_note: noteData ? noteData.note : undefined
+    };
+  });
+
+  const profName = profileState.nickname || 'Docente UNIMIB';
+  const ics = generateIcs(enriched, `Cattedra ${profName}`);
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const safeName = profName.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+  a.download = `cattedra_${safeName}.ics`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('Calendario docente (.ics) scaricato!');
+}
+
+function exportSingleLessonIcs(lesson) {
+  if (!lesson) return;
+  const noteData = getTeacherNoteFor(lesson.course_code, lesson.id);
+  const designated = getDesignatedTeacherFor(lesson.id);
+  const enriched = [{
+    ...lesson,
+    designated_teacher: designated || undefined,
+    teacher_note: noteData ? noteData.note : undefined
+  }];
+
+  const ics = generateIcs(enriched, `${lesson.course || 'Lezione'} - ${lesson.date}`);
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const safeName = (lesson.course || 'lezione').replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+  a.download = `${safeName}_${lesson.date}.ics`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('File .ics della singola lezione scaricato!');
+}
+
+function setupProfessorEventListeners() {
+  const btnExport = document.getElementById('btnProfExportIcs');
+  if (btnExport) btnExport.addEventListener('click', exportProfessorScheduleIcs);
+
+  const btnRefresh = document.getElementById('btnProfRefreshSchedule');
+  if (btnRefresh) btnRefresh.addEventListener('click', () => loadProfessorSchedule(true));
+
+  const btnChange = document.getElementById('btnProfChangeTeacher');
+  if (btnChange) btnChange.addEventListener('click', openTeacherAssociateModal);
+
+  const btnToggleColleague = document.getElementById('btnProfToggleColleagueSearch');
+  if (btnToggleColleague) {
+    btnToggleColleague.addEventListener('click', () => {
+      professorScheduleState.showColleagueSearch = !professorScheduleState.showColleagueSearch;
+      updateTimetableForRole();
+    });
+  }
+
+  const searchInput = document.getElementById('profLessonSearchInput');
+  const clearBtn = document.getElementById('btnClearProfLessonSearch');
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      professorScheduleState.searchQuery = e.target.value.toLowerCase().trim();
+      if (clearBtn) clearBtn.style.display = searchInput.value ? 'flex' : 'none';
+      renderProfessorTimetable();
+    });
+  }
+  if (clearBtn && searchInput) {
+    clearBtn.addEventListener('click', () => {
+      searchInput.value = '';
+      professorScheduleState.searchQuery = '';
+      clearBtn.style.display = 'none';
+      renderProfessorTimetable();
+    });
+  }
+
+  const btnCloseNote = document.getElementById('btnCloseTeacherNote');
+  if (btnCloseNote) btnCloseNote.addEventListener('click', () => closeModal('teacherNoteModal'));
+
+  const btnSaveNote = document.getElementById('btnSaveTeacherNote');
+  if (btnSaveNote) btnSaveNote.addEventListener('click', handleSaveTeacherNote);
+
+  const btnDelNote = document.getElementById('btnDeleteTeacherNote');
+  if (btnDelNote) btnDelNote.addEventListener('click', handleDeleteTeacherNote);
+
+  const btnCloseAssociate = document.getElementById('btnCloseTeacherAssociate');
+  if (btnCloseAssociate) btnCloseAssociate.addEventListener('click', () => closeModal('teacherAssociateModal'));
+
+  const associateInput = document.getElementById('teacherAssociateSearchInput');
+  if (associateInput) associateInput.addEventListener('input', handleTeacherAssociateSearch);
+}
+
+async function openTeacherAssociateModal() {
+  openModal('teacherAssociateModal');
+  const input = document.getElementById('teacherAssociateSearchInput');
+  if (input) {
+    input.value = '';
+    input.focus();
+  }
+  if (!teachersState.allTeachers.length && teachersState.selectedYear) {
+    await loadTeachersList();
+  }
+  renderTeacherAssociateList('');
+}
+
+function handleTeacherAssociateSearch(e) {
+  renderTeacherAssociateList((e.target.value || '').trim());
+}
+
+function renderTeacherAssociateList(query) {
+  const container = document.getElementById('teacherAssociateResultsList');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const q = query.toLowerCase();
+  const teachers = teachersState.allTeachers || [];
+  const filtered = q ? teachers.filter(t => (t.name || '').toLowerCase().includes(q)) : teachers.slice(0, 30);
+
+  if (!filtered.length) {
+    container.innerHTML = '<div style="font-size:0.8rem; color:var(--text-muted); padding:8px;">Nessun docente trovato</div>';
+    return;
+  }
+
+  filtered.forEach(t => {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'btn-secondary';
+    item.style.cssText = 'text-align:left; justify-content:space-between; width:100%; padding:8px 12px; font-size:0.84rem; display:flex; align-items:center;';
+    item.innerHTML = `
+      <span>👨‍🏫 <strong>${escapeHtml(t.name)}</strong></span>
+      <span style="font-size:0.75rem; color:var(--text-muted);">${(t.courses || []).length} corsi</span>
+    `;
+    item.addEventListener('click', () => {
+      localStorage.setItem(PROF_ASSOCIATED_TEACHER_KEY, t.code);
+      profileState.nickname = `Prof. ${t.name}`;
+      saveProfileLocally();
+      closeModal('teacherAssociateModal');
+      showToast(`Docente associato: Prof. ${t.name}`);
+      loadProfessorSchedule(true);
+    });
+    container.appendChild(item);
+  });
+}

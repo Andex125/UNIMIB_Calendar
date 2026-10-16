@@ -349,10 +349,12 @@ def redis_del(key: str) -> None:
 
 # ── Text & String Sanitization ────────────────────────────────────────────────
 def clean_html(text: Any) -> str:
-    """Strip HTML tags and normalize whitespace."""
+    """Strip HTML tags, script/style blocks, and normalize whitespace."""
     if not text:
         return ''
-    cleaned = re.sub(r'<[^>]+>', '', str(text))
+    cleaned = re.sub(r'<\s*script[^>]*>.*?<\s*/\s*script\s*>', '', str(text), flags=re.IGNORECASE | re.DOTALL)
+    cleaned = re.sub(r'<\s*style[^>]*>.*?<\s*/\s*style\s*>', '', cleaned, flags=re.IGNORECASE | re.DOTALL)
+    cleaned = re.sub(r'<[^>]+>', '', cleaned)
     return re.sub(r'\s+', ' ', cleaned).strip()
 
 def split_curricula(percorso: Any) -> List[str]:

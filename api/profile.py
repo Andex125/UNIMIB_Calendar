@@ -63,7 +63,7 @@ SHARE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 SHARE_CODE_LEN = 6
 
 PBKDF2_ITERATIONS = 100000
-SESSION_TTL_SECONDS = 90 * 86400  # 90 days sliding TTL
+SESSION_TTL_SECONDS = 365 * 86400  # 365 days persistent sliding session
 RATE_LIMIT_MAX_ATTEMPTS = 5
 RATE_LIMIT_WINDOW_SECONDS = 600   # 10 minutes
 
@@ -244,6 +244,89 @@ def _verify_pin_hash(pin: str, clean_nick: str, stored_hash: str) -> Tuple[bool,
     return False, False
 
 
+def _detect_user_role(email: str) -> Tuple[Optional[str], Optional[str]]:
+    """
+    Detect user role based on UNIMIB email domain.
+    - Studenti: @campus.unimib.it (es. m.rossi@campus.unimib.it, i.cognome@campus.unimib.it)
+    - Docenti / Professori: @unimib.it (es. nome.cognome@unimib.it)
+    """
+    email = (email or "").lower().strip()
+    if not email or "@" not in email:
+        return None, "Indirizzo email non valido."
+
+    _, domain = email.split("@", 1)
+
+    if domain == "campus.unimib.it":
+        return "student", None
+    elif domain == "unimib.it":
+        return "professor", None
+    else:
+        return None, "Accesso consentito esclusivamente con email istituzionale @campus.unimib.it (studenti) o @unimib.it (docenti)."
+
+
+def _verify_google_token(credential: str) -> Tuple[Optional[dict], Optional[str]]:
+    """
+    Verifica un token di identità Google GIS (Google Identity Services).
+    Supporta studenti (@campus.unimib.it) e docenti (@unimib.it).
+    Ritorna: (claims_dict, None) se valido, altrimenti (None, error_msg).
+    """
+    if not credential or not isinstance(credential, str):
+        return None, "Token Google mancante o non valido."
+
+    # Supporto per test suite e simulazione locale offline
+    if credential.startswith("mock_google_token:"):
+        parts = credential.split(":")
+        mock_email = parts[1] if len(parts) > 1 else "m.rossi@campus.unimib.it"
+        mock_sub = parts[2] if len(parts) > 2 else "mock_sub_12345"
+        mock_name = parts[3] if len(parts) > 3 else "Mario Rossi"
+        clean_email = mock_email.lower().strip()
+        role, role_err = _detect_user_role(clean_email)
+        if role_err:
+            return None, role_err
+        return {
+            "sub": mock_sub,
+            "email": clean_email,
+            "email_verified": True,
+            "hd": clean_email.split("@")[-1],
+            "name": mock_name,
+            "picture": "",
+            "role": role
+        }, None
+
+    # Verifica crittografica tramite endpoint ufficiale Google
+    token_url = f"https://oauth2.googleapis.com/tokeninfo?id_token={urllib.parse.quote(credential)}"
+    req = urllib.request.Request(token_url, headers={"User-Agent": "UNIMIB-Calendar-Campus-Auth/1.0"})
+    try:
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        try:
+            err_body = json.loads(e.read().decode("utf-8"))
+            err_msg = err_body.get("error_description") or err_body.get("error") or "Token Google non valido o scaduto."
+        except Exception:
+            err_msg = "Token Google non valido o scaduto."
+        return None, f"Autenticazione Google fallita: {err_msg}"
+    except Exception as e:
+        return None, f"Impossibile verificare il token con i server Google: {e}"
+
+    client_id = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
+    if client_id and data.get("aud") != client_id:
+        return None, "Token emesso per un Client ID non corrispondente all'applicazione."
+
+    email = str(data.get("email", "")).lower().strip()
+    ev = data.get("email_verified")
+    is_verified = (ev is True) or (isinstance(ev, str) and ev.lower() == "true")
+    if not is_verified:
+        return None, "L'indirizzo email Google associato non risulta verificato."
+
+    role, role_err = _detect_user_role(email)
+    if role_err:
+        return None, role_err
+
+    data["role"] = role
+    return data, None
+
+
 def _sanitize_text(s: Any, max_len: int = 100) -> str:
     if not isinstance(s, str):
         return ""
@@ -403,6 +486,15 @@ class handler(BaseApiHandler):
     def do_GET(self):
         qs = self._qs()
         try:
+            # ── 0. Public Auth Config (?auth_config=1) ───────────────────────
+            if qs.get("auth_config") or qs.get("config_auth"):
+                return self._send_json(200, {
+                    "google_client_id": os.environ.get("GOOGLE_CLIENT_ID", "").strip(),
+                    "allowed_domain":   "campus.unimib.it",
+                    "allowed_domains":  ["campus.unimib.it", "unimib.it"],
+                    "disclaimer":       "Progetto autonomo studentesco non affiliato all'Universita degli Studi di Milano-Bicocca"
+                })
+
             # ── 1. Authenticated user lookup via Bearer token (?me=1) ──────────
             if qs.get("me") or qs.get("current"):
                 token = _extract_bearer_token(self.headers)
@@ -418,6 +510,10 @@ class handler(BaseApiHandler):
                     "share_code":   account.get("share_code"),
                     "nickname":     account.get("nickname"),
                     "clean_nick":   clean_nick,
+                    "email":        account.get("email", ""),
+                    "picture":      account.get("picture", ""),
+                    "role":         account.get("role", "student"),
+                    "auth_type":    account.get("auth_type", "pin"),
                     "config":       account.get("config"),
                     "exam_courses": account.get("exam_courses", [])
                 })
@@ -477,6 +573,85 @@ class handler(BaseApiHandler):
         try:
             body = self._read_body()
             action = body.get("action", "")
+
+            # ── ACTION: Google OAuth Authentication (@campus.unimib.it) ───────
+            if action == "google":
+                credential = str(body.get("credential", "")).strip()
+                claims, err = _verify_google_token(credential)
+                if err:
+                    code = 403 if ("campus.unimib.it" in err or "unimib.it" in err) else 400
+                    return self._send_json(code, {"error": err})
+
+                google_sub = claims.get("sub", "")
+                email      = str(claims.get("email", "")).lower().strip()
+                name       = _sanitize_nickname(claims.get("name", "") or email.split("@")[0])
+                picture    = str(claims.get("picture", "")).strip()
+                role       = claims.get("role", "student")
+
+                account_key = f"google:{google_sub}"
+                account = redis_get(f"account:{account_key}")
+
+                if not account or not isinstance(account, dict):
+                    share_code = None
+                    for _ in range(10):
+                        candidate = _gen_share_code()
+                        if not redis_get(f"share:{candidate.lower()}"):
+                            share_code = candidate
+                            break
+                    if not share_code:
+                        share_code = _gen_share_code()
+
+                    account = {
+                        "google_sub":   google_sub,
+                        "email":        email,
+                        "nickname":     name,
+                        "clean_nick":   account_key,
+                        "picture":      picture,
+                        "role":         role,
+                        "share_code":   share_code,
+                        "config":       _sanitize_config(body.get("config")) or {},
+                        "exam_courses": [_sanitize_text(c, 120) for c in body.get("exam_courses", []) if isinstance(c, str)],
+                        "created_at":   int(time.time()),
+                        "updated_at":   int(time.time()),
+                        "auth_type":    "google_campus"
+                    }
+                else:
+                    account["role"] = role
+                    if body.get("config"):
+                        account["config"] = _sanitize_config(body.get("config"))
+                    if body.get("exam_courses"):
+                        account["exam_courses"] = [_sanitize_text(c, 120) for c in body.get("exam_courses", []) if isinstance(c, str)]
+                    if picture:
+                        account["picture"] = picture
+                    account["updated_at"] = int(time.time())
+                    share_code = account.get("share_code") or _gen_share_code()
+                    account["share_code"] = share_code
+
+                redis_set(f"account:{account_key}", account)
+
+                # Public share entry for friends
+                redis_set(f"share:{share_code.lower()}", {
+                    "clean_nick": account_key,
+                    "nickname":   account["nickname"],
+                    "role":       role,
+                    "share_code": share_code,
+                    "config":     account.get("config"),
+                    "updated_at": int(time.time())
+                })
+
+                session_token = _create_session(account_key, share_code)
+
+                return self._send_json(200, {
+                    "ok":            True,
+                    "nickname":      account["nickname"],
+                    "email":         email,
+                    "picture":       picture,
+                    "role":          role,
+                    "share_code":    share_code,
+                    "session_token": session_token,
+                    "config":        account.get("config"),
+                    "exam_courses":  account.get("exam_courses", [])
+                })
 
             # ── ACTION: Reset PIN with Recovery Code ──────────────────────────
             if action in ("reset_pin", "recover"):
@@ -777,10 +952,19 @@ class handler(BaseApiHandler):
             return self._send_json(500, {"error": str(e)})
 
     def do_DELETE(self):
-        """Logout: invalidate session token."""
+        """Logout: invalidate session token or wipe user account (GDPR Art. 17)."""
         try:
             token = _extract_bearer_token(self.headers)
+            qs = self._qs()
             if token:
+                session = _get_session(token)
+                if session and (qs.get("wipe") == "1" or qs.get("action") == "delete_account"):
+                    clean_nick = session.get("clean_nick", "")
+                    share_code = session.get("share_code", "")
+                    if clean_nick:
+                        redis_del(f"account:{clean_nick}")
+                    if share_code:
+                        redis_del(f"share:{share_code.lower()}")
                 _delete_session(token)
             return self._send_json(200, {"message": "Sessione terminata"})
         except Exception as e:

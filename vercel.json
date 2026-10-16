@@ -59,6 +59,10 @@
     {
       "source": "/api/teacher_calendar",
       "destination": "/api/teachers.py"
+    },
+    {
+      "source": "/api/teacher_notes",
+      "destination": "/api/teacher_notes.py"
     }
   ]
 }
