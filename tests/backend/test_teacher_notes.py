@@ -17,7 +17,7 @@ import api._common as common_mod
 def _make_handler(method: str, path: str, body: dict = None, headers: dict = None):
     h = teacher_notes_mod.handler.__new__(teacher_notes_mod.handler)
     h.path = path
-    h.headers = headers or {}
+    h.headers = headers if headers is not None else {"Authorization": "Bearer mock_prof_token"}
     payload = json.dumps(body).encode("utf-8") if body is not None else b""
     h.headers["Content-Length"] = str(len(payload))
     h.rfile = io.BytesIO(payload)
@@ -50,6 +50,33 @@ class TestTeacherNotesApi(unittest.TestCase):
         common_mod.redis_del("course_note:F1801Q001")
         common_mod.redis_del("lesson_note:lesson_123")
         common_mod.redis_del("lesson_teacher:lesson_123")
+        common_mod.redis_del("session:mock_prof_token")
+        common_mod.redis_del("session:mock_student_token")
+        common_mod.redis_del("account:prof_rossi")
+        common_mod.redis_del("account:student_mario")
+
+        # Mock sessions
+        common_mod.redis_set("session:mock_prof_token", {"clean_nick": "prof_rossi"})
+        common_mod.redis_set("account:prof_rossi", {
+            "nickname": "Prof. Mario Rossi",
+            "clean_nick": "prof_rossi",
+            "role": "professor",
+            "email": "mario.rossi@unimib.it"
+        })
+
+        common_mod.redis_set("session:mock_student_token", {"clean_nick": "student_mario"})
+        common_mod.redis_set("account:student_mario", {
+            "nickname": "Mario Rossi",
+            "clean_nick": "student_mario",
+            "role": "student",
+            "email": "m.rossi@campus.unimib.it"
+        })
+
+    def tearDown(self):
+        common_mod.redis_del("session:mock_prof_token")
+        common_mod.redis_del("session:mock_student_token")
+        common_mod.redis_del("account:prof_rossi")
+        common_mod.redis_del("account:student_mario")
 
     def test_get_empty_notes(self):
         exec_fn = _make_handler("GET", "/api/teacher_notes?all=1")
@@ -57,6 +84,37 @@ class TestTeacherNotesApi(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertTrue(data.get("ok"))
         self.assertEqual(data.get("course_notes"), {})
+
+    def test_authentication_and_authorization_enforcement(self):
+        body = {
+            "action": "set_note",
+            "course_code": "F1801Q001",
+            "note": "Nota protetta da autenticazione"
+        }
+
+        # 1. Anonymous request without token -> 401 Unauthorized
+        exec_unauth = _make_handler("POST", "/api/teacher_notes", body=body, headers={})
+        status, data = exec_unauth()
+        self.assertEqual(status, 401)
+        self.assertIn("error", data)
+
+        # 2. Invalid session token -> 401 Unauthorized
+        exec_invalid = _make_handler("POST", "/api/teacher_notes", body=body, headers={"Authorization": "Bearer invalid_token_xyz"})
+        status, data = exec_invalid()
+        self.assertEqual(status, 401)
+
+        # 3. Student token (@campus.unimib.it) -> 403 Forbidden
+        exec_student = _make_handler("POST", "/api/teacher_notes", body=body, headers={"Authorization": "Bearer mock_student_token"})
+        status, data = exec_student()
+        self.assertEqual(status, 403)
+        self.assertIn("docenti", data.get("error", "").lower())
+
+        # 4. Professor token (@unimib.it) -> 200 OK
+        exec_prof = _make_handler("POST", "/api/teacher_notes", body=body, headers={"Authorization": "Bearer mock_prof_token"})
+        status, data = exec_prof()
+        self.assertEqual(status, 200)
+        self.assertTrue(data.get("ok"))
+        self.assertEqual(data["saved"]["note"], "Nota protetta da autenticazione")
 
     def test_set_and_get_course_note(self):
         # Set course note

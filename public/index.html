@@ -1238,9 +1238,23 @@
           <button id="btnSyncNow" class="btn-secondary" style="width:auto; padding:4px 10px; font-size:0.75rem; margin-left:auto;"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-1px; margin-right:3px;"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>Sincronizza</button>
         </div>
 
+        <!-- Multi-Account Section -->
+        <div id="profileAccountsSection" style="margin:14px 0 10px; text-align:left;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <span style="font-size:0.75rem; font-weight:700; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.04em;">I tuoi account (Passa o aggiungi):</span>
+            <button type="button" id="btnAddAccount" style="font-size:0.75rem; color:var(--accent-cyan); background:none; border:none; cursor:pointer; font-weight:600; padding:2px 4px; display:inline-flex; align-items:center; gap:3px;">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Accedi con un altro
+            </button>
+          </div>
+          <div id="profileAccountsList" style="display:flex; flex-direction:column; gap:6px;">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+
         <hr style="border-color:rgba(255,255,255,0.08); margin-bottom:12px;">
 
-        <button id="btnLogoutProfile" class="btn-secondary" style="width:100%; font-size:0.85rem;"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Esci dal profilo</button>
+        <button id="btnLogoutProfile" class="btn-secondary" style="width:100%; font-size:0.85rem;"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Disconnetti questo account</button>
         <button id="btnExportUserData" class="btn-secondary" style="width:100%; font-size:0.8rem; margin-top:8px;"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Scarica i miei dati (JSON - GDPR Art. 20)</button>
         <button id="btnWipeAccount" class="btn-secondary" style="width:100%; font-size:0.8rem; margin-top:8px; color:#EF4444; border-color:rgba(239, 68, 68, 0.35);"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-1px; margin-right:4px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Elimina account e tutti i dati (GDPR Art. 17)</button>
         <p style="font-size:0.72rem; color:var(--text-muted); margin-top:8px; text-align:center;">Le tue impostazioni rimangono salvate localmente sul dispositivo.</p>

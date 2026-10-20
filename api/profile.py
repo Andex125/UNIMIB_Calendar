@@ -716,9 +716,17 @@ class handler(BaseApiHandler):
             recovery_code = _gen_recovery_code()
             session_token = _create_session(clean_nick, share_code)
 
+            role = str(body.get("role", "student")).strip().lower()
+            if role not in ("student", "professor"):
+                role = "student"
+            email = _sanitize_text(body.get("email", ""), 120)
+
             account = {
                 "nickname":           nickname,
                 "clean_nick":         clean_nick,
+                "role":               role,
+                "email":              email,
+                "auth_type":          "pin",
                 "pin_hash":           _hash_pin(pin, clean_nick),
                 "recovery_code_hash": _hash_recovery_code(recovery_code),
                 "share_code":         share_code,
@@ -732,6 +740,7 @@ class handler(BaseApiHandler):
             share_entry = {
                 "clean_nick": clean_nick,
                 "nickname":   nickname,
+                "role":       role,
                 "share_code": share_code,
                 "config":     config,
                 "updated_at": int(time.time())
@@ -740,6 +749,9 @@ class handler(BaseApiHandler):
 
             return self._send_json(201, {
                 "nickname":      nickname,
+                "role":          role,
+                "email":         email,
+                "auth_type":     "pin",
                 "share_code":    share_code,
                 "session_token": session_token,
                 "recovery_code": recovery_code,
@@ -789,6 +801,10 @@ class handler(BaseApiHandler):
                     new_nick = _sanitize_nickname(str(body["nickname"]))
                     if new_nick:
                         account["nickname"] = new_nick
+                if "role" in body and str(body["role"]).strip().lower() in ("student", "professor"):
+                    account["role"] = str(body["role"]).strip().lower()
+                if "email" in body and body["email"] is not None:
+                    account["email"] = _sanitize_text(body["email"], 120)
 
                 account["updated_at"] = int(time.time())
                 share_code = account.get("share_code") or session.get("share_code")
@@ -799,6 +815,7 @@ class handler(BaseApiHandler):
                 redis_set(f"share:{share_code.lower()}", {
                     "clean_nick": clean_nick,
                     "nickname":   account["nickname"],
+                    "role":       account.get("role", "student"),
                     "share_code": share_code,
                     "config":     account.get("config"),
                     "updated_at": int(time.time())
@@ -806,6 +823,10 @@ class handler(BaseApiHandler):
 
                 return self._send_json(200, {
                     "nickname":      account["nickname"],
+                    "role":          account.get("role", "student"),
+                    "email":         account.get("email", ""),
+                    "picture":       account.get("picture", ""),
+                    "auth_type":     account.get("auth_type", "pin"),
                     "share_code":    share_code,
                     "session_token": bearer_token,
                     "config":        account.get("config"),
@@ -911,6 +932,10 @@ class handler(BaseApiHandler):
 
             resp_payload = {
                 "nickname":      account["nickname"],
+                "role":          account.get("role", "student"),
+                "email":         account.get("email", ""),
+                "picture":       account.get("picture", ""),
+                "auth_type":     account.get("auth_type", "pin"),
                 "share_code":    share_code,
                 "session_token": session_token,
                 "config":        account.get("config"),

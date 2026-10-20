@@ -720,6 +720,8 @@ test('renderProfessorTimetable groups lessons hierarchically by Month and Week',
     { id: 'm2_w1', date: '02-11-2026', course: 'Nov W1', start_time: '09:00', end_time: '11:00', docente: 'Prof. Mario Rossi' }
   ];
   profState.searchQuery = '';
+  profState.timeScope = 'all';
+  profState.selectedMonth = 'all';
 
   const appendedMonths = [];
   const mockContainer = {
@@ -1151,6 +1153,8 @@ test('renderProfessorTimetable starts from current date by default and respects 
     { id: 'les_up2', date: up2DateStr, course: 'Upcoming Course 2', start_time: '14:30', end_time: '16:30', docente: 'Prof. Mario Rossi' }
   ];
   profState.searchQuery = '';
+  profState.timeScope = 'all';
+  profState.selectedMonth = 'all';
   profState.selectedMonth = 'all';
 
   let heroChild = null;
@@ -1467,6 +1471,68 @@ test('Self-hosted fonts are included in Service Worker ASSETS and index.html pre
   assert.strictEqual(html.includes('fonts.googleapis.com'), false);
   assert.strictEqual(html.includes('fonts.gstatic.com'), false);
   assert.ok(html.includes('rel="preload" href="/fonts/pt-sans-v18-latin-regular-400.woff2"'));
+});
+
+test('Multi-account management and seamless account switching between Student and Professor', async () => {
+  const getSavedAccounts = sandbox.getSavedAccounts;
+  const saveAccountToStorage = sandbox.saveAccountToStorage;
+  const switchAccount = sandbox.switchAccount;
+  const removeSavedAccount = sandbox.removeSavedAccount;
+  const pState = vm.runInContext('profileState', context);
+  const st = vm.runInContext('state', context);
+
+  assert.ok(typeof getSavedAccounts === 'function');
+  assert.ok(typeof switchAccount === 'function');
+
+  // 1. Save two accounts (Student and Professor)
+  const studentAcc = {
+    nickname: 'Mario Studente',
+    email: 'm.rossi@campus.unimib.it',
+    role: 'student',
+    shareCode: 'STUD12',
+    sessionToken: 'st_student_token',
+    config: { corso: 'F1801Q', corsoLabel: 'Informatica', favorites: [{ code: 'INF1', label: 'Prog' }] }
+  };
+  const profAcc = {
+    nickname: 'Prof. Mario Rossi',
+    email: 'mario.rossi@unimib.it',
+    role: 'professor',
+    shareCode: 'PROF99',
+    sessionToken: 'st_prof_token',
+    config: null,
+    teacherCode: 'T12345'
+  };
+
+  saveAccountToStorage(studentAcc);
+  saveAccountToStorage(profAcc);
+
+  const saved = getSavedAccounts();
+  assert.strictEqual(saved.length >= 2, true);
+
+  // 2. Switch to Student Account
+  await switchAccount('m.rossi@campus.unimib.it');
+  assert.strictEqual(pState.role, 'student');
+  assert.strictEqual(pState.email, 'm.rossi@campus.unimib.it');
+  assert.strictEqual(pState.shareCode, 'STUD12');
+  assert.strictEqual(st.config && st.config.corso, 'F1801Q');
+
+  // 3. Switch to Professor Account
+  await switchAccount('mario.rossi@unimib.it');
+  assert.strictEqual(pState.role, 'professor');
+  assert.strictEqual(pState.email, 'mario.rossi@unimib.it');
+  assert.strictEqual(pState.shareCode, 'PROF99');
+  assert.strictEqual(pState.sessionToken, 'st_prof_token');
+
+  // 4. Switch back to Student Account
+  await switchAccount('STUD12');
+  assert.strictEqual(pState.role, 'student');
+  assert.strictEqual(pState.email, 'm.rossi@campus.unimib.it');
+  assert.strictEqual(st.config && st.config.corso, 'F1801Q');
+
+  // 5. Remove account test
+  removeSavedAccount('STUD12');
+  const savedAfterRemove = getSavedAccounts();
+  assert.ok(!savedAfterRemove.some(a => a.shareCode === 'STUD12'));
 });
 
 

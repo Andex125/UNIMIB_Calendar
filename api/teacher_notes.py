@@ -17,6 +17,7 @@ from api._common import (
     redis_set,
     redis_del,
     sanitize_text,
+    get_authenticated_account,
 )
 
 INDEX_KEY = "teacher_notes:index"
@@ -38,27 +39,37 @@ def get_all_notes_and_assignments() -> Dict[str, Any]:
     course_notes = {}
     lesson_notes = {}
     lesson_teachers = {}
+    all_notes = {}
 
     for c_code in idx.get("courses", []):
         c_clean = str(c_code).strip().upper()
         note_data = redis_get(f"course_note:{c_clean}")
         if note_data:
             course_notes[c_clean] = note_data
+            all_notes[f"course_note:{c_clean}"] = note_data
 
     for l_id in idx.get("lessons", []):
         l_clean = str(l_id).strip()
         l_note = redis_get(f"lesson_note:{l_clean}")
         if l_note:
             lesson_notes[l_clean] = l_note
+            all_notes[f"lesson_note:{l_clean}"] = l_note
         l_teacher = redis_get(f"lesson_teacher:{l_clean}")
         if l_teacher:
             lesson_teachers[l_clean] = l_teacher
+
+    designated_teachers_simple = {
+        k: (v.get("designated_teacher") if isinstance(v, dict) else v)
+        for k, v in lesson_teachers.items()
+    }
 
     return {
         "ok": True,
         "course_notes": course_notes,
         "lesson_notes": lesson_notes,
         "lesson_teachers": lesson_teachers,
+        "notes": all_notes,
+        "designated_teachers": designated_teachers_simple,
     }
 
 
@@ -101,11 +112,21 @@ class handler(BaseApiHandler):
         if not body or not isinstance(body, dict):
             return self.send_json(400, {"error": "Corpo della richiesta JSON non valido"}, cache_control='no-store')
 
+        # ── Autenticazione & Autorizzazione Docente ───────────────────────────
+        account, auth_err = get_authenticated_account(self.headers, body)
+        if auth_err:
+            return self.send_json(401, {"error": f"Autenticazione richiesta: {auth_err}"}, cache_control='no-store')
+
+        if not account or account.get("role") != "professor":
+            return self.send_json(403, {
+                "error": "Accesso riservato esclusivamente ai docenti (@unimib.it). Gli studenti non possono modificare le note o assegnare docenti."
+            }, cache_control='no-store')
+
         action = (body.get("action") or "set_note").strip()
         course_code = (body.get("course_code") or "").strip().upper()
         lesson_id = (body.get("lesson_id") or "").strip()
-        author_name = sanitize_text(body.get("author_name") or "Docente", max_len=80)
-        author_email = sanitize_text(body.get("author_email") or "", max_len=120)
+        author_name = sanitize_text(account.get("nickname") or body.get("author_name") or "Docente", max_len=80)
+        author_email = sanitize_text(account.get("email") or body.get("author_email") or "", max_len=120)
         now_iso = datetime.now(timezone.utc).isoformat()
 
         idx = _get_notes_index()
@@ -147,7 +168,7 @@ class handler(BaseApiHandler):
             }, cache_control='no-store')
 
         elif action == "set_designated_teacher":
-            teacher = sanitize_text(body.get("designated_teacher") or "", max_len=100)
+            teacher = sanitize_text(body.get("designated_teacher") or body.get("teacher_name") or "", max_len=100)
             if not lesson_id:
                 return self.send_json(400, {"error": "Parametro 'lesson_id' obbligatorio per assegnare il docente"}, cache_control='no-store')
 

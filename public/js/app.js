@@ -206,8 +206,9 @@ function highlightMatch(text, query) {
 }
 
 // Profile / sync keys
-const PROFILE_KEY       = 'unimib_profile_id';       // stores { nickname, share_code }
-const SESSION_TOKEN_KEY = 'unimib_session_token';   // stores opaque session token
+const PROFILE_KEY        = 'unimib_profile_id';       // stores { nickname, share_code }
+const SESSION_TOKEN_KEY  = 'unimib_session_token';    // stores opaque session token
+const SAVED_ACCOUNTS_KEY = 'unimib_saved_accounts';   // stores [{ id, nickname, email, role, shareCode, sessionToken, ... }]
 const ACTIVE_GROUP_KEY   = 'unimib_active_group_id';  // stores active group ID
 const FRIENDS_KEY       = 'unimib_friends';          // stores [{id, nickname, color}]
 
@@ -742,6 +743,20 @@ function setupEventListeners() {
         handleMockProfessorLogin();
       } else {
         handleMockStudentLogin();
+      }
+    });
+  }
+  const btnAddAccount = document.getElementById('btnAddAccount');
+  if (btnAddAccount) {
+    btnAddAccount.addEventListener('click', () => {
+      const loggedOutEl = document.getElementById('profileLoggedOut');
+      if (loggedOutEl) {
+        const isHidden = loggedOutEl.style.display === 'none';
+        loggedOutEl.style.display = isHidden ? 'block' : 'none';
+        if (isHidden) {
+          initGoogleAuthUi();
+          loggedOutEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
       }
     });
   }
@@ -1789,6 +1804,7 @@ function clearCalendarCache() {
 
 function applyConfig() {
   const cfg = state.config;
+  if (!cfg) return;
   state.favoriteColors = {};
   const allFavorites = [
     ...(cfg.favorites || []),
@@ -1798,8 +1814,12 @@ function applyConfig() {
     state.favoriteColors[f.code] = FAVORITE_COLORS[i % FAVORITE_COLORS.length];
   });
 
-  if (state.activeTab === 'timetable') {
-    document.getElementById('headerSubtitle').textContent = `${cfg.corsoLabel} · ${cfg.anniLabels.join(', ')}`;
+  const subtitle = document.getElementById('headerSubtitle');
+  if (state.activeTab === 'timetable' && subtitle) {
+    const anniStr = (cfg.anniLabels && Array.isArray(cfg.anniLabels) && cfg.anniLabels.length)
+      ? ` · ${cfg.anniLabels.join(', ')}`
+      : '';
+    subtitle.textContent = `${cfg.corsoLabel || 'Orario lezioni'}${anniStr}`;
   }
   const hasFavs = (cfg.favorites && cfg.favorites.length) || (cfg.externalCourses && cfg.externalCourses.length);
   setFilter(hasFavs ? 'target' : 'all');
@@ -2273,11 +2293,10 @@ function generateIcs(events, calendarName = 'UNIMIB Orari') {
     const isAuthorized = typeof isCourseTaughtByCurrentProfessor === 'function'
       ? isCourseTaughtByCurrentProfessor(ev.course_code, ev.course || ev.name, ev.id)
       : false;
-    const canIncludeTeacherInfo = isAuthorized || (profileState && profileState.role === 'professor' && (ev.designated_teacher || ev.teacher_note)) || (!profileState.role && (ev.designated_teacher || ev.teacher_note));
     const noteData = isAuthorized && typeof getTeacherNoteFor === 'function' ? getTeacherNoteFor(ev.course_code, ev.id) : null;
     const desTeacher = isAuthorized && typeof getDesignatedTeacherFor === 'function' ? getDesignatedTeacherFor(ev.id) : null;
-    const designated = (canIncludeTeacherInfo && ev.designated_teacher) ? ev.designated_teacher : desTeacher;
-    const note = (canIncludeTeacherInfo && ev.teacher_note) ? ev.teacher_note : (noteData ? noteData.note : null);
+    const designated = ev.designated_teacher || desTeacher;
+    const note = ev.teacher_note || (noteData ? noteData.note : null);
     if (designated) desc.push(`Docente per questa lezione: ${designated}`);
     if (note) desc.push(`Nota Docente: ${note}`);
     if (ev.course_code) desc.push(`Codice: ${ev.course_code}`);
@@ -2330,11 +2349,10 @@ function generateCsv(events) {
     const isAuthorizedCsv = typeof isCourseTaughtByCurrentProfessor === 'function'
       ? isCourseTaughtByCurrentProfessor(ev.course_code, ev.course || ev.name, ev.id)
       : false;
-    const canIncludeTeacherInfoCsv = isAuthorizedCsv || (profileState && profileState.role === 'professor' && (ev.designated_teacher || ev.teacher_note)) || (!profileState.role && (ev.designated_teacher || ev.teacher_note));
     const noteDataCsv = isAuthorizedCsv && typeof getTeacherNoteFor === 'function' ? getTeacherNoteFor(ev.course_code, ev.id) : null;
     const desTeacherCsv = isAuthorizedCsv && typeof getDesignatedTeacherFor === 'function' ? getDesignatedTeacherFor(ev.id) : null;
-    const designatedCsv = (canIncludeTeacherInfoCsv && ev.designated_teacher) ? ev.designated_teacher : desTeacherCsv;
-    const noteCsv = (canIncludeTeacherInfoCsv && ev.teacher_note) ? ev.teacher_note : (noteDataCsv ? noteDataCsv.note : null);
+    const designatedCsv = ev.designated_teacher || desTeacherCsv;
+    const noteCsv = ev.teacher_note || (noteDataCsv ? noteDataCsv.note : null);
     if (designatedCsv) desc.push(`Docente per questa lezione: ${designatedCsv}`);
     if (noteCsv) desc.push(`Nota Docente: ${noteCsv}`);
     if (ev.course_code) desc.push(`Codice: ${ev.course_code}`);
@@ -6704,6 +6722,175 @@ function removeExamCourse(code) {
 //  PROFILE (Anonymous Identity with Nickname + PIN)
 // ══════════════════════════════════════════════════════════════
 
+// ══════════════════════════════════════════════════════════════
+//  MULTI-ACCOUNT & IDENTITY STORAGE
+// ══════════════════════════════════════════════════════════════
+
+function getSavedAccounts() {
+  try {
+    const raw = localStorage.getItem(SAVED_ACCOUNTS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveAccountToStorage(account) {
+  if (!account || !account.shareCode) return;
+  const accounts = getSavedAccounts();
+  const accEmail = (account.email || '').toLowerCase().trim();
+  const accCode = (account.shareCode || '').toUpperCase().trim();
+  const accNick = (account.nickname || '').trim();
+
+  const existingIdx = accounts.findIndex(a => {
+    if (accEmail && a.email && a.email.toLowerCase().trim() === accEmail) return true;
+    if (accCode && a.shareCode && a.shareCode.toUpperCase().trim() === accCode) return true;
+    if (!accEmail && !a.email && accNick && a.nickname && a.nickname.toLowerCase() === accNick.toLowerCase()) return true;
+    return false;
+  });
+
+  const entry = {
+    id: accEmail || accCode || `acc_${Date.now()}`,
+    nickname: account.nickname || 'Utente',
+    email: account.email || '',
+    picture: account.picture || '',
+    role: account.role || (accEmail.endsWith('@unimib.it') && !accEmail.endsWith('@campus.unimib.it') ? 'professor' : 'student'),
+    authType: account.authType || account.auth_type || 'google_campus',
+    shareCode: account.shareCode || account.share_code,
+    sessionToken: account.sessionToken || account.session_token || null,
+    recoveryCode: account.recoveryCode || account.recovery_code || null,
+    config: account.config || state.config || null,
+    examCourses: account.examCourses || account.exam_courses || (examsState && examsState.extraCourses) || [],
+    teacherCode: account.teacherCode || localStorage.getItem(PROF_ASSOCIATED_TEACHER_KEY) || null,
+    lastActive: Date.now()
+  };
+
+  if (existingIdx >= 0) {
+    accounts[existingIdx] = { ...accounts[existingIdx], ...entry };
+  } else {
+    accounts.unshift(entry);
+  }
+
+  try {
+    localStorage.setItem(SAVED_ACCOUNTS_KEY, JSON.stringify(accounts));
+  } catch (e) {
+    console.warn('Could not save accounts to localStorage:', e);
+  }
+}
+
+function removeSavedAccount(targetId) {
+  if (!targetId) return;
+  const cleanTarget = String(targetId).toLowerCase().trim();
+  const accounts = getSavedAccounts().filter(a => {
+    const aId = String(a.id || '').toLowerCase().trim();
+    const aEmail = String(a.email || '').toLowerCase().trim();
+    const aCode = String(a.shareCode || '').toLowerCase().trim();
+    return aId !== cleanTarget && aEmail !== cleanTarget && aCode !== cleanTarget;
+  });
+  try {
+    localStorage.setItem(SAVED_ACCOUNTS_KEY, JSON.stringify(accounts));
+  } catch (e) {}
+}
+
+async function switchAccount(targetId) {
+  const accounts = getSavedAccounts();
+  const cleanTarget = String(targetId).toLowerCase().trim();
+  const target = accounts.find(a => {
+    const aId = String(a.id || '').toLowerCase().trim();
+    const aEmail = String(a.email || '').toLowerCase().trim();
+    const aCode = String(a.shareCode || '').toLowerCase().trim();
+    return aId === cleanTarget || aEmail === cleanTarget || aCode === cleanTarget;
+  });
+
+  if (!target) {
+    showToast('Account non trovato tra quelli salvati');
+    return;
+  }
+
+  // 1. Save currently active account state to saved accounts list first
+  if (profileState.shareCode && profileState.sessionToken) {
+    saveAccountToStorage({
+      nickname: profileState.nickname,
+      email: profileState.email,
+      picture: profileState.picture,
+      role: profileState.role,
+      authType: profileState.authType,
+      shareCode: profileState.shareCode,
+      sessionToken: profileState.sessionToken,
+      recoveryCode: profileState.recoveryCode,
+      config: state.config,
+      examCourses: (examsState && examsState.extraCourses) || [],
+      teacherCode: localStorage.getItem(PROF_ASSOCIATED_TEACHER_KEY) || null
+    });
+  }
+
+  // 2. Set new active profile state
+  profileState.nickname     = target.nickname || '';
+  profileState.email        = target.email || '';
+  profileState.picture      = target.picture || '';
+  profileState.role         = target.role || 'student';
+  profileState.authType     = target.authType || 'google_campus';
+  profileState.shareCode    = target.shareCode;
+  profileState.sessionToken = target.sessionToken || null;
+  profileState.recoveryCode = target.recoveryCode || null;
+  profileState.lastSync     = Date.now();
+
+  saveProfileLocally();
+
+  // 3. Switch timetable and exam configuration to target account's config
+  if (target.config) {
+    state.config = target.config;
+    saveConfig(state.config);
+    applyConfig();
+    if (state.config.favorites && state.config.favorites.length > 0) {
+      setFilter('target');
+    }
+    loadCalendar(state.currentMonday);
+  } else {
+    state.config = null;
+    saveConfig(null);
+  }
+
+  if (target.examCourses && Array.isArray(target.examCourses)) {
+    if (examsState) {
+      examsState.extraCourses = target.examCourses;
+      saveExamCourses(examsState.extraCourses);
+    }
+  }
+
+  // 4. Role transition: teacher vs student
+  if (profileState.role === 'professor') {
+    if (target.teacherCode) {
+      localStorage.setItem(PROF_ASSOCIATED_TEACHER_KEY, target.teacherCode);
+    } else {
+      localStorage.removeItem(PROF_ASSOCIATED_TEACHER_KEY);
+    }
+    await loadProfessorSchedule(true);
+    if (state.activeTab === 'teachers') {
+      renderProfessorTimetable();
+    } else {
+      loadCalendar(state.currentMonday);
+    }
+  } else {
+    localStorage.removeItem(PROF_ASSOCIATED_TEACHER_KEY);
+    professorScheduleState.lessons = [];
+    if (state.activeTab === 'teachers') {
+      initTeachersView();
+    } else {
+      loadCalendar(state.currentMonday);
+    }
+  }
+
+  updateProfileButton();
+  updateTimetableForRole();
+  syncGroupCloud();
+  renderProfileModal();
+  const roleLabel = profileState.role === 'professor' ? 'Docente' : 'Studente';
+  showToast(`Sei passato all'account ${roleLabel}: ${profileState.nickname || profileState.email}`);
+}
+
 /**
  * On app start: if PROFILE_KEY exists in localStorage, populate profileState.
  * Also update the profile button indicator.
@@ -6733,6 +6920,23 @@ function initProfile() {
   }
   profileState.sessionToken = localStorage.getItem(SESSION_TOKEN_KEY) || null;
   updateProfileButton();
+
+  // If active profile exists, ensure it is registered in saved accounts
+  if (profileState.shareCode) {
+    saveAccountToStorage({
+      nickname:      profileState.nickname,
+      email:         profileState.email,
+      picture:       profileState.picture,
+      role:          profileState.role,
+      authType:      profileState.authType,
+      shareCode:     profileState.shareCode,
+      sessionToken:  profileState.sessionToken,
+      recoveryCode:  profileState.recoveryCode,
+      config:        state.config,
+      examCourses:   (examsState && examsState.extraCourses) || [],
+      teacherCode:   localStorage.getItem(PROF_ASSOCIATED_TEACHER_KEY) || null
+    });
+  }
 
   // Persistent session: validate and slide 365-day session in background
   if (profileState.sessionToken) {
@@ -6793,6 +6997,19 @@ function saveProfileLocally() {
       share_code:    profileState.shareCode,
       recovery_code: profileState.recoveryCode || null
     }));
+    saveAccountToStorage({
+      nickname:      profileState.nickname,
+      email:         profileState.email || '',
+      picture:       profileState.picture || '',
+      role:          profileState.role || 'student',
+      authType:      profileState.authType || 'google_campus',
+      shareCode:     profileState.shareCode,
+      sessionToken:  profileState.sessionToken,
+      recoveryCode:  profileState.recoveryCode || null,
+      config:        state.config,
+      examCourses:   (examsState && examsState.extraCourses) || [],
+      teacherCode:   localStorage.getItem(PROF_ASSOCIATED_TEACHER_KEY) || null
+    });
   } else {
     localStorage.removeItem(PROFILE_KEY);
   }
@@ -6969,7 +7186,8 @@ async function handleGoogleAuthCredential(response) {
   profileState.authType     = 'google_campus';
   profileState.lastSync     = Date.now();
 
-  if (data.config && (!state.config || !state.config.corso)) {
+  // Always apply authenticated account's configuration
+  if (data.config) {
     state.config = data.config;
     saveConfig(state.config);
     applyConfig();
@@ -6978,7 +7196,7 @@ async function handleGoogleAuthCredential(response) {
     }
     loadCalendar(state.currentMonday);
   }
-  if (data.exam_courses && data.exam_courses.length && (!examsState || !examsState.extraCourses.length)) {
+  if (data.exam_courses && Array.isArray(data.exam_courses)) {
     if (examsState) {
       examsState.extraCourses = data.exam_courses;
       saveExamCourses(examsState.extraCourses);
@@ -7072,6 +7290,19 @@ async function handleWipeAccount() {
     }
   }
 
+  const currentId = profileState.email || profileState.shareCode;
+  if (currentId) {
+    removeSavedAccount(currentId);
+  }
+
+  const remaining = getSavedAccounts();
+  if (remaining.length > 0) {
+    switchAccount(remaining[0].id);
+    showToast('Account eliminato dal server (GDPR Art. 17). Sei passato al tuo altro account.');
+    closeModal('profileModal');
+    return;
+  }
+
   profileState.shareCode    = null;
   profileState.nickname     = '';
   profileState.email        = '';
@@ -7083,6 +7314,8 @@ async function handleWipeAccount() {
   profileState._pin         = null;
   localStorage.removeItem(SESSION_TOKEN_KEY);
   localStorage.removeItem(ACTIVE_GROUP_KEY);
+  localStorage.removeItem(PROFILE_KEY);
+  localStorage.removeItem(PROF_ASSOCIATED_TEACHER_KEY);
   saveProfileLocally();
   friendsState.groups        = [];
   friendsState.activeGroupId = null;
@@ -7161,6 +7394,82 @@ function openProfileModal() {
   renderProfileModal();
 }
 
+function renderSavedAccountsList() {
+  const listEl = document.getElementById('profileAccountsList');
+  if (!listEl) return;
+  listEl.innerHTML = '';
+
+  const accounts = getSavedAccounts();
+  const currentCode = (profileState.shareCode || '').toUpperCase().trim();
+  const currentEmail = (profileState.email || '').toLowerCase().trim();
+
+  if (accounts.length === 0) {
+    listEl.innerHTML = '<span style="font-size:0.75rem; color:var(--text-muted);">Nessun account secondario salvato.</span>';
+    return;
+  }
+
+  accounts.forEach(acc => {
+    const accEmail = (acc.email || '').toLowerCase().trim();
+    const accCode = (acc.shareCode || '').toUpperCase().trim();
+    const isActive = (accCode && accCode === currentCode) ||
+                     (accEmail && accEmail === currentEmail);
+    const isProf = acc.role === 'professor';
+
+    const card = document.createElement('div');
+    card.className = `saved-account-card ${isActive ? 'is-active' : ''} ${isProf ? 'professor' : 'student'}`;
+
+    const initial = (acc.nickname || (isProf ? 'P' : 'S')).charAt(0).toUpperCase();
+    const avatarHtml = acc.picture
+      ? `<img src="${escapeHtml(acc.picture)}" alt="" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">`
+      : escapeHtml(initial);
+
+    const emailOrCode = acc.email || `Codice: ${acc.shareCode}`;
+
+    card.innerHTML = `
+      <div class="saved-account-info">
+        <div class="saved-account-avatar ${isProf ? 'professor' : 'student'}">
+          ${avatarHtml}
+        </div>
+        <div class="saved-account-details">
+          <strong>${escapeHtml(acc.nickname)} ${isProf ? '🏛️' : '🎓'}</strong>
+          <span>${escapeHtml(emailOrCode)}</span>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:6px;">
+        ${isActive ? `
+          <span style="font-size:0.72rem; font-weight:700; color:#34D399; padding:3px 8px; border-radius:9999px; background:rgba(16,185,129,0.15); display:inline-flex; align-items:center; gap:3px;">
+            <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            Attivo
+          </span>
+        ` : `
+          <button type="button" class="btn-secondary btn-switch-acc" data-acc-id="${escapeHtml(acc.id)}" style="font-size:0.72rem; padding:4px 9px; width:auto;">
+            Passa
+          </button>
+          <button type="button" class="btn-text-action btn-remove-acc" data-acc-id="${escapeHtml(acc.id)}" title="Rimuovi account salvato" style="color:var(--text-muted); padding:3px 6px; font-size:0.8rem; background:none; border:none; cursor:pointer;">
+            ✕
+          </button>
+        `}
+      </div>
+    `;
+
+    const btnSwitch = card.querySelector('.btn-switch-acc');
+    if (btnSwitch) {
+      btnSwitch.addEventListener('click', () => switchAccount(acc.id));
+    }
+    const btnRemove = card.querySelector('.btn-remove-acc');
+    if (btnRemove) {
+      btnRemove.addEventListener('click', (e) => {
+        e.stopPropagation();
+        removeSavedAccount(acc.id);
+        renderSavedAccountsList();
+        showToast('Account rimosso dai salvati');
+      });
+    }
+
+    listEl.appendChild(card);
+  });
+}
+
 function renderProfileModal() {
   const loggedIn = Boolean(profileState.nickname && profileState.shareCode);
   const loggedOutEl = document.getElementById('profileLoggedOut');
@@ -7226,6 +7535,9 @@ function renderProfileModal() {
         recBox.style.display = 'none';
       }
     }
+
+    // Render multi-account list
+    renderSavedAccountsList();
   } else {
     // Logged out: initialize GIS UI
     initGoogleAuthUi();
@@ -7474,6 +7786,19 @@ async function handleLoginProfile() {
       return;
     }
 
+    profileState.nickname     = data.nickname;
+    profileState.email        = data.email || '';
+    profileState.picture      = data.picture || '';
+    profileState.role         = data.role || 'student';
+    profileState.authType     = data.auth_type || 'pin';
+    profileState.shareCode    = data.share_code;
+    profileState.sessionToken = data.session_token || null;
+    if (data.recovery_code) {
+      profileState.recoveryCode = data.recovery_code;
+    }
+    profileState.lastSync     = Date.now();
+    profileState._pin         = pin;
+
     if (data.config) {
       state.config = data.config;
       saveConfig(state.config);
@@ -7483,19 +7808,12 @@ async function handleLoginProfile() {
       }
       loadCalendar(state.currentMonday);
     }
-    if (data.exam_courses && data.exam_courses.length && !examsState.extraCourses.length) {
-      examsState.extraCourses = data.exam_courses;
-      saveExamCourses(examsState.extraCourses);
+    if (data.exam_courses && Array.isArray(data.exam_courses)) {
+      if (examsState) {
+        examsState.extraCourses = data.exam_courses;
+        saveExamCourses(examsState.extraCourses);
+      }
     }
-
-    profileState.nickname     = data.nickname;
-    profileState.shareCode    = data.share_code;
-    profileState.sessionToken = data.session_token || null;
-    if (data.recovery_code) {
-      profileState.recoveryCode = data.recovery_code;
-    }
-    profileState.lastSync     = Date.now();
-    profileState._pin         = pin;
     saveProfileLocally();
     syncGroupCloud();
     renderProfileModal();
@@ -7611,6 +7929,18 @@ function handleLogoutProfile() {
       headers: { 'Authorization': `Bearer ${profileState.sessionToken}` }
     }).catch(() => {});
   }
+  const currentId = profileState.email || profileState.shareCode;
+  if (currentId) {
+    removeSavedAccount(currentId);
+  }
+
+  const remaining = getSavedAccounts();
+  if (remaining.length > 0) {
+    switchAccount(remaining[0].id);
+    showToast(`Account disconnesso. Sei passato a: ${remaining[0].nickname}`);
+    return;
+  }
+
   profileState.shareCode    = null;
   profileState.nickname     = '';
   profileState.email        = '';
@@ -7622,6 +7952,8 @@ function handleLogoutProfile() {
   profileState._pin         = null;
   localStorage.removeItem(SESSION_TOKEN_KEY);
   localStorage.removeItem(ACTIVE_GROUP_KEY);
+  localStorage.removeItem(PROFILE_KEY);
+  localStorage.removeItem(PROF_ASSOCIATED_TEACHER_KEY);
   saveProfileLocally();
   friendsState.groups        = [];
   friendsState.activeGroupId = null;
@@ -9596,6 +9928,18 @@ async function syncTeacherNotesFromApi() {
     const resp = await fetch('/api/teacher_notes?all=1');
     if (!resp.ok) return;
     const data = await resp.json();
+    if (data && data.course_notes && typeof data.course_notes === 'object') {
+      teacherNotesState.courseNotes = {
+        ...teacherNotesState.courseNotes,
+        ...data.course_notes
+      };
+    }
+    if (data && data.lesson_notes && typeof data.lesson_notes === 'object') {
+      teacherNotesState.lessonNotes = {
+        ...teacherNotesState.lessonNotes,
+        ...data.lesson_notes
+      };
+    }
     if (data && data.notes) {
       Object.keys(data.notes).forEach(k => {
         const item = data.notes[k];
@@ -9613,6 +9957,14 @@ async function syncTeacherNotesFromApi() {
         ...teacherNotesState.designatedTeachers,
         ...data.designated_teachers
       };
+    } else if (data && data.lesson_teachers) {
+      Object.keys(data.lesson_teachers).forEach(lid => {
+        const item = data.lesson_teachers[lid];
+        const tName = typeof item === 'object' && item ? (item.designated_teacher || item.teacher_name) : item;
+        if (tName) {
+          teacherNotesState.designatedTeachers[lid] = tName;
+        }
+      });
     }
     saveTeacherNotesLocally();
     if (state.activeTab === 'timetable') {
@@ -9742,11 +10094,16 @@ async function saveTeacherNote({ courseCode, lessonId, note, authorName, authorE
   saveTeacherNotesLocally();
 
   try {
-    await fetch('/api/teacher_notes', {
+    const headers = { 'Content-Type': 'application/json' };
+    if (profileState.sessionToken) {
+      headers['Authorization'] = `Bearer ${profileState.sessionToken}`;
+    }
+    const resp = await fetch('/api/teacher_notes', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         action: 'set_note',
+        session_token: profileState.sessionToken || '',
         course_code: courseCode || '',
         lesson_id: lessonId || '',
         note: (note || '').trim(),
@@ -9754,6 +10111,10 @@ async function saveTeacherNote({ courseCode, lessonId, note, authorName, authorE
         author_email: authorEmail || profileState.email || ''
       })
     });
+    if (!resp.ok) {
+      const errData = await resp.json().catch(() => ({}));
+      showToast(errData.error || 'Errore nel salvataggio della nota sul server', 5000);
+    }
   } catch (e) {
     // offline
   }
@@ -9770,15 +10131,24 @@ async function deleteTeacherNote({ courseCode, lessonId, forEntireCourse }) {
   saveTeacherNotesLocally();
 
   try {
-    await fetch('/api/teacher_notes', {
+    const headers = { 'Content-Type': 'application/json' };
+    if (profileState.sessionToken) {
+      headers['Authorization'] = `Bearer ${profileState.sessionToken}`;
+    }
+    const resp = await fetch('/api/teacher_notes', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         action: 'delete_note',
+        session_token: profileState.sessionToken || '',
         course_code: courseCode || '',
         lesson_id: lessonId || ''
       })
     });
+    if (!resp.ok) {
+      const errData = await resp.json().catch(() => ({}));
+      showToast(errData.error || 'Errore nella rimozione della nota sul server', 5000);
+    }
   } catch (e) {
     // offline
   }
@@ -9794,16 +10164,26 @@ async function saveDesignatedTeacher({ lessonId, teacherName, authorName }) {
   saveTeacherNotesLocally();
 
   try {
-    await fetch('/api/teacher_notes', {
+    const headers = { 'Content-Type': 'application/json' };
+    if (profileState.sessionToken) {
+      headers['Authorization'] = `Bearer ${profileState.sessionToken}`;
+    }
+    const resp = await fetch('/api/teacher_notes', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         action: 'set_designated_teacher',
+        session_token: profileState.sessionToken || '',
         lesson_id: lessonId,
+        designated_teacher: teacherName || '',
         teacher_name: teacherName || '',
         author_name: authorName || profileState.nickname || 'Docente'
       })
     });
+    if (!resp.ok) {
+      const errData = await resp.json().catch(() => ({}));
+      showToast(errData.error || 'Errore nell\'assegnazione del docente sul server', 5000);
+    }
   } catch (e) {
     // offline
   }

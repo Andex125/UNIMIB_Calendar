@@ -410,6 +410,28 @@ def extract_bearer_token(headers: Any) -> str:
     return ""
 
 
+def get_authenticated_account(headers: Any, body: Optional[dict] = None) -> Tuple[Optional[dict], Optional[str]]:
+    """
+    Extract and validate session token from headers or body.
+    Returns: (account_dict, None) if authenticated, or (None, error_message).
+    """
+    token = extract_bearer_token(headers)
+    if not token and body and isinstance(body, dict):
+        token = str(body.get("session_token", "")).strip()
+    if not token:
+        return None, "Token di autenticazione mancante (Authorization: Bearer <token>)"
+    session = redis_get(f"session:{token}")
+    if not session or not isinstance(session, dict):
+        return None, "Sessione non valida o scaduta"
+    clean_nick = session.get("clean_nick", "")
+    if not clean_nick:
+        return None, "Sessione non valida (account non identificato)"
+    account = redis_get(f"account:{clean_nick}")
+    if not account or not isinstance(account, dict):
+        return None, "Account non trovato"
+    return account, None
+
+
 def is_safe_code(code: str) -> bool:
     """Validate share/group code format (alphanumeric, 3-32 chars)."""
     return bool(code and re.match(r'^[A-Za-z0-9_-]{3,32}$', str(code).strip()))

@@ -148,6 +148,62 @@ class TestGoogleAuthAndGdpr(unittest.TestCase):
         self.assertIn("unimib.it", data["allowed_domains"])
         self.assertIn("studentesco", data["disclaimer"])
 
+    def test_multiple_accounts_coexistence_and_switching(self):
+        """Verify that multiple accounts (e.g. Student and Professor) have distinct sessions and configs that do not leak."""
+        # 1. Login Account A (Student)
+        exec_stud = _make_handler("POST", "/api/profile", {
+            "action": "google",
+            "credential": "mock_google_token:m.rossi@campus.unimib.it:sub_student_1:Mario Rossi",
+            "config": {"corso": "F1801Q", "corsoLabel": "Informatica"}
+        })
+        status, data_stud = exec_stud()
+        self.assertEqual(status, 200)
+        token_stud = data_stud["session_token"]
+        self.assertEqual(data_stud["role"], "student")
+
+        # 2. Login Account B (Professor)
+        exec_prof = _make_handler("POST", "/api/profile", {
+            "action": "google",
+            "credential": "mock_google_token:mario.rossi@unimib.it:sub_prof_1:Prof. Mario Rossi",
+            "config": {"corso": "DOC_INF", "corsoLabel": "Cattedra Informatica"}
+        })
+        status, data_prof = exec_prof()
+        self.assertEqual(status, 200)
+        token_prof = data_prof["session_token"]
+        self.assertEqual(data_prof["role"], "professor")
+
+        # 3. Verify Account Switching via Bearer token: Account A
+        exec_me_stud = _make_handler("GET", "/api/profile?me=1", headers={"Authorization": f"Bearer {token_stud}"})
+        status, me_stud = exec_me_stud()
+        self.assertEqual(status, 200)
+        self.assertEqual(me_stud["email"], "m.rossi@campus.unimib.it")
+        self.assertEqual(me_stud["role"], "student")
+        self.assertEqual(me_stud["config"]["corso"], "F1801Q")
+
+        # 4. Verify Account Switching via Bearer token: Account B
+        exec_me_prof = _make_handler("GET", "/api/profile?me=1", headers={"Authorization": f"Bearer {token_prof}"})
+        status, me_prof = exec_me_prof()
+        self.assertEqual(status, 200)
+        self.assertEqual(me_prof["email"], "mario.rossi@unimib.it")
+        self.assertEqual(me_prof["role"], "professor")
+        self.assertEqual(me_prof["config"]["corso"], "DOC_INF")
+
+        # 5. Logout Account A: should invalidate only Account A's token
+        exec_del_stud = _make_handler("DELETE", "/api/profile", headers={"Authorization": f"Bearer {token_stud}"})
+        status, del_resp = exec_del_stud()
+        self.assertEqual(status, 200)
+
+        # Token A is invalid
+        exec_me_stud_after = _make_handler("GET", "/api/profile?me=1", headers={"Authorization": f"Bearer {token_stud}"})
+        status, _ = exec_me_stud_after()
+        self.assertEqual(status, 401)
+
+        # Token B remains fully valid
+        exec_me_prof_after = _make_handler("GET", "/api/profile?me=1", headers={"Authorization": f"Bearer {token_prof}"})
+        status, me_prof_after = exec_me_prof_after()
+        self.assertEqual(status, 200)
+        self.assertEqual(me_prof_after["role"], "professor")
+
     def test_gdpr_account_wipe(self):
         """DELETE /api/profile?wipe=1 purges account, share code, and session for any role (GDPR Art. 17)."""
         # Create Professor account
